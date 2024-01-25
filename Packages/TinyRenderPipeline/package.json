@@ -1,0 +1,10 @@
+{
+  "name": "com.tiny.render-pipeline",
+  "description": "",
+  "version": "0.0.1",
+  "unity": "2023.2",
+  "displayName": "Tiny RP",
+  "dependencies": {
+    "com.unity.render-pipelines.core": "16.0.5"
+  }
+}
