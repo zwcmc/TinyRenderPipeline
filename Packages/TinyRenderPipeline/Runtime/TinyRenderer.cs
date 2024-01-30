@@ -9,6 +9,8 @@ public partial class TinyRenderer
 {
     private static class Profiling
     {
+        public static readonly ProfilingSampler drawOpaque = new ProfilingSampler($"{nameof(DrawOpaque)}");
+        public static readonly ProfilingSampler drawTransparent = new ProfilingSampler($"{nameof(DrawTransparent)}");
         public static readonly ProfilingSampler drawGizmos = new ProfilingSampler($"{nameof(DrawGizmos)}");
     }
 
@@ -21,10 +23,16 @@ public partial class TinyRenderer
         var cmd = renderingData.commandBuffer;
 
         SetCameraProperties(context, camera);
-
         ClearRenderTarget(cmd, camera);
 
+        context.ExecuteCommandBuffer(cmd);
+        cmd.Clear();
+
+        DrawOpaque(context, ref renderingData);
+
         DrawSkybox(context, cmd, camera);
+
+        DrawTransparent(context, ref renderingData);
 
         DrawGizmos(context, cmd, camera);
     }

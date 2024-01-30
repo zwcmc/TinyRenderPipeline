@@ -31,6 +31,11 @@ public class TinyRenderPipeline : RenderPipeline
     {
         pipelineAsset = asset;
 
+        // Enable SRP batcher
+        GraphicsSettings.useScriptableRenderPipelineBatching = true;
+        // Light intensity in linear space
+        GraphicsSettings.lightsUseLinearIntensity = true;
+
         m_TinyRenderer = new TinyRenderer();
     }
 
@@ -63,15 +68,13 @@ public class TinyRenderPipeline : RenderPipeline
         if (!TryGetCullingParameters(camera, out var cullingParameters))
             return;
 
-        bool isSceneViewCamera = camera.cameraType == CameraType.SceneView;
-
         CommandBuffer cmd = CommandBufferPool.Get();
         ProfilingSampler sampler = Profiling.TryGetOrAddCameraSampler(camera);
         using (new ProfilingScope(cmd, sampler))
         {
             // Render UI in Scene view.
 #if UNITY_EDITOR
-            if (isSceneViewCamera)
+            if (camera.cameraType == CameraType.SceneView)
                 ScriptableRenderContext.EmitWorldGeometryForSceneView(camera);
 #endif
 
