@@ -12,3 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3f18393676273f643b1da85cc6337e93, type: 3}
   m_Name: RP Asset
   m_EditorClassIdentifier: 
+  m_UseSRPBatcher: 1

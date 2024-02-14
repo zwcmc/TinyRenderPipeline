@@ -16,7 +16,7 @@ public static class RenderingUtils
         DrawingSettings settings = new DrawingSettings(m_TinyRPShaderTagIds[0], sortingSettings)
         {
             enableDynamicBatching = false,
-            enableInstancing = true
+            enableInstancing = false
         };
 
         for (int i = 1; i < m_TinyRPShaderTagIds.Count; ++i)

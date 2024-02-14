@@ -32,7 +32,7 @@ public class TinyRenderPipeline : RenderPipeline
         pipelineAsset = asset;
 
         // Enable SRP batcher
-        GraphicsSettings.useScriptableRenderPipelineBatching = true;
+        GraphicsSettings.useScriptableRenderPipelineBatching = asset.useSRPBatcher;
         // Light intensity in linear space
         GraphicsSettings.lightsUseLinearIntensity = true;
 
