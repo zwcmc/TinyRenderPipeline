@@ -6,7 +6,8 @@ public static class RenderingUtils
 {
     private static List<ShaderTagId> m_TinyRPShaderTagIds = new List<ShaderTagId>
     {
-        new ShaderTagId("TinyRPUnlit")
+        new ShaderTagId("TinyRPUnlit"),
+        new ShaderTagId("TinyRPLit")
     };
 
     public static DrawingSettings CreateDrawingSettings(ref RenderingData renderingData, SortingCriteria sortingCriteria)
