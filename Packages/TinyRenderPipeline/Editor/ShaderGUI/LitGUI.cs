@@ -50,6 +50,9 @@ namespace TinyRenderPipeline.CustomShaderGUI
             public static readonly GUIContent alphaClipThresholdText = new GUIContent("Threshold", "");
 
             public static readonly GUIContent baseMap = EditorGUIUtility.TrTextContent("Base Map", "");
+
+            public static GUIContent metallicText = EditorGUIUtility.TrTextContent("Metallic", "");
+            public static GUIContent smoothnessText = EditorGUIUtility.TrTextContent("Smoothness", "");
         }
 
         private static class Property
@@ -66,6 +69,9 @@ namespace TinyRenderPipeline.CustomShaderGUI
             public static readonly string BaseColor = "_BaseColor";
             public static readonly string AlphaClip = "_AlphaClip";
             public static readonly string AlphaCutoff = "_Cutoff";
+
+            public static readonly string Metallic = "_Metallic";
+            public static readonly string Smoothness = "_Smoothness";
         }
 
         private static class ShaderKeywordStrings
@@ -86,6 +92,8 @@ namespace TinyRenderPipeline.CustomShaderGUI
         private MaterialProperty baseColorProp { get; set; }
         private MaterialProperty alphaClipProp { get; set; }
         private MaterialProperty alphaCutoffProp { get; set; }
+        protected MaterialProperty metallicProp { get; set; }
+        protected MaterialProperty smoothnessProp { get; set; }
 
         #endregion
 
@@ -104,6 +112,9 @@ namespace TinyRenderPipeline.CustomShaderGUI
             alphaCutoffProp = FindProperty(Property.AlphaCutoff, properties, false);
             baseMapProp = FindProperty(Property.BaseMap, properties, false);
             baseColorProp = FindProperty(Property.BaseColor, properties, false);
+
+            metallicProp = FindProperty(Property.Metallic, properties, false);
+            smoothnessProp = FindProperty(Property.Smoothness, properties, false);
         }
 
         public override void OnGUI(MaterialEditor materialEditorIn, MaterialProperty[] properties)
@@ -146,10 +157,11 @@ namespace TinyRenderPipeline.CustomShaderGUI
             if (baseMapProp != null && baseColorProp != null)
                 materialEditor.TexturePropertySingleLine(Styles.baseMap, baseMapProp, baseColorProp);
 
+            materialEditor.ShaderProperty(metallicProp, Styles.metallicText);
+            materialEditor.ShaderProperty(smoothnessProp, Styles.smoothnessText);
+
             if (baseMapProp != null)
                 materialEditor.TextureScaleOffsetProperty(baseMapProp);
-
-            // materialEditor.EnableInstancingField();
         }
 
         private void DoPopup(GUIContent label, MaterialProperty property, string[] options)

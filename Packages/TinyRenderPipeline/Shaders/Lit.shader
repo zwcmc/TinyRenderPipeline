@@ -6,6 +6,9 @@ Shader "Tiny Render Pipeline/Lit"
         [MainColor] _BaseColor("Color", Color) = (0.5, 0.5, 0.5, 1.0)
         _Cutoff("AlphaCutout", Range(0.0, 1.0)) = 0.5
 
+        _Metallic("Metallic", Range(0, 1)) = 0
+        _Smoothness("Smoothness", Range(0, 1)) = 0.5
+
         _Surface("__surface", Float) = 0.0
         _Blend("__mode", Float) = 0.0
         _Cull("__cull", Float) = 2.0

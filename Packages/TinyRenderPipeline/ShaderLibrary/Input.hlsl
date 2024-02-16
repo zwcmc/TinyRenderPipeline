@@ -2,6 +2,7 @@
 #define TINY_RP_INPUT_INCLUDED
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
 #include "UnityInput.hlsl"
 
 struct InputData
@@ -10,6 +11,10 @@ struct InputData
     float3 normalWS;
     half3 viewDirectionWS;
 };
+
+// Main light
+float4 _MainLightPosition;
+half4 _MainLightColor;
 
 #define UNITY_MATRIX_M unity_ObjectToWorld
 #define UNITY_MATRIX_I_M unity_WorldToObject

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -107,6 +108,40 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.commandBuffer = cmd;
         renderingData.camera = camera;
         renderingData.cullResults = cullResults;
-        renderingData.mainLightIndex = 0;
+        renderingData.mainLightIndex = GetMainLightIndex(cullResults.visibleLights);
+    }
+
+    private static int GetMainLightIndex(NativeArray<VisibleLight> visibleLights)
+    {
+        int totalVisibleLights = visibleLights.Length;
+
+        if (totalVisibleLights == 0)
+            return -1;
+
+        Light sunLight = RenderSettings.sun;
+        int brightestDirectionalLightIndex = -1;
+        float brightestLightIntensity = 0.0f;
+        for (int i = 0; i < totalVisibleLights; ++i)
+        {
+            VisibleLight currVisibleLight = visibleLights[i];
+            Light currLight = currVisibleLight.light;
+
+            if (currLight == null)
+                break;
+
+            if (currVisibleLight.lightType == LightType.Directional)
+            {
+                if (currLight == sunLight)
+                    return i;
+
+                if (currLight.intensity > brightestLightIntensity)
+                {
+                    brightestLightIntensity = currLight.intensity;
+                    brightestDirectionalLightIndex = i;
+                }
+            }
+        }
+
+        return brightestDirectionalLightIndex;
     }
 }

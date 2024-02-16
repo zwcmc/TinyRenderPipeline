@@ -12,8 +12,18 @@ struct Varyings
 {
     float2 uv         : TEXCOORD0;
     float3 normalWS   : TEXCOORD1;
+    float3 positionWS : TEXCOORD2;
     float4 positionCS : SV_POSITION;
 };
+
+void InitializeInputData(Varyings input, half3 normalTS, out InputData inputData)
+{
+    inputData = (InputData)0;
+
+    inputData.positionWS = input.positionWS;
+    inputData.normalWS = NormalizeNormalPerPixel(input.normalWS); // or normalTS
+    inputData.viewDirectionWS = GetWorldSpaceNormalizeViewDir(input.positionWS);
+}
 
 Varyings LitVertex(Attributes input)
 {
@@ -22,6 +32,7 @@ Varyings LitVertex(Attributes input)
     output.uv = TRANSFORM_TEX(input.uv, _BaseMap);
 
     output.normalWS = TransformObjectToWorldNormal(input.normalOS.xyz);
+    output.positionWS = TransformObjectToWorld(input.positionOS.xyz);
 
     output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
     return output;
@@ -29,15 +40,17 @@ Varyings LitVertex(Attributes input)
 
 half4 LitFragment(Varyings input) : SV_TARGET
 {
-    half4 texColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv);
-    half3 color = texColor.rgb * _BaseColor.rgb;
-    half alpha = texColor.a * _BaseColor.a;
+    SurfaceData surfaceData;
+    InitializeSurfaceData(input.uv, surfaceData);
 
-    alpha = AlphaDiscard(alpha, _Cutoff);
+    InputData inputData;
+    InitializeInputData(input, surfaceData.normalTS, inputData);
 
-    alpha = OutputAlpha(alpha, IsSurfaceTypeTransparent(_Surface));
+    half4 color = FragmentPBR(inputData, surfaceData);
 
-    return half4(color, alpha);
+    color.a = OutputAlpha(color.a, IsSurfaceTypeTransparent(_Surface));
+
+    return color;
 }
 
 #endif

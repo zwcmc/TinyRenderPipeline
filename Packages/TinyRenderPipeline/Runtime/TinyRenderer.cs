@@ -14,7 +14,12 @@ public partial class TinyRenderer
         public static readonly ProfilingSampler drawGizmos = new ProfilingSampler($"{nameof(DrawGizmos)}");
     }
 
-    public TinyRenderer() {}
+    private ForwardLights m_ForwardLights;
+
+    public TinyRenderer()
+    {
+        m_ForwardLights = new ForwardLights();
+    }
 
     public void Execute(ref RenderingData renderingData)
     {
@@ -27,6 +32,8 @@ public partial class TinyRenderer
 
         context.ExecuteCommandBuffer(cmd);
         cmd.Clear();
+
+        m_ForwardLights.Setup(context, ref renderingData);
 
         DrawOpaque(context, ref renderingData);
 
