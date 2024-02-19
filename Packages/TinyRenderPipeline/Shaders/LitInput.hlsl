@@ -5,6 +5,7 @@
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/ShaderVariablesFunctions.hlsl"
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/SurfaceData.hlsl"
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/BRDF.hlsl"
+#include "Packages/com.tiny.render-pipeline/ShaderLibrary/Shadows.hlsl"
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/Lighting.hlsl"
 
 CBUFFER_START(UnityPerMaterial)

@@ -3,9 +3,9 @@
 
 struct Attributes
 {
-    float3 positionOS : POSITION;
+    float4 positionOS : POSITION;
     float3 normalOS   : NORMAL;
-    float2 uv         : TEXCOORD0;
+    float2 texcoord   : TEXCOORD0;
 };
 
 struct Varyings
@@ -23,13 +23,14 @@ void InitializeInputData(Varyings input, half3 normalTS, out InputData inputData
     inputData.positionWS = input.positionWS;
     inputData.normalWS = NormalizeNormalPerPixel(input.normalWS); // or normalTS
     inputData.viewDirectionWS = GetWorldSpaceNormalizeViewDir(input.positionWS);
+    inputData.shadowCoord = TransformWorldToShadowCoord(inputData.positionWS);
 }
 
 Varyings LitVertex(Attributes input)
 {
     Varyings output = (Varyings)0;
 
-    output.uv = TRANSFORM_TEX(input.uv, _BaseMap);
+    output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
 
     output.normalWS = TransformObjectToWorldNormal(input.normalOS.xyz);
     output.positionWS = TransformObjectToWorld(input.positionOS.xyz);

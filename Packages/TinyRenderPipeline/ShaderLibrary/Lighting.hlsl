@@ -7,7 +7,7 @@ half3 LightingPBR(BRDFData brdfData, Light light, half3 normalWS, half3 viewDire
 {
     half3 lightDirectionWS = light.direction;
     half NdotL = saturate(dot(normalWS, lightDirectionWS));
-    half3 radiance = light.color * NdotL;
+    half3 radiance = light.color * (light.shadowAttenuation * NdotL);
 
     half3 brdf = brdfData.diffuse;
     brdf += brdfData.specular * DirectBRDFSpecular(brdfData, normalWS, lightDirectionWS, viewDirectionWS);
@@ -21,7 +21,7 @@ half4 FragmentPBR(InputData inputData, SurfaceData surfaceData)
     InitializeBRDFData(surfaceData, brdfData);
 
     half3 lightingColor = 0.0;
-    Light mainLight = GetMainLight();
+    Light mainLight = GetMainLight(inputData);
 
     half3 mainLightColor = LightingPBR(brdfData, mainLight, inputData.normalWS, inputData.viewDirectionWS);
     lightingColor += mainLightColor;

@@ -39,7 +39,6 @@ Shader "Tiny Render Pipeline/Lit"
 
             HLSLPROGRAM
             #pragma target 3.5
-
             #pragma vertex LitVertex
             #pragma fragment LitFragment
 
@@ -47,7 +46,24 @@ Shader "Tiny Render Pipeline/Lit"
 
             #include "LitInput.hlsl"
             #include "LitForwardPass.hlsl"
+            ENDHLSL
+        }
 
+        Pass
+        {
+            Tags { "LightMode"="ShadowCaster" }
+
+            ColorMask 0
+
+            HLSLPROGRAM
+            #pragma target 3.5
+            #pragma vertex LitShadowVertex
+            #pragma fragment LitShadowFragment
+
+            #pragma shader_feature_local_fragment _ALPHATEST_ON
+
+            #include "LitInput.hlsl"
+            #include "LitShadowPass.hlsl"
             ENDHLSL
         }
     }

@@ -15,10 +15,12 @@ public partial class TinyRenderer
     }
 
     private ForwardLights m_ForwardLights;
+    private MainLightShadowPass m_MainLightShadowPass;
 
     public TinyRenderer()
     {
         m_ForwardLights = new ForwardLights();
+        m_MainLightShadowPass = new MainLightShadowPass();
     }
 
     public void Execute(ref RenderingData renderingData)
@@ -27,13 +29,25 @@ public partial class TinyRenderer
         var camera = renderingData.camera;
         var cmd = renderingData.commandBuffer;
 
-        SetCameraProperties(context, camera);
-        ClearRenderTarget(cmd, camera);
+        // Setup lighting data
+        m_ForwardLights.Setup(context, ref renderingData);
 
+        // Render main light shadowmap
+        if (m_MainLightShadowPass.Setup(ref renderingData))
+        {
+            m_MainLightShadowPass.Render(context, ref renderingData);
+        }
+
+        // Setup camera properties
+        SetCameraProperties(context, camera);
+
+        // Configure target
+        cmd.SetRenderTarget(BuiltinRenderTextureType.CameraTarget, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+        CameraClearFlags flags = camera.clearFlags;
+        cmd.ClearRenderTarget(flags <= CameraClearFlags.Depth, flags <= CameraClearFlags.Color,
+            flags == CameraClearFlags.Color ? camera.backgroundColor.linear : Color.clear);
         context.ExecuteCommandBuffer(cmd);
         cmd.Clear();
-
-        m_ForwardLights.Setup(context, ref renderingData);
 
         DrawOpaque(context, ref renderingData);
 
@@ -46,7 +60,7 @@ public partial class TinyRenderer
 
     public void Dispose(bool disposing)
     {
-
+        m_MainLightShadowPass?.Dispose();
     }
 
     private void SetCameraProperties(ScriptableRenderContext context, Camera camera)

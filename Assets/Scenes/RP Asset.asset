@@ -13,3 +13,6 @@ MonoBehaviour:
   m_Name: RP Asset
   m_EditorClassIdentifier: 
   m_UseSRPBatcher: 1
+  m_MainLightShadows:
+    shadowDistance: 50
+    shadowResolution: 2048

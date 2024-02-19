@@ -8,4 +8,7 @@ public struct RenderingData
     public Camera camera;
     public CullingResults cullResults;
     public int mainLightIndex;
+
+    public int mainLightShadowmapWidth;
+    public int mainLightShadowmapHeight;
 }

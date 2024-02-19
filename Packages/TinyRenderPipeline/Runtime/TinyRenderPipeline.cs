@@ -73,6 +73,12 @@ public class TinyRenderPipeline : RenderPipeline
         ProfilingSampler sampler = Profiling.TryGetOrAddCameraSampler(camera);
         using (new ProfilingScope(cmd, sampler))
         {
+            context.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
+
+            // Setup culling parameters
+            SetupCullingParameters(ref cullingParameters, ref camera);
+
             // Render UI in Scene view.
 #if UNITY_EDITOR
             if (camera.cameraType == CameraType.SceneView)
@@ -83,7 +89,7 @@ public class TinyRenderPipeline : RenderPipeline
             var cullResults = context.Cull(ref cullingParameters);
 
             // Initialize rendering data
-            InitializeRenderingData(ref cullResults, context, cmd, camera, out var renderingData);
+            InitializeRenderingData(pipelineAsset, ref cullResults, context, cmd, camera, out var renderingData);
 
             // Rendering
             m_TinyRenderer.Execute(ref renderingData);
@@ -97,18 +103,28 @@ public class TinyRenderPipeline : RenderPipeline
         context.Submit();
     }
 
+    private void SetupCullingParameters(ref ScriptableCullingParameters cullingParameters, ref Camera camera)
+    {
+        // Set max shadow distance to use for the cull
+        cullingParameters.shadowDistance = Mathf.Min(pipelineAsset.shadowDistance, camera.farClipPlane);
+    }
+
     private static bool TryGetCullingParameters(Camera camera, out ScriptableCullingParameters cullingParameters)
     {
         return camera.TryGetCullingParameters(out cullingParameters);
     }
 
-    private static void InitializeRenderingData(ref CullingResults cullResults, ScriptableRenderContext context, CommandBuffer cmd, Camera camera, out RenderingData renderingData)
+    private static void InitializeRenderingData(TinyRenderPipelineAsset asset, ref CullingResults cullResults, ScriptableRenderContext context,
+        CommandBuffer cmd, Camera camera, out RenderingData renderingData)
     {
         renderingData.renderContext = context;
         renderingData.commandBuffer = cmd;
         renderingData.camera = camera;
         renderingData.cullResults = cullResults;
         renderingData.mainLightIndex = GetMainLightIndex(cullResults.visibleLights);
+
+        renderingData.mainLightShadowmapWidth = asset.mainLightShadowmapResolution;
+        renderingData.mainLightShadowmapHeight = asset.mainLightShadowmapResolution;
     }
 
     private static int GetMainLightIndex(NativeArray<VisibleLight> visibleLights)

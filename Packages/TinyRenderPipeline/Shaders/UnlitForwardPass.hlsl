@@ -3,8 +3,8 @@
 
 struct Attributes
 {
-    float3 positionOS : POSITION;
-    float2 uv         : TEXCOORD0;
+    float4 positionOS : POSITION;
+    float2 texcoord   : TEXCOORD0;
 };
 
 struct Varyings
@@ -17,7 +17,7 @@ Varyings UnlitVertex(Attributes input)
 {
     Varyings output = (Varyings)0;
 
-    output.uv = TRANSFORM_TEX(input.uv, _BaseMap);
+    output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
 
     output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
     return output;
