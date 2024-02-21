@@ -21,13 +21,22 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     {
         public float shadowDistance;
         public ShadowResolution shadowResolution;
+
+        [Range(1, 4)] public int cascadeCount;
+
+        [Range(0.0f, 1.0f)] public float cascadeRatio1, cascadeRatio2, cascadeRatio3;
     }
 
     [SerializeField] private bool m_UseSRPBatcher = true;
+
     [SerializeField] private Shadows m_MainLightShadow = new Shadows
     {
         shadowDistance = 50.0f,
-        shadowResolution = ShadowResolution._2048
+        shadowResolution = ShadowResolution._2048,
+        cascadeCount = 4,
+        cascadeRatio1 = 0.1f,
+        cascadeRatio2 = 0.25f,
+        cascadeRatio3 = 0.5f
     };
 
     public bool useSRPBatcher
@@ -47,6 +56,10 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
         get { return (int)m_MainLightShadow.shadowResolution; }
         set { m_MainLightShadow.shadowResolution = (ShadowResolution)value; }
     }
+
+    public int cascadesCount => m_MainLightShadow.cascadeCount;
+
+    public Vector3 cascadesSplit => new Vector3(m_MainLightShadow.cascadeRatio1, m_MainLightShadow.cascadeRatio2, m_MainLightShadow.cascadeRatio3);
 
     public override Type pipelineType => renderPipeline.GetType();
 

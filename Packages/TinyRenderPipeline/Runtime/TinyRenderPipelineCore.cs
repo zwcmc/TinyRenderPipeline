@@ -1,6 +1,15 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 
+public struct ShadowData
+{
+    public int mainLightShadowmapWidth;
+    public int mainLightShadowmapHeight;
+
+    public int cascadesCount;
+    public Vector3 cascadesSplit;
+}
+
 public struct RenderingData
 {
     internal ScriptableRenderContext renderContext;
@@ -9,6 +18,5 @@ public struct RenderingData
     public CullingResults cullResults;
     public int mainLightIndex;
 
-    public int mainLightShadowmapWidth;
-    public int mainLightShadowmapHeight;
+    public ShadowData shadowData;
 }

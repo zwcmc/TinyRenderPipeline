@@ -123,8 +123,11 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.cullResults = cullResults;
         renderingData.mainLightIndex = GetMainLightIndex(cullResults.visibleLights);
 
-        renderingData.mainLightShadowmapWidth = asset.mainLightShadowmapResolution;
-        renderingData.mainLightShadowmapHeight = asset.mainLightShadowmapResolution;
+        // Shadow data
+        renderingData.shadowData.cascadesCount = asset.cascadesCount;
+        renderingData.shadowData.cascadesSplit = asset.cascadesSplit;
+        renderingData.shadowData.mainLightShadowmapWidth = asset.mainLightShadowmapResolution;
+        renderingData.shadowData.mainLightShadowmapHeight = asset.mainLightShadowmapResolution;
     }
 
     private static int GetMainLightIndex(NativeArray<VisibleLight> visibleLights)
