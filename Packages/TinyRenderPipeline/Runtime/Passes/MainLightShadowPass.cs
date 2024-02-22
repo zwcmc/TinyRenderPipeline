@@ -149,6 +149,8 @@ public class MainLightShadowPass
 
                 shadowDrawingSettings.splitData = shadowCascadeData.splitData;
 
+                cmd.SetGlobalDepthBias(1.0f, 2.5f);
+
                 cmd.SetViewport(new Rect(shadowCascadeData.offsetX, shadowCascadeData.offsetY, shadowCascadeData.resolution, shadowCascadeData.resolution));
                 cmd.SetViewProjectionMatrices(shadowCascadeData.viewMatrix, shadowCascadeData.projectionMatrix);
 
@@ -159,6 +161,8 @@ public class MainLightShadowPass
                 m_CascadesSplitDistance[i] = shadowCascadeData.splitData.cullingSphere;
 
                 context.DrawShadows(ref shadowDrawingSettings);
+
+                cmd.SetGlobalDepthBias(0.0f, 0.0f);
             }
 
             // We setup and additional a no-op WorldToShadow matrix in the last index
