@@ -14,7 +14,7 @@ SAMPLER_CMP(sampler_LinearClampCompare);
 CBUFFER_START(LightShadows)
 #endif
 float4x4 _MainLightWorldToShadow[MAX_SHADOW_CASCADES + 1];
-float4   _MainLightShadowParams;  // (x: shadowStrength, y: 0.0, z: 0.0, w: 0.0)
+float4   _MainLightShadowParams;  // (x: shadowStrength, y: 0.0, z: main light last cascade fade scale, w: main light last cascade fade bias)
 // four cascades' culling spheres, each data: xyz: the sphere center position, w: the sphere's radius
 float4   _CascadeShadowSplitSpheres0;
 float4   _CascadeShadowSplitSpheres1;
@@ -25,6 +25,14 @@ float4   _CascadeShadowSplitSphereRadii;
 #ifndef SHADER_API_GLES3
 CBUFFER_END
 #endif
+
+half GetMainLightShadowFade(float3 positionWS)
+{
+    float3 camToPixel = positionWS - _WorldSpaceCameraPos;
+    float distanceCamToPixelSq = dot(camToPixel, camToPixel);
+
+    return half(saturate(distanceCamToPixelSq * _MainLightShadowParams.z + _MainLightShadowParams.w));
+}
 
 half ComputeCascadeIndex(float3 positionWS)
 {
@@ -55,10 +63,11 @@ real SampleShadowmap(float4 shadowCoord)
     return BEYOND_SHADOW_FAR(shadowCoord) ? 1.0 : attenuation;
 }
 
-half MainLightShadow(float4 shadowCoord)
+half MainLightShadow(float4 shadowCoord, float3 positionWS)
 {
     half realtimeShadow = SampleShadowmap(shadowCoord);
-    return realtimeShadow;
+    half shadowFade = GetMainLightShadowFade(positionWS);
+    return lerp(realtimeShadow, 1.0, shadowFade);
 }
 
 #endif

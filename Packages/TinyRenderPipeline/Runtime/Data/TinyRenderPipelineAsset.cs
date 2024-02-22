@@ -25,6 +25,8 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
         [Range(1, 4)] public int cascadeCount;
 
         [Range(0.0f, 1.0f)] public float cascadeRatio1, cascadeRatio2, cascadeRatio3;
+
+        [Range(0.0f, 1.0f)] public float cascadeBorder;
     }
 
     [SerializeField] private bool m_UseSRPBatcher = true;
@@ -36,7 +38,8 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
         cascadeCount = 4,
         cascadeRatio1 = 0.1f,
         cascadeRatio2 = 0.25f,
-        cascadeRatio3 = 0.5f
+        cascadeRatio3 = 0.5f,
+        cascadeBorder = 0.2f
     };
 
     public bool useSRPBatcher
@@ -60,6 +63,8 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     public int cascadesCount => m_MainLightShadow.cascadeCount;
 
     public Vector3 cascadesSplit => new Vector3(m_MainLightShadow.cascadeRatio1, m_MainLightShadow.cascadeRatio2, m_MainLightShadow.cascadeRatio3);
+
+    public float cascadeBorder => m_MainLightShadow.cascadeBorder;
 
     public override Type pipelineType => renderPipeline.GetType();
 

@@ -18,6 +18,9 @@ public class MainLightShadowPass
 
     private bool m_EmptyShadowmap;
 
+    private float m_CascadeBorder;
+    private float m_MaxShadowDistanceSq;
+
     private static readonly ProfilingSampler m_ProfilingSampler = new ProfilingSampler("MainLightShadow");
 
     private static class MainLightShadowConstantBuffer
@@ -93,6 +96,8 @@ public class MainLightShadowPass
         int shadowmapHeight = shadowData.mainLightShadowmapHeight;
         ShadowRTReAllocateIfNeeded(ref m_MainLightShadowmapTexture, shadowmapWidth, shadowmapHeight, k_ShadowmapBufferBits, name: k_ShadowmapTextureName);
 
+        m_MaxShadowDistanceSq = shadowData.maxShadowDistance * shadowData.maxShadowDistance;
+        m_CascadeBorder = shadowData.mainLightShadowCascadeBorder;
         m_EmptyShadowmap = false;
 
         return true;
@@ -166,8 +171,10 @@ public class MainLightShadowPass
 
             cmd.SetGlobalTexture(m_MainLightShadowmapID, m_MainLightShadowmapTexture.nameID);
 
+            GetScaleAndBiasForLinearDistanceFade(m_MaxShadowDistanceSq, m_CascadeBorder, out float shadowFadeScale, out float shadowFadeBias);
+
             cmd.SetGlobalMatrixArray(MainLightShadowConstantBuffer._WorldToShadow, m_MainLightShadowMatrices);
-            cmd.SetGlobalVector(MainLightShadowConstantBuffer._ShadowParams, new Vector4(shadowLight.light.shadowStrength, 0.0f, 0.0f, 0.0f));
+            cmd.SetGlobalVector(MainLightShadowConstantBuffer._ShadowParams, new Vector4(shadowLight.light.shadowStrength, 0.0f, shadowFadeScale, shadowFadeBias));
 
             if (cascadesCount > 1)
             {
@@ -207,6 +214,32 @@ public class MainLightShadowPass
 
         for (int i = 0; i < m_CascadesSplitDistance.Length; ++i)
             m_CascadesSplitDistance[i] = Vector4.zero;
+    }
+
+    private static void GetScaleAndBiasForLinearDistanceFade(float maxShadowDistanceSq, float border, out float scale, out float bias)
+    {
+        // To avoid division from zero
+        // This values ensure that fade within cascade will be 0 and outside 1
+        if (border < 0.0001f)
+        {
+            float multiplier = 1000f; // To avoid blending if difference is in fractions
+            scale = multiplier;
+            bias = -maxShadowDistanceSq * multiplier;
+            return;
+        }
+
+        // Distance near fade
+        border = 1.0f - border;
+        border *= border;
+        float distanceFadeNearSq = border * maxShadowDistanceSq;
+
+        // Linear distance fade:
+        // (x - nearFade) / (maxDistance - nearFade) then
+        //  x * (1.0 / (maxDistance - nearFade)) + (-nearFade / (maxDistance - nearFade)) then
+        // scale = 1.0 / (maxDistance - nearFade)
+        // bias = -nearFade / (maxDistance - nearFade)
+        scale = 1.0f / (maxShadowDistanceSq - distanceFadeNearSq);
+        bias = -distanceFadeNearSq / (maxShadowDistanceSq - distanceFadeNearSq);
     }
 
     private static int GetMaxTileResolutionInAtlas(int atlasWidth, int atlasHeight, int tileCount)

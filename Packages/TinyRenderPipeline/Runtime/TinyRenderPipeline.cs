@@ -128,6 +128,9 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.shadowData.cascadesSplit = asset.cascadesSplit;
         renderingData.shadowData.mainLightShadowmapWidth = asset.mainLightShadowmapResolution;
         renderingData.shadowData.mainLightShadowmapHeight = asset.mainLightShadowmapResolution;
+
+        renderingData.shadowData.maxShadowDistance = asset.shadowDistance;
+        renderingData.shadowData.mainLightShadowCascadeBorder = asset.cascadeBorder;
     }
 
     private static int GetMainLightIndex(NativeArray<VisibleLight> visibleLights)
