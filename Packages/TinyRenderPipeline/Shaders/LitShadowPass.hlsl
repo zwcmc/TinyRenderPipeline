@@ -1,9 +1,12 @@
 #ifndef TINY_RP_LIT_SHADOW_PASS_INCLUDED
 #define TINY_RP_LIT_SHADOW_PASS_INCLUDED
 
+float3 _LightDirection;
+
 struct Attributes
 {
     float4 positionOS : POSITION;
+    float3 normalOS   : NORMAL;
     float2 texcoord   : TEXCOORD0;
 };
 
@@ -15,7 +18,10 @@ struct Varyings
 
 float4 GetShadowPositionHClip(Attributes input)
 {
-    float4 positionCS = TransformObjectToHClip(input.positionOS.xyz);
+    float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
+    float3 normalWS = TransformObjectToWorldNormal(input.normalOS);
+
+    float4 positionCS = TransformWorldToHClip(ApplyShadowBias(positionWS, normalWS, _LightDirection));
     return positionCS;
 }
 

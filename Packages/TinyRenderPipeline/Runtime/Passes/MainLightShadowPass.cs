@@ -149,6 +149,9 @@ public class MainLightShadowPass
 
                 shadowDrawingSettings.splitData = shadowCascadeData.splitData;
 
+                Vector4 shadowBias = GetShadowBias(shadowLight, shadowLightIndex, shadowCascadeData.projectionMatrix, shadowCascadeData.resolution);
+                SetupShadowCasterConstantBuffer(cmd, shadowLight, shadowBias);
+
                 cmd.SetViewport(new Rect(shadowCascadeData.offsetX, shadowCascadeData.offsetY, shadowCascadeData.resolution, shadowCascadeData.resolution));
                 cmd.SetViewProjectionMatrices(shadowCascadeData.viewMatrix, shadowCascadeData.projectionMatrix);
 
@@ -216,6 +219,44 @@ public class MainLightShadowPass
             m_CascadesSplitDistance[i] = Vector4.zero;
     }
 
+    private static void SetupShadowCasterConstantBuffer(CommandBuffer cmd, VisibleLight shadowLight, Vector4 shadowBias)
+    {
+        cmd.SetGlobalVector("_ShadowBias", shadowBias);
+
+        Vector3 lightDirection = -shadowLight.localToWorldMatrix.GetColumn(2);
+        cmd.SetGlobalVector("_LightDirection", new Vector4(lightDirection.x, lightDirection.y, lightDirection.z, 0.0f));
+    }
+
+    private static Vector4 GetShadowBias(VisibleLight shadowLight, int shadowLightIndex, Matrix4x4 lightProjectionMatrix, float shadowResolution)
+    {
+        if (shadowLightIndex < 0)
+        {
+            Debug.LogWarning(string.Format("{0} is not a valid light index.", shadowLightIndex));
+            return Vector4.zero;
+        }
+
+        float frustumSize;
+        if (shadowLight.lightType == LightType.Directional)
+        {
+            // Frustum size is guaranteed to be a cube as we wrap shadow frustum around a sphere
+            frustumSize = 2.0f / lightProjectionMatrix.m00;
+        }
+        else
+        {
+            Debug.LogWarning("Only directional shadow casters are supported now.");
+            frustumSize = 0.0f;
+        }
+
+        Light light = shadowLight.light;
+
+        // depth and normal bias scale is in shadowmap texel size in world space
+        float texelSize = frustumSize / shadowResolution;
+        float depthBias = -light.shadowBias * texelSize;
+        float normalBias = -light.shadowNormalBias * texelSize;
+
+        return new Vector4(depthBias, normalBias, 0.0f, 0.0f);
+    }
+
     private static void GetScaleAndBiasForLinearDistanceFade(float maxShadowDistanceSq, float border, out float scale, out float bias)
     {
         // To avoid division from zero
@@ -242,6 +283,7 @@ public class MainLightShadowPass
         bias = -distanceFadeNearSq / (maxShadowDistanceSq - distanceFadeNearSq);
     }
 
+    // Calculates the maximum tile resolution in an Atlas.
     private static int GetMaxTileResolutionInAtlas(int atlasWidth, int atlasHeight, int tileCount)
     {
         int resolution = Mathf.Min(atlasWidth, atlasHeight);
@@ -286,6 +328,7 @@ public class MainLightShadowPass
     private static void ApplySliceTransform(ref ShadowCascadeData shadowCascadeData, int atlasWidth, int atlasHeight)
     {
         Matrix4x4 sliceTransform = Matrix4x4.identity;
+
         float oneOverAtlasWidth = 1.0f / atlasWidth;
         float oneOverAtlasHeight = 1.0f / atlasHeight;
         sliceTransform.m00 = shadowCascadeData.resolution * oneOverAtlasWidth;
