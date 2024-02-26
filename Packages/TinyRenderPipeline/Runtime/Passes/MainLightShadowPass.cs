@@ -351,6 +351,10 @@ public class MainLightShadowPass
         shadowCascadeData.offsetY = (cascadeIndex / 2) * shadowResolution;
         shadowCascadeData.shadowTransform = GetShadowTransform(shadowCascadeData.projectionMatrix, shadowCascadeData.viewMatrix);
 
+        // It is the culling sphere radius multiplier for shadow cascade blending
+        // If this is less than 1.0, then it will begin to cull castors across cascades
+        shadowCascadeData.splitData.shadowCascadeBlendCullingFactor = 1.0f;
+
         if (cascadeCount > 1)
             ApplySliceTransform(ref shadowCascadeData, shadowmapWidth, shadowmapHeight);
     }
