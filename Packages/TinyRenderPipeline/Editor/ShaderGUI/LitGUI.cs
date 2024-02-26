@@ -207,6 +207,7 @@ namespace TinyRenderPipeline.CustomShaderGUI
 
             int renderQueue = material.shader.renderQueue;
             material.SetOverrideTag("RenderType", "");
+            bool castShadows = true;
             if (material.HasProperty(Property.SurfaceType))
             {
                 SurfaceType surfaceType = (SurfaceType)material.GetFloat(Property.SurfaceType);
@@ -257,6 +258,7 @@ namespace TinyRenderPipeline.CustomShaderGUI
 
                     material.SetOverrideTag("RenderType", "Transparent");
                     zwrite = false;
+                    castShadows = false;
                     renderQueue = (int)RenderQueue.Transparent;
                 }
 
@@ -266,6 +268,8 @@ namespace TinyRenderPipeline.CustomShaderGUI
 
             if (renderQueue != material.renderQueue)
                 material.renderQueue = renderQueue;
+
+            material.SetShaderPassEnabled("ShadowCaster", castShadows);
         }
 
         private static void SetMaterialSrcDstBlendProperties(Material material, UnityEngine.Rendering.BlendMode srcBlend, UnityEngine.Rendering.BlendMode dstBlend)
