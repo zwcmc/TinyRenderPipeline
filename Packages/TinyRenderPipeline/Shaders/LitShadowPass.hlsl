@@ -22,6 +22,13 @@ float4 GetShadowPositionHClip(Attributes input)
     float3 normalWS = TransformObjectToWorldNormal(input.normalOS);
 
     float4 positionCS = TransformWorldToHClip(ApplyShadowBias(positionWS, normalWS, _LightDirection));
+
+#if UNITY_REVERSED_Z
+    positionCS.z = min(positionCS.z, UNITY_NEAR_CLIP_VALUE);
+#else
+    positionCS.z = max(positionCS.z, UNITY_NEAR_CLIP_VALUE);
+#endif
+
     return positionCS;
 }
 

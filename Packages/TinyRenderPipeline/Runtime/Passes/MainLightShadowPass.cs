@@ -145,7 +145,7 @@ public class MainLightShadowPass
             for (int i = 0; i < cascadesCount; ++i)
             {
                 ExtractDirectionalLightMatrix(ref cullResults, shadowLightIndex, i, cascadesCount, cascadesSplit,
-                    renderTargetWidth, renderTargetHeight, cascadeResolution, 0.0f, out ShadowCascadeData shadowCascadeData);
+                    renderTargetWidth, renderTargetHeight, cascadeResolution, shadowLight.light.shadowNearPlane, out ShadowCascadeData shadowCascadeData);
 
                 shadowDrawingSettings.splitData = shadowCascadeData.splitData;
 
