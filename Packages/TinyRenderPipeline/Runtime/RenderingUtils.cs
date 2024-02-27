@@ -17,6 +17,7 @@ public static class RenderingUtils
         SortingSettings sortingSettings = new SortingSettings(camera) { criteria = sortingCriteria };
         DrawingSettings settings = new DrawingSettings(m_TinyRPShaderTagIds[0], sortingSettings)
         {
+            perObjectData = renderingData.perObjectData,
             enableDynamicBatching = false,
             enableInstancing = false
         };

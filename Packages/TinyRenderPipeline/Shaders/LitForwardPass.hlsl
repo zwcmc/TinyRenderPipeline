@@ -13,6 +13,7 @@ struct Varyings
     float2 uv         : TEXCOORD0;
     float3 normalWS   : TEXCOORD1;
     float3 positionWS : TEXCOORD2;
+    half3 vertexSH    : TEXCOORD3;
     float4 positionCS : SV_POSITION;
 };
 
@@ -24,6 +25,8 @@ void InitializeInputData(Varyings input, half3 normalTS, out InputData inputData
     inputData.normalWS = NormalizeNormalPerPixel(input.normalWS); // or normalTS
     inputData.viewDirectionWS = GetWorldSpaceNormalizeViewDir(input.positionWS);
     inputData.shadowCoord = TransformWorldToShadowCoord(inputData.positionWS);
+
+    inputData.bakedGI = SampleSH(inputData.normalWS);
 }
 
 Varyings LitVertex(Attributes input)

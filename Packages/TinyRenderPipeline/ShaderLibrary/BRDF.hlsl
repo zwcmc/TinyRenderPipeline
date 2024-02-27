@@ -7,8 +7,10 @@ struct BRDFData
 {
     half3 diffuse;
     half3 specular;
+    half perceptualRoughness;
     half roughness;
     half roughness2;
+    half grazingTerm;
 
     // We save some light invariant BRDF terms so we don't have to recompute
     // them in the light loop. Take a look at DirectBRDF function for detailed explaination.
@@ -29,15 +31,18 @@ half OneMinusReflectivityMetallic(half metallic)
 
 inline void InitializeBRDFData(SurfaceData surfaceData, out BRDFData outBRDFData)
 {
-    half oneMinusReflectivity = OneMinusReflectivityMetallic(surfaceData.metallic);
-
     outBRDFData = (BRDFData)0;
+
+    half oneMinusReflectivity = OneMinusReflectivityMetallic(surfaceData.metallic);
+    half reflectivity = half(1.0) - oneMinusReflectivity;
+
     outBRDFData.diffuse = surfaceData.albedo * oneMinusReflectivity;
     outBRDFData.specular = lerp(kDielectricSpec.rgb, surfaceData.albedo, surfaceData.metallic);
 
-    half perceptualRoughness = PerceptualSmoothnessToPerceptualRoughness(surfaceData.smoothness);
-    outBRDFData.roughness = max(PerceptualRoughnessToRoughness(perceptualRoughness), HALF_MIN_SQRT);
+    outBRDFData.perceptualRoughness = PerceptualSmoothnessToPerceptualRoughness(surfaceData.smoothness);
+    outBRDFData.roughness = max(PerceptualRoughnessToRoughness(outBRDFData.perceptualRoughness), HALF_MIN_SQRT);
     outBRDFData.roughness2 = max(outBRDFData.roughness * outBRDFData.roughness, HALF_MIN);
+    outBRDFData.grazingTerm = saturate(surfaceData.smoothness + reflectivity);
     outBRDFData.normalizationTerm = outBRDFData.roughness * half(4.0) + half(2.0);
     outBRDFData.roughness2MinusOne  = outBRDFData.roughness2 - half(1.0);
 }
@@ -78,6 +83,19 @@ half DirectBRDFSpecular(BRDFData brdfData, half3 normalWS, half3 lightDirectionW
 #endif
 
     return specularTerm;
+}
+
+half3 EnvironmentBRDFSpecular(BRDFData brdfData, half fresnelTerm)
+{
+    float surfaceReduction = 1.0 / (brdfData.roughness2 + 1.0);
+    return half3(surfaceReduction * lerp(brdfData.specular, brdfData.grazingTerm, fresnelTerm));
+}
+
+half3 EnvironmentBRDF(BRDFData brdfData, half3 indirectDiffuse, half3 indirectSpecular, half fresnelTerm)
+{
+    half3 c = indirectDiffuse * brdfData.diffuse;
+    c += indirectSpecular * EnvironmentBRDFSpecular(brdfData, fresnelTerm);
+    return c;
 }
 
 #endif

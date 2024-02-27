@@ -131,6 +131,14 @@ public class TinyRenderPipeline : RenderPipeline
 
         renderingData.shadowData.maxShadowDistance = asset.shadowDistance;
         renderingData.shadowData.mainLightShadowCascadeBorder = asset.cascadeBorder;
+
+        renderingData.perObjectData = GetPerObjectLightFlags();
+    }
+
+    private static PerObjectData GetPerObjectLightFlags()
+    {
+        var configuration = PerObjectData.LightProbe | PerObjectData.ReflectionProbes;
+        return configuration;
     }
 
     private static int GetMainLightIndex(NativeArray<VisibleLight> visibleLights)

@@ -11,6 +11,7 @@ struct InputData
     float3 normalWS;
     half3 viewDirectionWS;
     float4 shadowCoord;
+    half3 bakedGI;
 };
 
 // Main light

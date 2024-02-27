@@ -25,4 +25,6 @@ public struct RenderingData
     public int mainLightIndex;
 
     public ShadowData shadowData;
+
+    public PerObjectData perObjectData;
 }
