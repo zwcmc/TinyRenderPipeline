@@ -8,6 +8,7 @@ public class MainLightShadowPass
 {
     private int m_MainLightShadowmapID;
     private RTHandle m_MainLightShadowmapTexture;
+    private RTHandle m_EmptyLightShadowmapTexture;
 
     private const int k_MaxCascades = 4;
     private const int k_ShadowmapBufferBits = 16;
@@ -16,7 +17,7 @@ public class MainLightShadowPass
     private Matrix4x4[] m_MainLightShadowMatrices;
     private Vector4[] m_CascadesSplitDistance;
 
-    private bool m_EmptyShadowmap;
+    private bool m_CreateEmptyShadowmap;
 
     private float m_CascadeBorder;
     private float m_MaxShadowDistanceSq;
@@ -50,7 +51,6 @@ public class MainLightShadowPass
         m_MainLightShadowMatrices = new Matrix4x4[k_MaxCascades + 1];
         m_CascadesSplitDistance = new Vector4[k_MaxCascades];
 
-        m_MainLightShadowmapID = Shader.PropertyToID(k_ShadowmapTextureName);
         MainLightShadowConstantBuffer._WorldToShadow = Shader.PropertyToID("_MainLightWorldToShadow");
         MainLightShadowConstantBuffer._ShadowParams = Shader.PropertyToID("_MainLightShadowParams");
         MainLightShadowConstantBuffer._CascadeShadowSplitSpheres0 = Shader.PropertyToID("_CascadeShadowSplitSpheres0");
@@ -58,6 +58,10 @@ public class MainLightShadowPass
         MainLightShadowConstantBuffer._CascadeShadowSplitSpheres2 = Shader.PropertyToID("_CascadeShadowSplitSpheres2");
         MainLightShadowConstantBuffer._CascadeShadowSplitSpheres3 = Shader.PropertyToID("_CascadeShadowSplitSpheres3");
         MainLightShadowConstantBuffer._CascadeShadowSplitSphereRadii = Shader.PropertyToID("_CascadeShadowSplitSphereRadii");
+
+        m_MainLightShadowmapID = Shader.PropertyToID(k_ShadowmapTextureName);
+
+        m_EmptyLightShadowmapTexture = AllocShadowRT(1, 1, k_ShadowmapBufferBits, "_EmptyLightShadowmapTexture");
     }
 
     public bool Setup(ref RenderingData renderingData)
@@ -67,27 +71,27 @@ public class MainLightShadowPass
         int mainLightIndex = renderingData.mainLightIndex;
         if (mainLightIndex == -1)
         {
-            return SetupForEmptyShadowmap();
+            return SetupForEmptyRendering();
         }
 
         VisibleLight shadowLight = renderingData.cullResults.visibleLights[mainLightIndex];
         // Main light is always a directional light
         if (shadowLight.lightType != LightType.Directional)
         {
-            return SetupForEmptyShadowmap();
+            return SetupForEmptyRendering();
         }
 
         // Check light's shadow settings
         Light light = shadowLight.light;
         if (light.shadows == LightShadows.None || light.shadowStrength <= 0f)
         {
-            return SetupForEmptyShadowmap();
+            return SetupForEmptyRendering();
         }
 
         // Check if the light affects as least one shadow casting object in scene
         if (!renderingData.cullResults.GetShadowCasterBounds(mainLightIndex, out Bounds bounds))
         {
-            return SetupForEmptyShadowmap();
+            return SetupForEmptyRendering();
         }
 
         ref var shadowData = ref renderingData.shadowData;
@@ -98,7 +102,7 @@ public class MainLightShadowPass
 
         m_MaxShadowDistanceSq = shadowData.maxShadowDistance * shadowData.maxShadowDistance;
         m_CascadeBorder = shadowData.mainLightShadowCascadeBorder;
-        m_EmptyShadowmap = false;
+        m_CreateEmptyShadowmap = false;
 
         return true;
     }
@@ -106,9 +110,9 @@ public class MainLightShadowPass
     public void Render(ScriptableRenderContext context, ref RenderingData renderingData)
     {
         var cmd = renderingData.commandBuffer;
-        if (m_EmptyShadowmap)
+        if (m_CreateEmptyShadowmap)
         {
-            cmd.SetGlobalTexture(m_MainLightShadowmapID, m_MainLightShadowmapTexture.nameID);
+            cmd.SetGlobalTexture(m_MainLightShadowmapID, m_EmptyLightShadowmapTexture.nameID);
 
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
@@ -201,12 +205,12 @@ public class MainLightShadowPass
     public void Dispose()
     {
         m_MainLightShadowmapTexture?.Release();
+        m_EmptyLightShadowmapTexture?.Release();
     }
 
-    private bool SetupForEmptyShadowmap()
+    private bool SetupForEmptyRendering()
     {
-        m_EmptyShadowmap = true;
-        ShadowRTReAllocateIfNeeded(ref m_MainLightShadowmapTexture, 1, 1, k_ShadowmapBufferBits, k_ShadowmapTextureName);
+        m_CreateEmptyShadowmap = true;
         return true;
     }
 
