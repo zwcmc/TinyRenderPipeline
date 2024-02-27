@@ -8,21 +8,72 @@
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/Shadows.hlsl"
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/Lighting.hlsl"
 
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Packing.hlsl"
+
 CBUFFER_START(UnityPerMaterial)
 float4 _BaseMap_ST;
 half4 _BaseColor;
+half4 _EmissionColor;
 half _Cutoff;
-half _Metallic;
 half _Smoothness;
+half _Metallic;
+half _BumpScale;
+half _OcclusionStrength;
 half _Surface;
 CBUFFER_END
 
-TEXTURE2D(_BaseMap);
-SAMPLER(sampler_BaseMap);
+TEXTURE2D(_BaseMap);               SAMPLER(sampler_BaseMap);
+TEXTURE2D(_MetallicGlossMap);      SAMPLER(sampler_MetallicGlossMap);
+TEXTURE2D(_BumpMap);               SAMPLER(sampler_BumpMap);
+TEXTURE2D(_OcclusionMap);          SAMPLER(sampler_OcclusionMap);
+TEXTURE2D(_EmissionMap);           SAMPLER(sampler_EmissionMap);
 
 half4 SampleAlbedoAlpha(float2 uv, TEXTURE2D_PARAM(albedoAlphaMap, sampler_albedoAlphaMap))
 {
     return half4(SAMPLE_TEXTURE2D(albedoAlphaMap, sampler_albedoAlphaMap, uv));
+}
+
+half4 SampleMetallicGlossMap(float2 uv)
+{
+    half4 gloss;
+#ifdef _METALLICGLOSSMAP
+    gloss = SAMPLE_TEXTURE2D(_MetallicGlossMap, sampler_MetallicGlossMap, uv);
+    gloss.a *= _Smoothness;
+#else
+    gloss.rgb = _Metallic.rrr;
+    gloss.a = _Smoothness;
+#endif
+
+    return gloss;
+}
+
+half3 SampleNormal(float2 uv, TEXTURE2D_PARAM(bumpMap, sampler_bumpMap), half scale = half(1.0))
+{
+#ifdef _NORMALMAP
+    half4 n = SAMPLE_TEXTURE2D(bumpMap, sampler_bumpMap, uv);
+    return UnpackNormalScale(n, scale);
+#else
+    return half3(0.0h, 0.0h, 1.0h);
+#endif
+}
+
+half SampleOcclusion(float2 uv)
+{
+#ifdef _OCCLUSIONMAP
+    half occ = SAMPLE_TEXTURE2D(_OcclusionMap, sampler_OcclusionMap, uv).g;
+    return LerpWhiteTo(occ, _OcclusionStrength);
+#else
+    return half(1.0);
+#endif
+}
+
+half3 SampleEmission(float2 uv, half3 emissionColor, TEXTURE2D_PARAM(emissionMap, sampler_emissionMap))
+{
+#ifndef _EMISSION
+    return 0.0h;
+#else
+    return SAMPLE_TEXTURE2D(emissionMap, sampler_emissionMap, uv).rgb * emissionColor;
+#endif
 }
 
 inline void InitializeSurfaceData(float2 uv, out SurfaceData outSurfaceData)
@@ -33,10 +84,13 @@ inline void InitializeSurfaceData(float2 uv, out SurfaceData outSurfaceData)
 
     outSurfaceData.albedo = albedoAlpha.rgb * _BaseColor.rgb;
 
-    outSurfaceData.normalTS = half3(0.0h, 0.0h, 1.0h);
+    outSurfaceData.normalTS = SampleNormal(uv, TEXTURE2D_ARGS(_BumpMap, sampler_BumpMap), _BumpScale);
+    outSurfaceData.occlusion = SampleOcclusion(uv);
+    outSurfaceData.emission = SampleEmission(uv, _EmissionColor.rgb, TEXTURE2D_ARGS(_EmissionMap, sampler_EmissionMap));
 
-    outSurfaceData.metallic = _Metallic;
-    outSurfaceData.smoothness = _Smoothness;
+    half4 gloss = SampleMetallicGlossMap(uv);
+    outSurfaceData.metallic = gloss.r;
+    outSurfaceData.smoothness = gloss.a;
 }
 
 #endif

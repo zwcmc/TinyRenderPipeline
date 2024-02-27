@@ -51,8 +51,16 @@ namespace TinyRenderPipeline.CustomShaderGUI
 
             public static readonly GUIContent baseMap = EditorGUIUtility.TrTextContent("Base Map", "");
 
-            public static GUIContent metallicText = EditorGUIUtility.TrTextContent("Metallic", "");
             public static GUIContent smoothnessText = EditorGUIUtility.TrTextContent("Smoothness", "");
+            public static GUIContent metallicText = EditorGUIUtility.TrTextContent("Metallic", "");
+            public static GUIContent metallicMapText = EditorGUIUtility.TrTextContent("Metallic Map", "");
+
+            public static GUIContent normalMapText = EditorGUIUtility.TrTextContent("Normal Map", "");
+
+            public static GUIContent occlusionText = EditorGUIUtility.TrTextContent("Occlusion Map", "");
+
+            public static readonly GUIContent emissionEnabled = EditorGUIUtility.TrTextContent("Emission", "");
+            public static readonly GUIContent emissionMap = EditorGUIUtility.TrTextContent("Emission Map", "");
         }
 
         private static class Property
@@ -70,30 +78,57 @@ namespace TinyRenderPipeline.CustomShaderGUI
             public static readonly string AlphaClip = "_AlphaClip";
             public static readonly string AlphaCutoff = "_Cutoff";
 
-            public static readonly string Metallic = "_Metallic";
             public static readonly string Smoothness = "_Smoothness";
+            public static readonly string Metallic = "_Metallic";
+            public static readonly string MetallicGlossMap = "_MetallicGlossMap";
+
+            public static readonly string BumpScale = "_BumpScale";
+            public static readonly string BumpMap = "_BumpMap";
+
+            public static readonly string OcclusionStrength = "_OcclusionStrength";
+            public static readonly string OcclusionMap = "_OcclusionMap";
+
+            public static readonly string EmissionEnabled = "_EmissionEnabled";
+            public static readonly string EmissionColor = "_EmissionColor";
+            public static readonly string EmissionMap = "_EmissionMap";
         }
 
         private static class ShaderKeywordStrings
         {
             public const string _ALPHATEST_ON = "_ALPHATEST_ON";
+            public const string _METALLICGLOSSMAP = "_METALLICGLOSSMAP";
+            public const string _NORMALMAP = "_NORMALMAP";
+            public const string _OCCLUSIONMAP = "_OCCLUSIONMAP";
+            public const string _EMISSION = "_EMISSION";
         }
 
         #endregion
 
         #region Variables
 
-        private MaterialEditor materialEditor { get; set; }
-        private MaterialProperty surfaceTypeProp { get; set; }
-        private MaterialProperty blendModeProp { get; set; }
-        private MaterialProperty cullingProp { get; set; }
-        private MaterialProperty zwriteProp { get; set; }
-        private MaterialProperty baseMapProp { get; set; }
-        private MaterialProperty baseColorProp { get; set; }
-        private MaterialProperty alphaClipProp { get; set; }
-        private MaterialProperty alphaCutoffProp { get; set; }
-        protected MaterialProperty metallicProp { get; set; }
-        protected MaterialProperty smoothnessProp { get; set; }
+        private MaterialEditor materialEditor;
+        private MaterialProperty surfaceTypeProp;
+        private MaterialProperty blendModeProp;
+        private MaterialProperty cullingProp;
+        private MaterialProperty zwriteProp;
+        private MaterialProperty baseMapProp;
+        private MaterialProperty baseColorProp;
+        private MaterialProperty alphaClipProp;
+        private MaterialProperty alphaCutoffProp;
+
+        private MaterialProperty smoothnessProp;
+        private MaterialProperty metallicProp;
+        private MaterialProperty metallicGlossMap;
+
+        private MaterialProperty bumpScaleProp;
+        private MaterialProperty bumpMapProp;
+
+        private MaterialProperty occlusionStrength;
+        private MaterialProperty occlusionMap;
+
+        private MaterialProperty emissionEnabledProp;
+        private MaterialProperty emissionColorProp;
+        private MaterialProperty emissionMapProp;
 
         #endregion
 
@@ -113,8 +148,19 @@ namespace TinyRenderPipeline.CustomShaderGUI
             baseMapProp = FindProperty(Property.BaseMap, properties, false);
             baseColorProp = FindProperty(Property.BaseColor, properties, false);
 
-            metallicProp = FindProperty(Property.Metallic, properties, false);
             smoothnessProp = FindProperty(Property.Smoothness, properties, false);
+            metallicProp = FindProperty(Property.Metallic, properties, false);
+            metallicGlossMap = FindProperty(Property.MetallicGlossMap, properties, false);
+
+            bumpScaleProp = FindProperty(Property.BumpScale, properties, false);
+            bumpMapProp = FindProperty(Property.BumpMap, properties, false);
+
+            occlusionStrength = FindProperty(Property.OcclusionStrength, properties, false);
+            occlusionMap = FindProperty(Property.OcclusionMap, properties, false);
+
+            emissionEnabledProp = FindProperty(Property.EmissionEnabled, properties, false);
+            emissionColorProp = FindProperty(Property.EmissionColor, properties, false);
+            emissionMapProp = FindProperty(Property.EmissionMap, properties, false);
         }
 
         public override void OnGUI(MaterialEditor materialEditorIn, MaterialProperty[] properties)
@@ -157,8 +203,26 @@ namespace TinyRenderPipeline.CustomShaderGUI
             if (baseMapProp != null && baseColorProp != null)
                 materialEditor.TexturePropertySingleLine(Styles.baseMap, baseMapProp, baseColorProp);
 
-            materialEditor.ShaderProperty(metallicProp, Styles.metallicText);
+            if (metallicGlossMap != null)
+                materialEditor.TexturePropertySingleLine(Styles.metallicMapText, metallicGlossMap, (metallicGlossMap.textureValue != null) ? null : metallicProp);
+
+            EditorGUI.indentLevel += 2;
             materialEditor.ShaderProperty(smoothnessProp, Styles.smoothnessText);
+            EditorGUI.indentLevel -= 2;
+
+            if (bumpMapProp != null)
+                materialEditor.TexturePropertySingleLine(Styles.normalMapText, bumpMapProp, (bumpMapProp.textureValue != null) ? bumpScaleProp : null);
+
+            if (occlusionMap != null)
+                materialEditor.TexturePropertySingleLine(Styles.occlusionText, occlusionMap, (occlusionMap.textureValue != null) ? occlusionStrength : null);
+
+            materialEditor.ShaderProperty(emissionEnabledProp, Styles.emissionEnabled);
+            if (material.GetFloat(Property.EmissionEnabled) > 0.5f)
+            {
+                EditorGUI.indentLevel += 2;
+                materialEditor.TexturePropertyWithHDRColor(Styles.emissionMap, emissionMapProp, emissionColorProp, false);
+                EditorGUI.indentLevel -= 2;
+            }
 
             if (baseMapProp != null)
                 materialEditor.TextureScaleOffsetProperty(baseMapProp);
@@ -193,6 +257,20 @@ namespace TinyRenderPipeline.CustomShaderGUI
 
             if (material.HasProperty(Property.CullMode))
                 material.doubleSidedGI = (RenderFace)material.GetFloat(Property.CullMode) != RenderFace.Front;
+
+            if (material.HasProperty(Property.MetallicGlossMap))
+                CoreUtils.SetKeyword(material, ShaderKeywordStrings._METALLICGLOSSMAP, material.GetTexture(Property.MetallicGlossMap));
+
+            if (material.HasProperty(Property.BumpMap))
+                CoreUtils.SetKeyword(material, ShaderKeywordStrings._NORMALMAP, material.GetTexture(Property.BumpMap));
+
+            if (material.HasProperty(Property.OcclusionMap))
+                CoreUtils.SetKeyword(material, ShaderKeywordStrings._OCCLUSIONMAP, material.GetTexture(Property.OcclusionMap));
+
+            if (material.HasProperty(Property.EmissionColor))
+                MaterialEditor.FixupEmissiveFlag(material);
+
+            CoreUtils.SetKeyword(material, ShaderKeywordStrings._EMISSION, material.GetFloat(Property.EmissionEnabled) > 0.5f);
         }
 
         private static void SetupMaterialBlendModeInternal(Material material)

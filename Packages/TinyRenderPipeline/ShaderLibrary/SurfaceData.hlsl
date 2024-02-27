@@ -5,6 +5,8 @@ struct SurfaceData
 {
     half3 albedo;
     half3 normalTS;
+    half3 emission;
+    half occlusion;
     half alpha;
     half metallic;
     half smoothness;

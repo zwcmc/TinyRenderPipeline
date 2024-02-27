@@ -6,8 +6,19 @@ Shader "Tiny Render Pipeline/Lit"
         [MainColor] _BaseColor("Color", Color) = (0.5, 0.5, 0.5, 1.0)
         _Cutoff("AlphaCutout", Range(0.0, 1.0)) = 0.5
 
-        _Metallic("Metallic", Range(0, 1)) = 0
         _Smoothness("Smoothness", Range(0, 1)) = 0.5
+        _Metallic("Metallic", Range(0, 1)) = 0.0
+        _MetallicGlossMap("Metallic", 2D) = "white" {}
+
+        _BumpScale("Scale", Float) = 1.0
+        _BumpMap("Normal Map", 2D) = "bump" {}
+
+        _OcclusionStrength("Strength", Range(0.0, 1.0)) = 1.0
+        _OcclusionMap("Occlusion", 2D) = "white" {}
+
+        [Toggle] _EmissionEnabled("Emission Enabled", Float) = 0.0
+        [HDR] _EmissionColor("Color", Color) = (0,0,0)
+        _EmissionMap("Emission", 2D) = "white" {}
 
         _Surface("__surface", Float) = 0.0
         _Blend("__mode", Float) = 0.0
@@ -42,7 +53,11 @@ Shader "Tiny Render Pipeline/Lit"
             #pragma vertex LitVertex
             #pragma fragment LitFragment
 
+            #pragma shader_feature_local _NORMALMAP
             #pragma shader_feature_local_fragment _ALPHATEST_ON
+            #pragma shader_feature_local_fragment _EMISSION
+            #pragma shader_feature_local_fragment _METALLICGLOSSMAP
+            #pragma shader_feature_local_fragment _OCCLUSIONMAP
 
             #include "LitInput.hlsl"
             #include "LitForwardPass.hlsl"

@@ -1,6 +1,38 @@
 #ifndef TINY_RP_SHADER_VARIABLES_FUNCTIONS_INCLUDED
 #define TINY_RP_SHADER_VARIABLES_FUNCTIONS_INCLUDED
 
+struct VertexPositionInputs
+{
+    float3 positionWS; // World space position
+    float3 positionCS; // Homogeneous clip space position
+};
+
+struct VertexNormalInputs
+{
+    real3 tangentWS;
+    float3 normalWS;
+};
+
+VertexPositionInputs GetVertexPositionInputs(float3 positionOS)
+{
+    VertexPositionInputs input = (VertexPositionInputs)0;
+
+    input.positionWS = TransformObjectToWorld(positionOS);
+    input.positionCS = TransformWorldToHClip(input.positionWS);
+
+    return input;
+}
+
+VertexNormalInputs GetVertexNormalInputs(float3 normalOS, float4 tangentOS)
+{
+    VertexNormalInputs input = (VertexNormalInputs)0;
+
+    input.normalWS = TransformObjectToWorldNormal(normalOS);
+    input.tangentWS = real3(TransformObjectToWorldDir(tangentOS.xyz));
+
+    return input;
+}
+
 // These are expected to align with the commonly used "_Surface" material property
 static const half kSurfaceTypeOpaque = 0.0;
 static const half kSurfaceTypeTransparent = 1.0;

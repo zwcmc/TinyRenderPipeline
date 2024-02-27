@@ -24,13 +24,20 @@ half4 FragmentPBR(InputData inputData, SurfaceData surfaceData)
     half3 lightingColor = 0.0;
     Light mainLight = GetMainLight(inputData);
 
-    half3 giColor = GlobalIllumination(brdfData, inputData.bakedGI, 1.0, inputData.normalWS, inputData.viewDirectionWS);
+    half3 emissionColor = surfaceData.emission;
+    lightingColor += emissionColor;
+
+    half3 giColor = GlobalIllumination(brdfData, inputData.bakedGI, surfaceData.occlusion, inputData.normalWS, inputData.viewDirectionWS);
     lightingColor += giColor;
 
     half3 mainLightColor = LightingPBR(brdfData, mainLight, inputData.normalWS, inputData.viewDirectionWS);
     lightingColor += mainLightColor;
 
+// #if REAL_IS_HALF
+    // return min(half4(lightingColor, surfaceData.alpha), HALF_MAX);
+// #else
     return half4(lightingColor, surfaceData.alpha);
+// #endif
 }
 
 #endif
