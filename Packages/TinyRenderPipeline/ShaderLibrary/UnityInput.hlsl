@@ -9,6 +9,11 @@ float4x4 unity_WorldToObject;
 float4 unity_LODFade; // x is the fade value ranging within [0,1]. y is x quantized into 16 levels
 real4 unity_WorldTransformParams; // w is usually 1.0, or -1.0 for odd-negative scale transforms
 
+// Light Indices block feature
+// These are set internally by the engine upon request by RendererConfiguration.
+half4 unity_LightData;
+half4 unity_LightIndices[2];
+
 // Reflection Probe 0 block feature
 // HDR environment map decode instructions
 real4 unity_SpecCube0_HDR;

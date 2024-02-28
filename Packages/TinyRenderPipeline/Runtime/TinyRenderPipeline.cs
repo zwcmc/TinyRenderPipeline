@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Collections;
@@ -6,8 +7,10 @@ using UnityEngine.Rendering;
 
 public class TinyRenderPipeline : RenderPipeline
 {
-    private readonly TinyRenderPipelineAsset pipelineAsset;
+    // This limit matches same limit in Input.hlsl
+    private const int k_MaxVisibleAdditionalLights = 8;
 
+    private readonly TinyRenderPipelineAsset pipelineAsset;
     private TinyRenderer m_TinyRenderer;
 
     private static class Profiling
@@ -27,6 +30,8 @@ public class TinyRenderPipeline : RenderPipeline
             return ps;
         }
     }
+
+    public static int maxVisibleAdditionalLights => k_MaxVisibleAdditionalLights;
 
     public TinyRenderPipeline(TinyRenderPipelineAsset asset)
     {
@@ -121,7 +126,9 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.commandBuffer = cmd;
         renderingData.camera = camera;
         renderingData.cullResults = cullResults;
+
         renderingData.mainLightIndex = GetMainLightIndex(cullResults.visibleLights);
+        renderingData.additionalLightsCount = Math.Min((renderingData.mainLightIndex != -1) ? cullResults.visibleLights.Length - 1 : cullResults.visibleLights.Length, maxVisibleAdditionalLights);
 
         // Shadow data
         renderingData.shadowData.cascadesCount = asset.cascadesCount;
@@ -132,12 +139,14 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.shadowData.maxShadowDistance = asset.shadowDistance;
         renderingData.shadowData.mainLightShadowCascadeBorder = asset.cascadeBorder;
 
-        renderingData.perObjectData = GetPerObjectLightFlags();
+        renderingData.perObjectData = GetPerObjectLightFlags(renderingData.additionalLightsCount);
     }
 
-    private static PerObjectData GetPerObjectLightFlags()
+    private static PerObjectData GetPerObjectLightFlags(int additionalLightsCount)
     {
-        var configuration = PerObjectData.LightProbe | PerObjectData.ReflectionProbes;
+        var configuration = PerObjectData.LightProbe | PerObjectData.ReflectionProbes | PerObjectData.LightData;
+        if (additionalLightsCount > 0)
+            configuration |= PerObjectData.LightIndices;
         return configuration;
     }
 

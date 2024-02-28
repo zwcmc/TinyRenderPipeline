@@ -33,11 +33,20 @@ half4 FragmentPBR(InputData inputData, SurfaceData surfaceData)
     half3 mainLightColor = LightingPBR(brdfData, mainLight, inputData.normalWS, inputData.viewDirectionWS);
     lightingColor += mainLightColor;
 
-// #if REAL_IS_HALF
-    // return min(half4(lightingColor, surfaceData.alpha), HALF_MAX);
-// #else
+    half3 additionalLightsColor = 0.0;
+    uint additionalLightCount = GetAdditionalLightsCount();
+    for (uint lightIndex = 0u; lightIndex < additionalLightCount; ++lightIndex)
+    {
+        Light light = GetAdditionalLight(lightIndex, inputData.positionWS);
+        additionalLightsColor += LightingPBR(brdfData, light, inputData.normalWS, inputData.viewDirectionWS);
+    }
+    lightingColor += additionalLightsColor;
+
+#if REAL_IS_HALF
+    return min(half4(lightingColor, surfaceData.alpha), HALF_MAX);
+#else
     return half4(lightingColor, surfaceData.alpha);
-// #endif
+#endif
 }
 
 #endif

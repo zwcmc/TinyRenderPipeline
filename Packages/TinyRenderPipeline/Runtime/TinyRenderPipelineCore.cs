@@ -22,7 +22,9 @@ public struct RenderingData
     internal CommandBuffer commandBuffer;
     public Camera camera;
     public CullingResults cullResults;
+
     public int mainLightIndex;
+    public int additionalLightsCount;
 
     public ShadowData shadowData;
 

@@ -5,6 +5,9 @@
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
 #include "UnityInput.hlsl"
 
+// Max visible additional lights count
+#define MAX_VISIBLE_LIGHTS 8
+
 struct InputData
 {
     float3 positionWS;
@@ -17,6 +20,17 @@ struct InputData
 // Main light
 float4 _MainLightPosition;
 half4 _MainLightColor;
+
+half4 _AdditionalLightsCount;
+
+#ifndef SHADER_API_GLES3
+CBUFFER_START(AdditionalLights)
+#endif
+float4 _AdditionalLightsPosition[MAX_VISIBLE_LIGHTS];
+half4 _AdditionalLightsColor[MAX_VISIBLE_LIGHTS];
+#ifndef SHADER_API_GLES3
+CBUFFER_END
+#endif
 
 #define UNITY_MATRIX_M unity_ObjectToWorld
 #define UNITY_MATRIX_I_M unity_WorldToObject
