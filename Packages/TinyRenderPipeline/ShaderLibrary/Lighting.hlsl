@@ -8,7 +8,8 @@ half3 LightingPBR(BRDFData brdfData, Light light, half3 normalWS, half3 viewDire
 {
     half3 lightDirectionWS = light.direction;
     half NdotL = saturate(dot(normalWS, lightDirectionWS));
-    half3 radiance = light.color * (light.shadowAttenuation * NdotL);
+    float lightAttenuation = light.distanceAttenuation * light.shadowAttenuation;
+    half3 radiance = light.color * (lightAttenuation * NdotL);
 
     half3 brdf = brdfData.diffuse;
     brdf += brdfData.specular * DirectBRDFSpecular(brdfData, normalWS, lightDirectionWS, viewDirectionWS);

@@ -8,6 +8,7 @@ public class ForwardLights
     {
         public static Vector4 DefaultLightPosition = new Vector4(0.0f, 0.0f, 1.0f, 0.0f);
         public static Vector4 DefaultLightColor = Color.black;
+        public static Vector4 DefaultLightAttenuation = new Vector4(0.0f, 1.0f, 0.0f, 1.0f);
     }
 
     private static class LightConstantBuffer
@@ -18,10 +19,12 @@ public class ForwardLights
         public static int _AdditionalLightsCount;
         public static int _AdditionalLightsPosition;
         public static int _AdditionalLightsColor;
+        public static int _AdditionalLightsAttenuation;
     }
 
     private Vector4[] m_AdditionalLightPositions;
     private Vector4[] m_AdditionalLightColors;
+    private Vector4[] m_AdditionalLightAttenuations;
 
     public ForwardLights()
     {
@@ -30,10 +33,12 @@ public class ForwardLights
         LightConstantBuffer._AdditionalLightsCount = Shader.PropertyToID("_AdditionalLightsCount");
         LightConstantBuffer._AdditionalLightsPosition = Shader.PropertyToID("_AdditionalLightsPosition");
         LightConstantBuffer._AdditionalLightsColor = Shader.PropertyToID("_AdditionalLightsColor");
+        LightConstantBuffer._AdditionalLightsAttenuation = Shader.PropertyToID("_AdditionalLightsAttenuation");
 
         int maxAdditionalLights = TinyRenderPipeline.maxVisibleAdditionalLights;
         m_AdditionalLightPositions = new Vector4[maxAdditionalLights];
         m_AdditionalLightColors = new Vector4[maxAdditionalLights];
+        m_AdditionalLightAttenuations = new Vector4[maxAdditionalLights];
     }
 
     public void Setup(ScriptableRenderContext context, ref RenderingData renderingData)
@@ -61,8 +66,8 @@ public class ForwardLights
 
     private void SetupMainLightConstants(CommandBuffer cmd, ref RenderingData renderingData)
     {
-        Vector4 lightPos, lightColor;
-        InitializeLightConstants(renderingData.cullResults.visibleLights, renderingData.mainLightIndex, out lightPos, out lightColor);
+        Vector4 lightPos, lightColor, lightAttenuation;
+        InitializeLightConstants(renderingData.cullResults.visibleLights, renderingData.mainLightIndex, out lightPos, out lightColor, out lightAttenuation);
 
         cmd.SetGlobalVector(LightConstantBuffer._MainLightPosition, lightPos);
         cmd.SetGlobalVector(LightConstantBuffer._MainLightColor, lightColor);
@@ -79,13 +84,15 @@ public class ForwardLights
             {
                 if (renderingData.mainLightIndex != i)
                 {
-                    InitializeLightConstants(visibleLights, i, out m_AdditionalLightPositions[lightIter], out m_AdditionalLightColors[lightIter]);
+                    InitializeLightConstants(visibleLights, i, out m_AdditionalLightPositions[lightIter], out m_AdditionalLightColors[lightIter],
+                        out m_AdditionalLightAttenuations[lightIter]);
                     lightIter++;
                 }
             }
 
             cmd.SetGlobalVectorArray(LightConstantBuffer._AdditionalLightsPosition, m_AdditionalLightPositions);
             cmd.SetGlobalVectorArray(LightConstantBuffer._AdditionalLightsColor, m_AdditionalLightColors);
+            cmd.SetGlobalVectorArray(LightConstantBuffer._AdditionalLightsAttenuation, m_AdditionalLightAttenuations);
 
             cmd.SetGlobalVector(LightConstantBuffer._AdditionalLightsCount, new Vector4(TinyRenderPipeline.maxVisibleAdditionalLights, 0.0f, 0.0f, 0.0f));
         }
@@ -95,10 +102,11 @@ public class ForwardLights
         }
     }
 
-    private void InitializeLightConstants(NativeArray<VisibleLight> lights, int lightIndex, out Vector4 lightPos, out Vector4 lightColor)
+    private void InitializeLightConstants(NativeArray<VisibleLight> lights, int lightIndex, out Vector4 lightPos, out Vector4 lightColor, out Vector4 lightAttenuation)
     {
         lightPos = LightDefaultValue.DefaultLightPosition;
         lightColor = LightDefaultValue.DefaultLightColor;
+        lightAttenuation = LightDefaultValue.DefaultLightAttenuation;
 
         if (lightIndex < 0)
             return;
@@ -116,6 +124,9 @@ public class ForwardLights
         {
             Vector4 pos = lightLocalToWorld.GetColumn(3);
             lightPos = new Vector4(pos.x, pos.y, pos.z, 1.0f);
+
+            // Calculating distance attenuation
+            GetPunctualLightDistanceAttenuation(visibleLight.range, ref lightAttenuation);
         }
 
         // VisibleLight.finalColor already returns color in active color space
@@ -173,5 +184,19 @@ public class ForwardLights
         perObjectLightIndexMap.Dispose();
 
         return additionalLightsCount;
+    }
+
+    private static void GetPunctualLightDistanceAttenuation(float lightRange, ref Vector4 lightAttenuation)
+    {
+        // Light attenuation: attenuation = 1.0 / distanceToLightSqr
+        // Smooth factor: smoothFactor = saturate(1.0 - (distanceSqr / lightRangeSqr)^2)^2
+        // The smooth factor makes sure that the light intensity is zero at the light range limit
+        // Light intensity at distance S from light's original position:
+        // lightIntensity = attenuation * smoothFactor = (1.0 / (S * S)) * (saturate(1.0 - ((S * S) / lightRangeSqr)^2)^2)
+
+        // Store 1.0 / lightRangeSqr at lightAttenuation.x
+        float lightRangeSqr = lightRange * lightRange;
+        float oneOverLightRangeSqr = 1.0f / Mathf.Max(0.0001f, lightRangeSqr);
+        lightAttenuation.x = oneOverLightRangeSqr;
     }
 }

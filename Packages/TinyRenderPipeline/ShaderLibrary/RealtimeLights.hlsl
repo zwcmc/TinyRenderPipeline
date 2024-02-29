@@ -9,6 +9,20 @@ struct Light
     half shadowAttenuation;
 };
 
+float DistanceAttenuation(float distanceSqr, float distanceAttenuation)
+{
+    // For additional directional lights, distanceAttenuation = 0, smoothFactor = 1.0;
+    // the final distance attenuation is rcp(distanceSqr), while distanceSqr is a normalized direction vector's length,
+    // so for additional directional lights, it will return 1.0.
+    float lightAtten = rcp(distanceSqr);
+
+    float factor = distanceSqr * distanceAttenuation;
+    float smoothFactor = saturate(1.0 - factor * factor);
+    smoothFactor = smoothFactor * smoothFactor;
+
+    return lightAtten * smoothFactor;
+}
+
 Light GetMainLight()
 {
     Light light;
@@ -35,6 +49,7 @@ Light GetAdditionalPerObjectLight(int perObjectLightIndex, float3 positionWS)
 {
     float4 lightPositionWS = _AdditionalLightsPosition[perObjectLightIndex];
     half3 color = _AdditionalLightsColor[perObjectLightIndex];
+    float4 distanceAndSpotAttenuation = _AdditionalLightsAttenuation[perObjectLightIndex];
 
     // Directional lights store direction in lightPosition.xyz and have .w set to 0.0.
     // This way the following code will work for both directional and punctual lights.
@@ -42,10 +57,12 @@ Light GetAdditionalPerObjectLight(int perObjectLightIndex, float3 positionWS)
     float distanceSqr = max(dot(lightVector, lightVector), HALF_MIN);
     half3 lightDirection = half3(lightVector * rsqrt(distanceSqr)); // normalize direction
 
+    float attenuation = DistanceAttenuation(distanceSqr, distanceAndSpotAttenuation.x);
+
     Light light;
     light.direction = lightDirection;
     light.color = color;
-    light.distanceAttenuation = 1.0;
+    light.distanceAttenuation = attenuation;
     light.shadowAttenuation = 1.0;
 
     return light;
