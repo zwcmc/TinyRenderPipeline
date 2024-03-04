@@ -74,7 +74,7 @@
     },
     "com.unity.ext.nunit": {
       "version": "2.0.5",
-      "depth": 2,
+      "depth": 1,
       "source": "registry",
       "dependencies": {},
       "url": "https://packages.unity.cn"
@@ -93,8 +93,8 @@
       }
     },
     "com.unity.ide.rider": {
-      "version": "3.0.27",
-      "depth": 1,
+      "version": "3.0.28",
+      "depth": 0,
       "source": "registry",
       "dependencies": {
         "com.unity.ext.nunit": "1.0.6"
