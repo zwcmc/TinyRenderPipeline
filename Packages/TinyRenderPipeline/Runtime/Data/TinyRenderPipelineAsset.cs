@@ -17,7 +17,7 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     public TinyRenderPipeline renderPipeline;
 
     [Serializable]
-    private struct Shadows
+    private struct MainLightShadow
     {
         public float shadowDistance;
         public ShadowResolution shadowResolution;
@@ -31,7 +31,7 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
 
     [SerializeField] private bool m_UseSRPBatcher = true;
 
-    [SerializeField] private Shadows m_MainLightShadow = new Shadows
+    [SerializeField] private MainLightShadow m_MainLightShadow = new MainLightShadow
     {
         shadowDistance = 50.0f,
         shadowResolution = ShadowResolution._2048,
