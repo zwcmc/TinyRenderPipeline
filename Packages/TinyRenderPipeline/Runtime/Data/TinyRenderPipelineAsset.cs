@@ -26,12 +26,6 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
         [Range(0.0f, 1.0f)] public float cascadeRatio1, cascadeRatio2, cascadeRatio3;
         [Range(0.0f, 1.0f)] public float cascadeBorder;
     }
-    
-    [Serializable]
-    private struct AdditionalLightShadow
-    {
-        public ShadowResolution shadowResolution;
-    }
 
     [SerializeField] private bool m_UseSRPBatcher = true;
 
@@ -44,11 +38,6 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
         cascadeRatio2 = 0.25f,
         cascadeRatio3 = 0.5f,
         cascadeBorder = 0.2f
-    };
-
-    [SerializeField] private AdditionalLightShadow m_AdditionalLightShadow = new AdditionalLightShadow
-    {
-        shadowResolution = ShadowResolution._2048
     };
 
     public bool useSRPBatcher
