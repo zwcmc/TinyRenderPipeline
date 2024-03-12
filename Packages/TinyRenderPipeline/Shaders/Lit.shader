@@ -44,9 +44,11 @@ Shader "Tiny Render Pipeline/Lit"
 
         Pass
         {
-            Name "TinyRP Lit"
-
-            Tags { "LightMode" = "TinyRPLit" }
+            Name "ForwardLit"
+            Tags
+            {
+                "LightMode" = "TinyRPLit"
+            }
 
             HLSLPROGRAM
             #pragma target 3.5
@@ -66,7 +68,11 @@ Shader "Tiny Render Pipeline/Lit"
 
         Pass
         {
-            Tags { "LightMode"="ShadowCaster" }
+            Name "ShadowCaster"
+            Tags
+            {
+                "LightMode"="ShadowCaster"
+            }
 
             ColorMask 0
 

@@ -12,7 +12,9 @@ struct Attributes
 
 struct Varyings
 {
+#ifdef _ALPHATEST_ON
     float2 uv         : TEXCOORD0;
+#endif
     float4 positionCS : SV_POSITION;
 };
 
@@ -35,16 +37,19 @@ float4 GetShadowPositionHClip(Attributes input)
 Varyings LitShadowVertex(Attributes input)
 {
     Varyings output = (Varyings)0;
+#ifdef _ALPHATEST_ON
     output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
+#endif
     output.positionCS = GetShadowPositionHClip(input);
     return output;
 }
 
 half4 LitShadowFragment(Varyings input) : SV_TARGET
 {
+#ifdef _ALPHATEST_ON
     half4 albedoAlpha = SampleAlbedoAlpha(input.uv, TEXTURE2D_ARGS(_BaseMap, sampler_BaseMap));
     AlphaDiscard(albedoAlpha.a * _BaseColor.a, _Cutoff);
-
+#endif
     return 0;
 }
 

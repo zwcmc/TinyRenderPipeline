@@ -18,6 +18,9 @@ public class MainLightShadowPass
 
     private float m_CascadeBorder;
     private float m_MaxShadowDistanceSq;
+    private int m_ShadowCasterCascadesCount;
+    private int m_RenderTargetWidth;
+    private int m_RenderTargetHeight;
 
     private static readonly ProfilingSampler m_ProfilingSampler = new ProfilingSampler("MainLightShadow");
 
@@ -87,10 +90,10 @@ public class MainLightShadowPass
         Clear();
 
         ref var shadowData = ref renderingData.shadowData;
-
-        int shadowmapWidth = shadowData.mainLightShadowmapWidth;
-        int shadowmapHeight = shadowData.mainLightShadowmapHeight;
-        ShadowUtils.ShadowRTReAllocateIfNeeded(ref m_MainLightShadowmapHandle, shadowmapWidth, shadowmapHeight, k_ShadowmapBufferBits, name: k_ShadowmapTextureName);
+        m_ShadowCasterCascadesCount = renderingData.shadowData.cascadesCount;
+        m_RenderTargetWidth = renderingData.shadowData.mainLightShadowmapWidth;
+        m_RenderTargetHeight = (m_ShadowCasterCascadesCount == 2) ? renderingData.shadowData.mainLightShadowmapHeight >> 1 : renderingData.shadowData.mainLightShadowmapHeight;
+        ShadowUtils.ShadowRTReAllocateIfNeeded(ref m_MainLightShadowmapHandle, m_RenderTargetWidth, m_RenderTargetHeight, k_ShadowmapBufferBits, name: k_ShadowmapTextureName);
 
         m_MaxShadowDistanceSq = shadowData.maxShadowDistance * shadowData.maxShadowDistance;
         m_CascadeBorder = shadowData.mainLightShadowCascadeBorder;
@@ -120,23 +123,22 @@ public class MainLightShadowPass
 
             var shadowDrawingSettings = new ShadowDrawingSettings(cullResults, shadowLightIndex);
 
-            int cascadesCount = renderingData.shadowData.cascadesCount;
+            // int cascadesCount = renderingData.shadowData.cascadesCount;
             Vector3 cascadesSplit = renderingData.shadowData.cascadesSplit;
 
-            int cascadeResolution = ShadowUtils.GetMaxTileResolutionInAtlas(renderingData.shadowData.mainLightShadowmapWidth, renderingData.shadowData.mainLightShadowmapHeight, cascadesCount);
+            int cascadeResolution = ShadowUtils.GetMaxTileResolutionInAtlas(renderingData.shadowData.mainLightShadowmapWidth, renderingData.shadowData.mainLightShadowmapHeight, m_ShadowCasterCascadesCount);
 
-            int renderTargetWidth = renderingData.shadowData.mainLightShadowmapWidth;
-            int renderTargetHeight = (cascadesCount == 2) ? renderingData.shadowData.mainLightShadowmapHeight >> 1 : renderingData.shadowData.mainLightShadowmapHeight;
-
-            for (int i = 0; i < cascadesCount; ++i)
+            for (int i = 0; i < m_ShadowCasterCascadesCount; ++i)
             {
-                ShadowUtils.ExtractDirectionalLightMatrix(ref cullResults, shadowLightIndex, i, cascadesCount, cascadesSplit,
-                    renderTargetWidth, renderTargetHeight, cascadeResolution, shadowLight.light.shadowNearPlane, out ShadowCascadeData shadowCascadeData);
+                ShadowUtils.ExtractDirectionalLightMatrix(ref cullResults, shadowLightIndex, i, m_ShadowCasterCascadesCount, cascadesSplit,
+                    m_RenderTargetWidth, m_RenderTargetHeight, cascadeResolution, shadowLight.light.shadowNearPlane, out ShadowCascadeData shadowCascadeData);
 
                 shadowDrawingSettings.splitData = shadowCascadeData.splitData;
 
                 Vector4 shadowBias = ShadowUtils.GetShadowBias(shadowLight, shadowLightIndex, shadowCascadeData.projectionMatrix, shadowCascadeData.resolution);
                 ShadowUtils.SetupShadowCasterConstantBuffer(cmd, shadowLight, shadowBias);
+
+                cmd.SetGlobalDepthBias(1.0f, 2.5f);
 
                 cmd.SetViewport(new Rect(shadowCascadeData.offsetX, shadowCascadeData.offsetY, shadowCascadeData.resolution, shadowCascadeData.resolution));
                 cmd.SetViewProjectionMatrices(shadowCascadeData.viewMatrix, shadowCascadeData.projectionMatrix);
@@ -148,6 +150,8 @@ public class MainLightShadowPass
                 m_CascadesSplitDistance[i] = shadowCascadeData.splitData.cullingSphere;
 
                 context.DrawShadows(ref shadowDrawingSettings);
+
+                cmd.SetGlobalDepthBias(0.0f, 0.0f);
             }
 
             // We setup and additional a no-op WorldToShadow matrix in the last index
@@ -155,7 +159,7 @@ public class MainLightShadowPass
             // out of bounds. (position not inside any cascade) and we want to avoid branching
             Matrix4x4 noOpShadowMatrix = Matrix4x4.zero;
             noOpShadowMatrix.m22 = (SystemInfo.usesReversedZBuffer) ? 1.0f : 0.0f;
-            for (int i = cascadesCount; i <= k_MaxCascades; ++i)
+            for (int i = m_ShadowCasterCascadesCount; i <= k_MaxCascades; ++i)
                 m_MainLightShadowMatrices[i] = noOpShadowMatrix;
 
             cmd.SetGlobalTexture(m_MainLightShadowmapID, m_MainLightShadowmapHandle.nameID);
@@ -165,7 +169,7 @@ public class MainLightShadowPass
             cmd.SetGlobalMatrixArray(MainLightShadowConstantBuffer._WorldToShadow, m_MainLightShadowMatrices);
             cmd.SetGlobalVector(MainLightShadowConstantBuffer._ShadowParams, new Vector4(shadowLight.light.shadowStrength, 0.0f, shadowFadeScale, shadowFadeBias));
 
-            if (cascadesCount > 1)
+            if (m_ShadowCasterCascadesCount > 1)
             {
                 cmd.SetGlobalVector(MainLightShadowConstantBuffer._CascadeShadowSplitSpheres0, m_CascadesSplitDistance[0]);
                 cmd.SetGlobalVector(MainLightShadowConstantBuffer._CascadeShadowSplitSpheres1, m_CascadesSplitDistance[1]);
