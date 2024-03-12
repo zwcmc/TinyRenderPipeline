@@ -9,14 +9,14 @@ public class MainLightShadowPass
     private RTHandle m_MainLightShadowmapTexture;
     private RTHandle m_EmptyLightShadowmapTexture;
 
+    // This limit matches same limit in Shadows.hlsl
     private const int k_MaxCascades = 4;
+
     private const int k_ShadowmapBufferBits = 16;
     private const string k_ShadowmapTextureName = "_MainLightShadowmapTexture";
 
     private Matrix4x4[] m_MainLightShadowMatrices;
     private Vector4[] m_CascadesSplitDistance;
-
-    private bool m_CreateEmptyShadowmap;
 
     private float m_CascadeBorder;
     private float m_MaxShadowDistanceSq;
@@ -67,30 +67,31 @@ public class MainLightShadowPass
     {
         Clear();
 
+        var cmd = renderingData.commandBuffer;
         int mainLightIndex = renderingData.mainLightIndex;
         if (mainLightIndex == -1)
         {
-            return SetupForEmptyRendering();
+            return SetupForEmptyRendering(ref renderingData);
         }
 
         VisibleLight shadowLight = renderingData.cullResults.visibleLights[mainLightIndex];
         // Main light is always a directional light
         if (shadowLight.lightType != LightType.Directional)
         {
-            return SetupForEmptyRendering();
+            return SetupForEmptyRendering(ref renderingData);
         }
 
         // Check light's shadow settings
         Light light = shadowLight.light;
         if (light.shadows == LightShadows.None || light.shadowStrength <= 0f)
         {
-            return SetupForEmptyRendering();
+            return SetupForEmptyRendering(ref renderingData);
         }
 
         // Check if the light affects as least one shadow casting object in scene
         if (!renderingData.cullResults.GetShadowCasterBounds(mainLightIndex, out Bounds bounds))
         {
-            return SetupForEmptyRendering();
+            return SetupForEmptyRendering(ref renderingData);
         }
 
         ref var shadowData = ref renderingData.shadowData;
@@ -101,7 +102,6 @@ public class MainLightShadowPass
 
         m_MaxShadowDistanceSq = shadowData.maxShadowDistance * shadowData.maxShadowDistance;
         m_CascadeBorder = shadowData.mainLightShadowCascadeBorder;
-        m_CreateEmptyShadowmap = false;
 
         return true;
     }
@@ -109,15 +109,6 @@ public class MainLightShadowPass
     public void Render(ScriptableRenderContext context, ref RenderingData renderingData)
     {
         var cmd = renderingData.commandBuffer;
-        if (m_CreateEmptyShadowmap)
-        {
-            cmd.SetGlobalTexture(m_MainLightShadowmapID, m_EmptyLightShadowmapTexture.nameID);
-
-            context.ExecuteCommandBuffer(cmd);
-            cmd.Clear();
-
-            return;
-        }
 
         // Setup render target and clear target
         cmd.SetRenderTarget(m_MainLightShadowmapTexture, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
@@ -207,10 +198,17 @@ public class MainLightShadowPass
         m_EmptyLightShadowmapTexture?.Release();
     }
 
-    private bool SetupForEmptyRendering()
+    private bool SetupForEmptyRendering(ref RenderingData renderingData)
     {
-        m_CreateEmptyShadowmap = true;
-        return true;
+        var cmd = renderingData.commandBuffer;
+        var context = renderingData.renderContext;
+
+        ShadowRTReAllocateIfNeeded(ref m_EmptyLightShadowmapTexture, 1, 1, k_ShadowmapBufferBits, name: "_EmptyLightShadowmapTexture");
+        cmd.SetGlobalTexture(m_MainLightShadowmapID, m_EmptyLightShadowmapTexture.nameID);
+        context.ExecuteCommandBuffer(cmd);
+        cmd.Clear();
+
+        return false;
     }
 
     private void Clear()
@@ -386,15 +384,12 @@ public class MainLightShadowPass
         return RTHandles.Alloc(rtd, FilterMode.Bilinear, TextureWrapMode.Clamp, isShadowMap: true, name: name);
     }
 
-    private static bool ShadowRTReAllocateIfNeeded(ref RTHandle handle, int width, int height, int bits, string name = "")
+    private static void ShadowRTReAllocateIfNeeded(ref RTHandle handle, int width, int height, int bits, string name = "")
     {
         if (ShadowRTNeedsReAlloc(handle, width, height, bits, name))
         {
             handle?.Release();
             handle = AllocShadowRT(width, height, bits, name);
-            return true;
         }
-
-        return false;
     }
 }
