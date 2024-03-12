@@ -127,10 +127,22 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.camera = camera;
         renderingData.cullResults = cullResults;
 
-        renderingData.mainLightIndex = GetMainLightIndex(cullResults.visibleLights);
-        renderingData.additionalLightsCount = Math.Min((renderingData.mainLightIndex != -1) ? cullResults.visibleLights.Length - 1 : cullResults.visibleLights.Length, maxVisibleAdditionalLights);
+        var visibleLights = cullResults.visibleLights;
+        int mainLightIndex = GetMainLightIndex(cullResults.visibleLights);
+        bool mainLightCastShadows = false;
+        if (asset.shadowDistance > 0.0f)
+        {
+            mainLightCastShadows = mainLightIndex != -1 &&
+                                   visibleLights[mainLightIndex].light != null &&
+                                   visibleLights[mainLightIndex].light.shadows != LightShadows.None;
+
+        }
+
+        renderingData.mainLightIndex = mainLightIndex;
+        renderingData.additionalLightsCount = Math.Min((renderingData.mainLightIndex != -1) ? visibleLights.Length - 1 : visibleLights.Length, maxVisibleAdditionalLights);
 
         // Shadow data
+        renderingData.shadowData.mainLightShadowsEnabled = SystemInfo.supportsShadows && mainLightCastShadows;
         renderingData.shadowData.cascadesCount = asset.cascadesCount;
         renderingData.shadowData.cascadesSplit = asset.cascadesSplit;
         renderingData.shadowData.mainLightShadowmapWidth = asset.mainLightShadowmapResolution;

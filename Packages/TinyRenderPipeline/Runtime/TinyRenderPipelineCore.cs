@@ -3,15 +3,13 @@ using UnityEngine.Rendering;
 
 public struct ShadowData
 {
+    public bool mainLightShadowsEnabled;
     public int mainLightShadowmapWidth;
     public int mainLightShadowmapHeight;
-
     public int cascadesCount;
     public Vector3 cascadesSplit;
-
     // max shadowing distance
     public float maxShadowDistance;
-
     // Main light last cascade shadow fade border
     public float mainLightShadowCascadeBorder;
 }

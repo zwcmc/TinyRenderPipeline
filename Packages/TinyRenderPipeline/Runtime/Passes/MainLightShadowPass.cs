@@ -65,9 +65,11 @@ public class MainLightShadowPass
 
     public bool Setup(ref RenderingData renderingData)
     {
-        Clear();
+        if (!renderingData.shadowData.mainLightShadowsEnabled)
+        {
+            return SetupForEmptyRendering(ref renderingData);
+        }
 
-        var cmd = renderingData.commandBuffer;
         int mainLightIndex = renderingData.mainLightIndex;
         if (mainLightIndex == -1)
         {
@@ -93,6 +95,9 @@ public class MainLightShadowPass
         {
             return SetupForEmptyRendering(ref renderingData);
         }
+
+        // Clear data
+        Clear();
 
         ref var shadowData = ref renderingData.shadowData;
 
