@@ -122,6 +122,11 @@ public class TinyRenderPipeline : RenderPipeline
 
         // Set maximum shadow distance to use for the cull
         cullingParameters.shadowDistance = Mathf.Min(pipelineAsset.shadowDistance, camera.farClipPlane);
+
+        // Use conservative method for calculating culling sphere
+        cullingParameters.conservativeEnclosingSphere = true;
+        // Default number of iterations
+        cullingParameters.numIterationsEnclosingSphere = 64;
     }
 
     private static bool TryGetCullingParameters(Camera camera, out ScriptableCullingParameters cullingParameters)
