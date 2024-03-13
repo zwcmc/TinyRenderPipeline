@@ -14,10 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_UseSRPBatcher: 1
   m_MainLightShadow:
-    shadowDistance: 50
-    shadowResolution: 2048
+    shadowDistance: 150
+    shadowResolution: 4096
     cascadeCount: 4
-    cascadeRatio1: 0.1
-    cascadeRatio2: 0.25
-    cascadeRatio3: 0.5
+    cascadeRatio1: 0.067
+    cascadeRatio2: 0.2
+    cascadeRatio3: 0.467
     cascadeBorder: 0.2

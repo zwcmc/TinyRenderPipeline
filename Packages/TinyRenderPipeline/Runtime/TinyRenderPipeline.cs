@@ -110,7 +110,17 @@ public class TinyRenderPipeline : RenderPipeline
 
     private void SetupCullingParameters(ref ScriptableCullingParameters cullingParameters, ref Camera camera)
     {
-        // Set max shadow distance to use for the cull
+        // Set maximum visible lights: maximum additional lights and one main light
+        cullingParameters.maximumVisibleLights = maxVisibleAdditionalLights + 1;
+
+        // Disable shadow casters if the shadow distance turn down to zero
+        bool isShadowDistanceZero = Mathf.Approximately(pipelineAsset.shadowDistance, 0.0f);
+        if (isShadowDistanceZero)
+        {
+            cullingParameters.cullingOptions &= ~CullingOptions.ShadowCasters;
+        }
+
+        // Set maximum shadow distance to use for the cull
         cullingParameters.shadowDistance = Mathf.Min(pipelineAsset.shadowDistance, camera.farClipPlane);
     }
 
