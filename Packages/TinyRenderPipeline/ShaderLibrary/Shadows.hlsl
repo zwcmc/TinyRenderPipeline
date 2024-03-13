@@ -15,13 +15,12 @@ CBUFFER_START(LightShadows)
 #endif
 float4x4 _MainLightWorldToShadow[MAX_SHADOW_CASCADES + 1];
 float4   _MainLightShadowParams;  // (x: shadowStrength, y: 0.0, z: main light last cascade fade scale, w: main light last cascade fade bias)
-// four cascades' culling spheres, each data: xyz: the sphere center position, w: the sphere's radius
+// four cascades' culling spheres, each data: xyz: the sphere center position, w: square of the sphere's radius
 float4   _CascadeShadowSplitSpheres0;
 float4   _CascadeShadowSplitSpheres1;
 float4   _CascadeShadowSplitSpheres2;
 float4   _CascadeShadowSplitSpheres3;
-// (x: square of culling sphere0's radius, y: square of culling sphere1's radius, z: square of culling sphere2's radius, w: square of culling sphere3's radius)
-float4   _CascadeShadowSplitSphereRadii;
+float4   _CascadesParams; // (x: cascades count, y: 0.0, z: 0.0, w: 0.0)
 #ifndef SHADER_API_GLES3
 CBUFFER_END
 #endif
@@ -55,7 +54,7 @@ half ComputeCascadeIndex(float3 positionWS)
     // Square of radius from each culling sphere's center
     float4 distance2 = float4(dot(fromCenter0, fromCenter0), dot(fromCenter1, fromCenter1), dot(fromCenter2, fromCenter2), dot(fromCenter3, fromCenter3));
     // Check in which culling sphere, e.g. : (1,0,0,0) means in culling sphere 0.
-    half4 weights = half4(distance2 < _CascadeShadowSplitSphereRadii);
+    half4 weights = half4(distance2 < float4(_CascadeShadowSplitSpheres0.w, _CascadeShadowSplitSpheres1.w, _CascadeShadowSplitSpheres2.w, _CascadeShadowSplitSpheres3.w));
     weights.yzw = saturate(weights.yzw - weights.xyz);
 
     return half(4.0) - dot(weights, half4(4, 3, 2, 1));
@@ -63,7 +62,7 @@ half ComputeCascadeIndex(float3 positionWS)
 
 float4 TransformWorldToShadowCoord(float3 positionWS)
 {
-    half cascadeIndex = ComputeCascadeIndex(positionWS);
+    half cascadeIndex = _CascadesParams.x > 1.0 ? ComputeCascadeIndex(positionWS) : 0.0;
     float4 shadowCoord = mul(_MainLightWorldToShadow[cascadeIndex], float4(positionWS, 1.0));
     return float4(shadowCoord.xyz, 0.0);
 }

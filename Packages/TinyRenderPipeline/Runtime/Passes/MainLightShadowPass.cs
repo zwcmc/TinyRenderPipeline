@@ -32,7 +32,7 @@ public class MainLightShadowPass
         public static int _CascadeShadowSplitSpheres1;
         public static int _CascadeShadowSplitSpheres2;
         public static int _CascadeShadowSplitSpheres3;
-        public static int _CascadeShadowSplitSphereRadii;
+        public static int _CascadesParams;
     }
 
     public MainLightShadowPass()
@@ -46,7 +46,7 @@ public class MainLightShadowPass
         MainLightShadowConstantBuffer._CascadeShadowSplitSpheres1 = Shader.PropertyToID("_CascadeShadowSplitSpheres1");
         MainLightShadowConstantBuffer._CascadeShadowSplitSpheres2 = Shader.PropertyToID("_CascadeShadowSplitSpheres2");
         MainLightShadowConstantBuffer._CascadeShadowSplitSpheres3 = Shader.PropertyToID("_CascadeShadowSplitSpheres3");
-        MainLightShadowConstantBuffer._CascadeShadowSplitSphereRadii = Shader.PropertyToID("_CascadeShadowSplitSphereRadii");
+        MainLightShadowConstantBuffer._CascadesParams = Shader.PropertyToID("_CascadesParams");
 
         m_MainLightShadowmapID = Shader.PropertyToID(k_ShadowmapTextureName);
 
@@ -145,7 +145,9 @@ public class MainLightShadowPass
                 cmd.Clear();
 
                 m_MainLightShadowMatrices[i] = shadowCascadeData.shadowTransform;
-                m_CascadesSplitDistance[i] = shadowCascadeData.splitData.cullingSphere;
+                Vector4 cullingSphere = shadowCascadeData.splitData.cullingSphere;
+                cullingSphere.w *= cullingSphere.w;
+                m_CascadesSplitDistance[i] = cullingSphere;
 
                 context.DrawShadows(ref shadowDrawingSettings);
             }
@@ -164,6 +166,7 @@ public class MainLightShadowPass
 
             cmd.SetGlobalMatrixArray(MainLightShadowConstantBuffer._WorldToShadow, m_MainLightShadowMatrices);
             cmd.SetGlobalVector(MainLightShadowConstantBuffer._ShadowParams, new Vector4(shadowLight.light.shadowStrength, 0.0f, shadowFadeScale, shadowFadeBias));
+            cmd.SetGlobalVector(MainLightShadowConstantBuffer._CascadesParams, new Vector4((float)m_ShadowCasterCascadesCount, 0.0f, 0.0f, 0.0f));
 
             if (m_ShadowCasterCascadesCount > 1)
             {
@@ -171,12 +174,6 @@ public class MainLightShadowPass
                 cmd.SetGlobalVector(MainLightShadowConstantBuffer._CascadeShadowSplitSpheres1, m_CascadesSplitDistance[1]);
                 cmd.SetGlobalVector(MainLightShadowConstantBuffer._CascadeShadowSplitSpheres2, m_CascadesSplitDistance[2]);
                 cmd.SetGlobalVector(MainLightShadowConstantBuffer._CascadeShadowSplitSpheres3, m_CascadesSplitDistance[3]);
-                cmd.SetGlobalVector(MainLightShadowConstantBuffer._CascadeShadowSplitSphereRadii, new Vector4(
-                    m_CascadesSplitDistance[0].w * m_CascadesSplitDistance[0].w,
-                    m_CascadesSplitDistance[1].w * m_CascadesSplitDistance[1].w,
-                    m_CascadesSplitDistance[2].w * m_CascadesSplitDistance[2].w,
-                    m_CascadesSplitDistance[3].w * m_CascadesSplitDistance[3].w)
-                );
             }
 
             context.ExecuteCommandBuffer(cmd);
@@ -197,6 +194,9 @@ public class MainLightShadowPass
 
         ShadowUtils.ShadowRTReAllocateIfNeeded(ref m_EmptyLightShadowmapHandle, 1, 1, k_ShadowmapBufferBits, name: "_EmptyLightShadowmapTexture");
         cmd.SetGlobalTexture(m_MainLightShadowmapID, m_EmptyLightShadowmapHandle.nameID);
+
+        cmd.SetGlobalVector(MainLightShadowConstantBuffer._ShadowParams, new Vector4(1, 0, 1, 0));
+        cmd.SetGlobalVector(MainLightShadowConstantBuffer._CascadesParams, new Vector4(1, 0, 0, 0));
 
         context.ExecuteCommandBuffer(cmd);
         cmd.Clear();
