@@ -36,9 +36,9 @@ half4 FragmentPBR(InputData inputData, SurfaceData surfaceData)
 
     half3 additionalLightsColor = 0.0;
     uint additionalLightCount = GetAdditionalLightsCount();
-    for (uint lightIndex = 0u; lightIndex < additionalLightCount; ++lightIndex)
+    for (uint i = 0u; i < additionalLightCount; ++i)
     {
-        Light light = GetAdditionalLight(lightIndex, inputData.positionWS);
+        Light light = GetAdditionalLight(i, inputData.positionWS);
         additionalLightsColor += LightingPBR(brdfData, light, inputData.normalWS, inputData.viewDirectionWS);
     }
     lightingColor += additionalLightsColor;

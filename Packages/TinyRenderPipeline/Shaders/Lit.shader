@@ -73,7 +73,6 @@ Shader "Tiny Render Pipeline/Lit"
             {
                 "LightMode"="ShadowCaster"
             }
-
             ColorMask 0
 
             HLSLPROGRAM

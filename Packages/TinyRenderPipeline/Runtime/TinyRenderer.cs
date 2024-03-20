@@ -16,11 +16,13 @@ public partial class TinyRenderer
 
     private ForwardLights m_ForwardLights;
     private MainLightShadowPass m_MainLightShadowPass;
+    private AdditionalLightsShadowPass m_AdditionalLightsShadowPass;
 
     public TinyRenderer()
     {
         m_ForwardLights = new ForwardLights();
         m_MainLightShadowPass = new MainLightShadowPass();
+        m_AdditionalLightsShadowPass = new AdditionalLightsShadowPass();
     }
 
     public void Execute(ref RenderingData renderingData)
@@ -36,6 +38,12 @@ public partial class TinyRenderer
         if (m_MainLightShadowPass.Setup(ref renderingData))
         {
             m_MainLightShadowPass.Render(context, ref renderingData);
+        }
+
+        // Render additional lights shadowmap
+        if (m_AdditionalLightsShadowPass.Setup(ref renderingData))
+        {
+            m_AdditionalLightsShadowPass.Render(context, ref renderingData);
         }
 
         // Setup camera properties
@@ -61,20 +69,12 @@ public partial class TinyRenderer
     public void Dispose(bool disposing)
     {
         m_MainLightShadowPass?.Dispose();
+        m_AdditionalLightsShadowPass?.Dispose();
     }
 
     private void SetCameraProperties(ScriptableRenderContext context, Camera camera)
     {
         context.SetupCameraProperties(camera);
-    }
-
-    private void ClearRenderTarget(CommandBuffer cmd, Camera camera)
-    {
-        CameraClearFlags flags = camera.clearFlags;
-        cmd.ClearRenderTarget(
-            flags <= CameraClearFlags.Depth,
-            flags <= CameraClearFlags.Color,
-            flags == CameraClearFlags.Color ? camera.backgroundColor.linear : Color.clear);
     }
 
     private void DrawGizmos(ScriptableRenderContext context, CommandBuffer cmd, Camera camera)

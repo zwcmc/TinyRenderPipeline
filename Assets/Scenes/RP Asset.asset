@@ -13,11 +13,14 @@ MonoBehaviour:
   m_Name: RP Asset
   m_EditorClassIdentifier: 
   m_UseSRPBatcher: 1
-  m_MainLightShadow:
-    shadowDistance: 150
-    shadowResolution: 4096
-    cascadeCount: 4
-    cascadeRatio1: 0.067
-    cascadeRatio2: 0.2
-    cascadeRatio3: 0.467
+  m_Shadows:
+    shadowDistance: 50
     cascadeBorder: 0.2
+    mainLightShadow:
+      shadowResolution: 2048
+      cascadeCount: 4
+      cascadeRatio1: 0.067
+      cascadeRatio2: 0.2
+      cascadeRatio3: 0.467
+    additionalLightsShadow:
+      shadowResolution: 2048

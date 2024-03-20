@@ -123,15 +123,13 @@ public class MainLightShadowPass
 
             var shadowDrawingSettings = new ShadowDrawingSettings(cullResults, shadowLightIndex);
 
-            // int cascadesCount = renderingData.shadowData.cascadesCount;
             Vector3 cascadesSplit = renderingData.shadowData.cascadesSplit;
-
             int cascadeResolution = ShadowUtils.GetMaxTileResolutionInAtlas(renderingData.shadowData.mainLightShadowmapWidth, renderingData.shadowData.mainLightShadowmapHeight, m_ShadowCasterCascadesCount);
 
             for (int i = 0; i < m_ShadowCasterCascadesCount; ++i)
             {
                 ShadowUtils.ExtractDirectionalLightMatrix(ref cullResults, shadowLightIndex, i, m_ShadowCasterCascadesCount, cascadesSplit,
-                    m_RenderTargetWidth, m_RenderTargetHeight, cascadeResolution, shadowLight.light.shadowNearPlane, out ShadowCascadeData shadowCascadeData);
+                    m_RenderTargetWidth, m_RenderTargetHeight, cascadeResolution, shadowLight.light.shadowNearPlane, out ShadowSliceData shadowCascadeData);
 
                 shadowDrawingSettings.splitData = shadowCascadeData.splitData;
 

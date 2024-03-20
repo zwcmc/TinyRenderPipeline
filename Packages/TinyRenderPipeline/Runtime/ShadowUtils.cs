@@ -15,8 +15,23 @@ public static class ShadowUtils
     {
         cmd.SetGlobalVector("_ShadowBias", shadowBias);
 
-        Vector3 lightDirection = -shadowLight.localToWorldMatrix.GetColumn(2);
-        cmd.SetGlobalVector("_LightDirection", new Vector4(lightDirection.x, lightDirection.y, lightDirection.z, 0.0f));
+        Vector4 lightDirectionOrPosition;
+        switch (shadowLight.lightType)
+        {
+            case LightType.Directional:
+                Vector3 lightDirection = -shadowLight.localToWorldMatrix.GetColumn(2);
+                lightDirectionOrPosition = new Vector4(lightDirection.x, lightDirection.y, lightDirection.z, 1.0f);
+                break;
+            case LightType.Spot:
+            case LightType.Point:
+                Vector3 lightPosition = shadowLight.localToWorldMatrix.GetColumn(3);
+                lightDirectionOrPosition = new Vector4(lightPosition.x, lightPosition.y, lightPosition.z, 0.0f);
+                break;
+            default:
+                lightDirectionOrPosition = new Vector4(0, 0, 1, 1);
+                break;
+        }
+        cmd.SetGlobalVector("_LightDirectionOrPosition", lightDirectionOrPosition);
     }
 
     public static Vector4 GetShadowBias(VisibleLight shadowLight, int shadowLightIndex, Matrix4x4 lightProjectionMatrix, float shadowResolution)
@@ -32,6 +47,16 @@ public static class ShadowUtils
         {
             // Frustum size is guaranteed to be a cube as we wrap shadow frustum around a sphere
             frustumSize = 2.0f / lightProjectionMatrix.m00;
+        }
+        else if (shadowLight.lightType == LightType.Spot)
+        {
+            // For perspective projections, shadow texel size varies with depth
+            // It will only work well if done in receiver side in the pixel shader. Currently UniversalRP
+            // do bias on caster side in vertex shader. When we add shader quality tiers we can properly
+            // handle this. For now, as a poor approximation we do a constant bias and compute the size of
+            // the frustum as if it was orthogonal considering the size at mid point between near and far planes.
+            // Depending on how big the light range is, it will be good enough with some tweaks in bias
+            frustumSize = Mathf.Tan(shadowLight.spotAngle * 0.5f * Mathf.Deg2Rad) * shadowLight.range; // half-width (in world-space units) of shadow frustum's "far plane"
         }
         else
         {
@@ -90,7 +115,7 @@ public static class ShadowUtils
     }
 
     public static void ExtractDirectionalLightMatrix(ref CullingResults cullResults, int shadowLightIndex, int cascadeIndex, int cascadeCount, Vector3 cascadesSplit,
-        int shadowmapWidth, int shadowmapHeight, int shadowResolution, float shadowNearPlane, out ShadowCascadeData shadowCascadeData)
+        int shadowmapWidth, int shadowmapHeight, int shadowResolution, float shadowNearPlane, out ShadowSliceData shadowCascadeData)
     {
         cullResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(shadowLightIndex, cascadeIndex, cascadeCount,
             cascadesSplit, shadowResolution, shadowNearPlane, out shadowCascadeData.viewMatrix, out shadowCascadeData.projectionMatrix, out shadowCascadeData.splitData);
@@ -108,6 +133,14 @@ public static class ShadowUtils
             ApplySliceTransform(ref shadowCascadeData, shadowmapWidth, shadowmapHeight);
     }
 
+    public static bool ExtractSpotLightMatrix(ref CullingResults cullResults, int shadowLightIndex, out ShadowSliceData shadowSliceData)
+    {
+        shadowSliceData = default;
+        bool success = cullResults.ComputeSpotShadowMatricesAndCullingPrimitives(shadowLightIndex, out shadowSliceData.viewMatrix, out shadowSliceData.projectionMatrix, out shadowSliceData.splitData);
+        shadowSliceData.shadowTransform = GetShadowTransform(shadowSliceData.projectionMatrix, shadowSliceData.viewMatrix);
+        return success;
+    }
+
     public static void ShadowRTReAllocateIfNeeded(ref RTHandle handle, int width, int height, int bits, string name = "")
     {
         if (ShadowRTNeedsReAlloc(handle, width, height, bits, name))
@@ -115,6 +148,48 @@ public static class ShadowUtils
             handle?.Release();
             handle = AllocShadowRT(width, height, bits, name);
         }
+    }
+
+    public static int GetAdditionalLightShadowSliceCount(in LightType lightType)
+    {
+        switch (lightType)
+        {
+            case LightType.Spot:
+                return 1;
+            case LightType.Point:
+                return 6;
+            default:
+                return 0;
+        }
+    }
+
+    public static bool IsValidShadowCastingLight(ref CullingResults cullResults, int mainLightIndex, int visibleLightIndex)
+    {
+        if (visibleLightIndex == mainLightIndex)
+            return false;
+
+        VisibleLight vl = cullResults.visibleLights[visibleLightIndex];
+
+        if (vl.lightType == LightType.Directional)
+            return false;
+
+        Light light = vl.light;
+        return light != null && light.shadows != LightShadows.None && !Mathf.Approximately(light.shadowStrength, 0.0f);
+    }
+
+    public static void ApplySliceTransform(ref ShadowSliceData shadowCascadeData, int atlasWidth, int atlasHeight)
+    {
+        Matrix4x4 sliceTransform = Matrix4x4.identity;
+
+        float oneOverAtlasWidth = 1.0f / atlasWidth;
+        float oneOverAtlasHeight = 1.0f / atlasHeight;
+        sliceTransform.m00 = shadowCascadeData.resolution * oneOverAtlasWidth;
+        sliceTransform.m11 = shadowCascadeData.resolution * oneOverAtlasHeight;
+        sliceTransform.m03 = shadowCascadeData.offsetX * oneOverAtlasWidth;
+        sliceTransform.m13 = shadowCascadeData.offsetY * oneOverAtlasHeight;
+
+        // Apply shadow slice scale and offset
+        shadowCascadeData.shadowTransform = sliceTransform * shadowCascadeData.shadowTransform;
     }
 
     private static RenderTextureDescriptor GetTemporaryShadowTextureDescriptor(int width, int height, int bits)
@@ -161,20 +236,5 @@ public static class ShadowUtils
 
         // Apply texture scale and offset to save a MAD in shader.
         return textureScaleAndBias * worldToShadow;
-    }
-
-    private static void ApplySliceTransform(ref ShadowCascadeData shadowCascadeData, int atlasWidth, int atlasHeight)
-    {
-        Matrix4x4 sliceTransform = Matrix4x4.identity;
-
-        float oneOverAtlasWidth = 1.0f / atlasWidth;
-        float oneOverAtlasHeight = 1.0f / atlasHeight;
-        sliceTransform.m00 = shadowCascadeData.resolution * oneOverAtlasWidth;
-        sliceTransform.m11 = shadowCascadeData.resolution * oneOverAtlasHeight;
-        sliceTransform.m03 = shadowCascadeData.offsetX * oneOverAtlasWidth;
-        sliceTransform.m13 = shadowCascadeData.offsetY * oneOverAtlasHeight;
-
-        // Apply shadow slice scale and offset
-        shadowCascadeData.shadowTransform = sliceTransform * shadowCascadeData.shadowTransform;
     }
 }

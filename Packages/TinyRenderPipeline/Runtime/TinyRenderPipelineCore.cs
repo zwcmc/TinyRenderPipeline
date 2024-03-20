@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -12,6 +13,11 @@ public struct ShadowData
     public float maxShadowDistance;
     // Main light last cascade shadow fade border
     public float mainLightShadowCascadeBorder;
+
+    public bool additionalLightsShadowEnabled;
+    public int additionalLightsShadowmapWidth;
+    public int additionalLightsShadowmapHeight;
+    public AdditionalLightsShadowAtlasLayout additionalLightsShadowAtlasLayout;
 }
 
 public struct RenderingData
@@ -29,7 +35,7 @@ public struct RenderingData
     public PerObjectData perObjectData;
 }
 
-public struct ShadowCascadeData
+public struct ShadowSliceData
 {
     public Matrix4x4 viewMatrix;
     public Matrix4x4 projectionMatrix;

@@ -8,6 +8,7 @@
 #define BEYOND_SHADOW_FAR(shadowCoord) shadowCoord.z <= 0.0 || shadowCoord.z >= 1.0
 
 TEXTURE2D_SHADOW(_MainLightShadowmapTexture);
+TEXTURE2D_SHADOW(_AdditionalLightsShadowmapTexture);
 SAMPLER_CMP(sampler_LinearClampCompare);
 
 #ifndef SHADER_API_GLES3
@@ -21,6 +22,10 @@ float4   _CascadeShadowSplitSpheres1;
 float4   _CascadeShadowSplitSpheres2;
 float4   _CascadeShadowSplitSpheres3;
 float4   _CascadesParams; // (x: cascades count, y: 0.0, z: 0.0, w: 0.0)
+
+float4   _AdditionalShadowFadeParams; // x: additional light fade scale, y: additional light fade bias, z: 0.0, w: 0.0)
+float4   _AdditionalShadowParams[MAX_VISIBLE_LIGHTS];         // Per-light data
+float4x4 _AdditionalLightsWorldToShadow[MAX_VISIBLE_LIGHTS];  // Per-shadow-slice-data
 #ifndef SHADER_API_GLES3
 CBUFFER_END
 #endif
@@ -67,17 +72,43 @@ float4 TransformWorldToShadowCoord(float3 positionWS)
     return float4(shadowCoord.xyz, 0.0);
 }
 
-real SampleShadowmap(float4 shadowCoord)
+real SampleShadowmap(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowMap), float4 shadowCoord, half4 shadowParams, bool isPerspectiveProjection = true)
 {
-    real attenuation = real(SAMPLE_TEXTURE2D_SHADOW(_MainLightShadowmapTexture, sampler_LinearClampCompare, shadowCoord.xyz));
-    attenuation = LerpWhiteTo(attenuation, _MainLightShadowParams.x);
+    if (isPerspectiveProjection)
+        shadowCoord.xyz /= shadowCoord.w;
+
+    real shadowStrength = shadowParams.x;
+    real attenuation = real(SAMPLE_TEXTURE2D_SHADOW(shadowMap, sampler_shadowMap, shadowCoord.xyz));
+    attenuation = LerpWhiteTo(attenuation, shadowStrength);
     return BEYOND_SHADOW_FAR(shadowCoord) ? 1.0 : attenuation;
 }
 
 half MainLightShadow(float4 shadowCoord, float3 positionWS)
 {
-    half realtimeShadow = SampleShadowmap(shadowCoord);
+    half realtimeShadow = SampleShadowmap(TEXTURE2D_ARGS(_MainLightShadowmapTexture, sampler_LinearClampCompare), shadowCoord, _MainLightShadowParams, false);
     half shadowFade = GetMainLightShadowFade(positionWS);
+    return lerp(realtimeShadow, 1.0, shadowFade);
+}
+
+half GetAdditionalLightShadowFade(float3 positionWS)
+{
+    float3 camToPixel = positionWS - _WorldSpaceCameraPos;
+    float distanceCamToPixel2 = dot(camToPixel, camToPixel);
+    float fade = saturate(distanceCamToPixel2 * float(_AdditionalShadowFadeParams.x) + float(_AdditionalShadowFadeParams.y));
+    return half(fade);
+}
+
+half AdditionalLightShadow(int lightIndex, float3 positionWS)
+{
+    half4 shadowParams = _AdditionalShadowParams[lightIndex];
+
+    int shadowSliceIndex = shadowParams.w;
+    if (shadowSliceIndex < 0)
+        return 1.0;
+
+    float4 shadowCoord = mul(_AdditionalLightsWorldToShadow[shadowSliceIndex], float4(positionWS, 1.0));
+    half realtimeShadow = SampleShadowmap(TEXTURE2D_ARGS(_AdditionalLightsShadowmapTexture, sampler_LinearClampCompare), shadowCoord, shadowParams, true);
+    half shadowFade = GetAdditionalLightShadowFade(positionWS);
     return lerp(realtimeShadow, 1.0, shadowFade);
 }
 

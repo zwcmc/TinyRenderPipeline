@@ -19,25 +19,52 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     [Serializable]
     private struct MainLightShadow
     {
-        public float shadowDistance;
         public ShadowResolution shadowResolution;
 
-        [Range(1, 4)] public int cascadeCount;
-        [Range(0.0f, 1.0f)] public float cascadeRatio1, cascadeRatio2, cascadeRatio3;
-        [Range(0.0f, 1.0f)] public float cascadeBorder;
+        [Range(1, 4)]
+        public int cascadeCount;
+
+        [Range(0.0f, 1.0f)]
+        public float cascadeRatio1, cascadeRatio2, cascadeRatio3;
+    }
+
+    [Serializable]
+    private struct AdditionalLightsShadow
+    {
+        public ShadowResolution shadowResolution;
+    }
+
+    [Serializable]
+    private struct Shadows
+    {
+        public float shadowDistance;
+
+        [Range(0.0f, 1.0f)]
+        public float cascadeBorder;
+
+        public MainLightShadow mainLightShadow;
+
+        public AdditionalLightsShadow additionalLightsShadow;
     }
 
     [SerializeField] private bool m_UseSRPBatcher = true;
 
-    [SerializeField] private MainLightShadow m_MainLightShadow = new MainLightShadow
+    [SerializeField] private Shadows m_Shadows = new Shadows
     {
-        shadowDistance = 50.0f,
-        shadowResolution = ShadowResolution._2048,
-        cascadeCount = 4,
-        cascadeRatio1 = 0.1f,
-        cascadeRatio2 = 0.25f,
-        cascadeRatio3 = 0.5f,
-        cascadeBorder = 0.2f
+        shadowDistance = 150.0f,
+        cascadeBorder = 0.2f,
+        mainLightShadow = new MainLightShadow
+        {
+            shadowResolution = ShadowResolution._2048,
+            cascadeCount = 4,
+            cascadeRatio1 = 0.067f,
+            cascadeRatio2 = 0.2f,
+            cascadeRatio3 = 0.467f
+        },
+        additionalLightsShadow = new AdditionalLightsShadow
+        {
+            shadowResolution = ShadowResolution._2048
+        }
     };
 
     public bool useSRPBatcher
@@ -48,21 +75,27 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
 
     public float shadowDistance
     {
-        get { return m_MainLightShadow.shadowDistance; }
-        set { m_MainLightShadow.shadowDistance = Mathf.Max(0.0f, value); }
+        get { return m_Shadows.shadowDistance; }
+        set { m_Shadows.shadowDistance = Mathf.Max(0.0f, value); }
     }
 
     public int mainLightShadowmapResolution
     {
-        get { return (int)m_MainLightShadow.shadowResolution; }
-        set { m_MainLightShadow.shadowResolution = (ShadowResolution)value; }
+        get { return (int)m_Shadows.mainLightShadow.shadowResolution; }
+        set { m_Shadows.mainLightShadow.shadowResolution = (ShadowResolution)value; }
     }
 
-    public int cascadesCount => m_MainLightShadow.cascadeCount;
+    public int cascadesCount => m_Shadows.mainLightShadow.cascadeCount;
 
-    public Vector3 cascadesSplit => new Vector3(m_MainLightShadow.cascadeRatio1, m_MainLightShadow.cascadeRatio2, m_MainLightShadow.cascadeRatio3);
+    public Vector3 cascadesSplit => new Vector3(m_Shadows.mainLightShadow.cascadeRatio1, m_Shadows.mainLightShadow.cascadeRatio2, m_Shadows.mainLightShadow.cascadeRatio3);
 
-    public float cascadeBorder => m_MainLightShadow.cascadeBorder;
+    public float cascadeBorder => m_Shadows.cascadeBorder;
+
+    public int additionalLightsShadowmapResolution
+    {
+        get { return (int)m_Shadows.additionalLightsShadow.shadowResolution; }
+        set { m_Shadows.additionalLightsShadow.shadowResolution = (ShadowResolution)value; }
+    }
 
     public override Type pipelineType => renderPipeline.GetType();
 

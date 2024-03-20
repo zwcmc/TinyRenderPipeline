@@ -144,13 +144,28 @@ public class TinyRenderPipeline : RenderPipeline
 
         var visibleLights = cullResults.visibleLights;
         int mainLightIndex = GetMainLightIndex(cullResults.visibleLights);
+
         bool mainLightCastShadows = false;
+        bool additionalLightsCastShadows = false;
         if (asset.shadowDistance > 0.0f)
         {
             mainLightCastShadows = mainLightIndex != -1 &&
                                    visibleLights[mainLightIndex].light != null &&
                                    visibleLights[mainLightIndex].light.shadows != LightShadows.None;
 
+            for (int i = 0; i < visibleLights.Length; ++i)
+            {
+                if (i == mainLightIndex)
+                    continue;
+
+                VisibleLight vl = visibleLights[i];
+                Light light = vl.light;
+                if ((vl.lightType == LightType.Point || vl.lightType == LightType.Spot) && light != null && light.shadows != LightShadows.None)
+                {
+                    additionalLightsCastShadows = true;
+                    break;
+                }
+            }
         }
 
         renderingData.mainLightIndex = mainLightIndex;
@@ -160,11 +175,14 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.shadowData.mainLightShadowsEnabled = SystemInfo.supportsShadows && mainLightCastShadows;
         renderingData.shadowData.cascadesCount = asset.cascadesCount;
         renderingData.shadowData.cascadesSplit = asset.cascadesSplit;
-        renderingData.shadowData.mainLightShadowmapWidth = asset.mainLightShadowmapResolution;
-        renderingData.shadowData.mainLightShadowmapHeight = asset.mainLightShadowmapResolution;
+        renderingData.shadowData.mainLightShadowmapWidth = renderingData.shadowData.mainLightShadowmapHeight = asset.mainLightShadowmapResolution;
 
         renderingData.shadowData.maxShadowDistance = asset.shadowDistance;
         renderingData.shadowData.mainLightShadowCascadeBorder = asset.cascadeBorder;
+
+        renderingData.shadowData.additionalLightsShadowEnabled = SystemInfo.supportsShadows && additionalLightsCastShadows;
+        renderingData.shadowData.additionalLightsShadowmapWidth = renderingData.shadowData.additionalLightsShadowmapHeight = asset.additionalLightsShadowmapResolution;
+        renderingData.shadowData.additionalLightsShadowAtlasLayout = new AdditionalLightsShadowAtlasLayout(ref cullResults, mainLightIndex, renderingData.shadowData.additionalLightsShadowmapWidth);
 
         renderingData.perObjectData = GetPerObjectLightFlags(renderingData.additionalLightsCount);
     }

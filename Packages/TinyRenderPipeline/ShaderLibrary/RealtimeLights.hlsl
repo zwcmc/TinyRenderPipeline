@@ -52,6 +52,12 @@ int GetAdditionalLightsCount()
     return int(min(_AdditionalLightsCount.x, unity_LightData.y));
 }
 
+int GetPerObjectLightIndex(uint index)
+{
+    float4 tmp = unity_LightIndices[index / 4];
+    return int(tmp[index % 4]);
+}
+
 Light GetAdditionalPerObjectLight(int perObjectLightIndex, float3 positionWS)
 {
     float4 lightPositionWS = _AdditionalLightsPosition[perObjectLightIndex];
@@ -78,7 +84,10 @@ Light GetAdditionalPerObjectLight(int perObjectLightIndex, float3 positionWS)
 
 Light GetAdditionalLight(uint i, float3 positionWS)
 {
-    return GetAdditionalPerObjectLight(i, positionWS);
+    int lightIndex = GetPerObjectLightIndex(i);
+    Light light = GetAdditionalPerObjectLight(lightIndex, positionWS);
+    light.shadowAttenuation = AdditionalLightShadow(lightIndex, positionWS);
+    return light;
 }
 
 #endif
