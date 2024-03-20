@@ -128,8 +128,12 @@ public class MainLightShadowPass
 
             for (int i = 0; i < m_ShadowCasterCascadesCount; ++i)
             {
-                ShadowUtils.ExtractDirectionalLightMatrix(ref cullResults, shadowLightIndex, i, m_ShadowCasterCascadesCount, cascadesSplit,
+                bool success = ShadowUtils.ExtractDirectionalLightMatrix(ref cullResults, shadowLightIndex, i, m_ShadowCasterCascadesCount, cascadesSplit,
                     m_RenderTargetWidth, m_RenderTargetHeight, cascadeResolution, shadowLight.light.shadowNearPlane, out ShadowSliceData shadowCascadeData);
+
+                // This cascade does not need to be rendered this frame
+                if (!success)
+                    continue;
 
                 shadowDrawingSettings.splitData = shadowCascadeData.splitData;
 

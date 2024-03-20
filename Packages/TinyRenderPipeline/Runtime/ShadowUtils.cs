@@ -114,10 +114,10 @@ public static class ShadowUtils
         return resolution;
     }
 
-    public static void ExtractDirectionalLightMatrix(ref CullingResults cullResults, int shadowLightIndex, int cascadeIndex, int cascadeCount, Vector3 cascadesSplit,
+    public static bool ExtractDirectionalLightMatrix(ref CullingResults cullResults, int shadowLightIndex, int cascadeIndex, int cascadeCount, Vector3 cascadesSplit,
         int shadowmapWidth, int shadowmapHeight, int shadowResolution, float shadowNearPlane, out ShadowSliceData shadowCascadeData)
     {
-        cullResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(shadowLightIndex, cascadeIndex, cascadeCount,
+        bool success = cullResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(shadowLightIndex, cascadeIndex, cascadeCount,
             cascadesSplit, shadowResolution, shadowNearPlane, out shadowCascadeData.viewMatrix, out shadowCascadeData.projectionMatrix, out shadowCascadeData.splitData);
 
         shadowCascadeData.resolution = shadowResolution;
@@ -131,6 +131,8 @@ public static class ShadowUtils
 
         if (cascadeCount > 1)
             ApplySliceTransform(ref shadowCascadeData, shadowmapWidth, shadowmapHeight);
+
+        return success;
     }
 
     public static bool ExtractSpotLightMatrix(ref CullingResults cullResults, int shadowLightIndex, out ShadowSliceData shadowSliceData)
