@@ -58,6 +58,21 @@ public static class ShadowUtils
             // Depending on how big the light range is, it will be good enough with some tweaks in bias
             frustumSize = Mathf.Tan(shadowLight.spotAngle * 0.5f * Mathf.Deg2Rad) * shadowLight.range; // half-width (in world-space units) of shadow frustum's "far plane"
         }
+        else if (shadowLight.lightType == LightType.Point)
+        {
+            // [Copied from above case:]
+            // "For perspective projections, shadow texel size varies with depth
+            //  It will only work well if done in receiver side in the pixel shader. Currently UniversalRP
+            //  do bias on caster side in vertex shader. When we add shader quality tiers we can properly
+            //  handle this. For now, as a poor approximation we do a constant bias and compute the size of
+            //  the frustum as if it was orthogonal considering the size at mid point between near and far planes.
+            //  Depending on how big the light range is, it will be good enough with some tweaks in bias"
+            // Note: HDRP uses normalBias both in HDShadowUtils.CalcGuardAnglePerspective and HDShadowAlgorithms/EvalShadow_NormalBias (receiver bias)
+            float fovBias = GetPointLightShadowFrustumFovBiasInDegrees((int)shadowResolution);
+            // Note: the same fovBias was also used to compute ShadowUtils.ExtractPointLightMatrix
+            float cubeFaceAngle = 90 + fovBias;
+            frustumSize = Mathf.Tan(cubeFaceAngle * 0.5f * Mathf.Deg2Rad) * shadowLight.range; // half-width (in world-space units) of shadow frustum's "far plane"
+        }
         else
         {
             Debug.LogWarning("Only directional shadow casters are supported now.");
@@ -143,6 +158,23 @@ public static class ShadowUtils
         return success;
     }
 
+    public static bool ExtractPointLightMatrix(ref CullingResults cullResults, int shadowLightIndex, CubemapFace cubemapFace, float fovBias, out ShadowSliceData shadowSliceData)
+    {
+        shadowSliceData = default;
+        bool success = cullResults.ComputePointShadowMatricesAndCullingPrimitives(shadowLightIndex, cubemapFace, fovBias, out shadowSliceData.viewMatrix, out shadowSliceData.projectionMatrix, out shadowSliceData.splitData);
+
+        {
+            shadowSliceData.viewMatrix.m10 = -shadowSliceData.viewMatrix.m10;
+            shadowSliceData.viewMatrix.m11 = -shadowSliceData.viewMatrix.m11;
+            shadowSliceData.viewMatrix.m12 = -shadowSliceData.viewMatrix.m12;
+            shadowSliceData.viewMatrix.m13 = -shadowSliceData.viewMatrix.m13;
+        }
+
+        shadowSliceData.shadowTransform = GetShadowTransform(shadowSliceData.projectionMatrix, shadowSliceData.viewMatrix);
+
+        return success;
+    }
+
     public static void ShadowRTReAllocateIfNeeded(ref RTHandle handle, int width, int height, int bits, string name = "")
     {
         if (ShadowRTNeedsReAlloc(handle, width, height, bits, name))
@@ -192,6 +224,28 @@ public static class ShadowUtils
 
         // Apply shadow slice scale and offset
         shadowCascadeData.shadowTransform = sliceTransform * shadowCascadeData.shadowTransform;
+    }
+
+    public static float GetPointLightShadowFrustumFovBiasInDegrees(int shadowSliceResolution)
+    {
+        float fovBias = 4.00f;
+
+        // Empirical value found to remove gaps between point light shadow faces in test scenes.
+        // We can see that the guard angle is roughly proportional to the inverse of resolution https://docs.google.com/spreadsheets/d/1QrIZJn18LxVKq2-K1XS4EFRZcZdZOJTTKKhDN8Z1b_s
+        if (shadowSliceResolution <= 32)
+            fovBias = 18.55f;
+        else if (shadowSliceResolution <= 64)
+            fovBias = 8.63f;
+        else if (shadowSliceResolution <= 128)
+            fovBias = 4.13f;
+        else if (shadowSliceResolution <= 256)
+            fovBias = 2.03f;
+        else if (shadowSliceResolution <= 512)
+            fovBias = 1.00f;
+        else if (shadowSliceResolution <= 1024)
+            fovBias = 0.50f;
+
+        return fovBias;
     }
 
     private static RenderTextureDescriptor GetTemporaryShadowTextureDescriptor(int width, int height, int bits)

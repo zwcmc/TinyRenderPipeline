@@ -86,7 +86,7 @@ Light GetAdditionalLight(uint i, float3 positionWS)
 {
     int lightIndex = GetPerObjectLightIndex(i);
     Light light = GetAdditionalPerObjectLight(lightIndex, positionWS);
-    light.shadowAttenuation = AdditionalLightShadow(lightIndex, positionWS);
+    light.shadowAttenuation = AdditionalLightShadow(lightIndex, positionWS, light.direction);
     return light;
 }
 

@@ -98,13 +98,22 @@ half GetAdditionalLightShadowFade(float3 positionWS)
     return half(fade);
 }
 
-half AdditionalLightShadow(int lightIndex, float3 positionWS)
+half AdditionalLightShadow(int lightIndex, float3 positionWS, half3 lightDirection)
 {
     half4 shadowParams = _AdditionalShadowParams[lightIndex];
 
     int shadowSliceIndex = shadowParams.w;
     if (shadowSliceIndex < 0)
         return 1.0;
+
+    half isPointLight = shadowParams.z;
+
+    UNITY_BRANCH
+    if (isPointLight)
+    {
+        float cubemapFaceId = CubeMapFaceID(-lightDirection);
+        shadowSliceIndex += cubemapFaceId;
+    }
 
     float4 shadowCoord = mul(_AdditionalLightsWorldToShadow[shadowSliceIndex], float4(positionWS, 1.0));
     half realtimeShadow = SampleShadowmap(TEXTURE2D_ARGS(_AdditionalLightsShadowmapTexture, sampler_LinearClampCompare), shadowCoord, shadowParams, true);

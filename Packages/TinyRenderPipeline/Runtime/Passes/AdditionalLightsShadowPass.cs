@@ -17,7 +17,7 @@ public class AdditionalLightsShadowPass
     // Magic numbers used to identify light type when rendering shadow receiver.
     // Keep in sync with AdditionalLightRealtimeShadow code in Shadows.hlsl
     private const float LightTypeIdentifierInShadowParams_Spot = 0;
-    // private const float LightTypeIdentifierInShadowParams_Point = 1;
+    private const float LightTypeIdentifierInShadowParams_Point = 1;
 
     private float m_CascadeBorder;
     private float m_MaxShadowDistanceSq;
@@ -84,6 +84,8 @@ public class AdditionalLightsShadowPass
         int totalShadowSliceCount = atlasLayout.GetTotalShadowSlicesCount();
         int perShadowSliceResolution = atlasLayout.GetShadowSliceResolution();
         int shadowmapSplitCount = m_RenderTargetWidth / perShadowSliceResolution;
+
+        float fovBias = ShadowUtils.GetPointLightShadowFrustumFovBiasInDegrees(perShadowSliceResolution);
 
         if (m_AdditionalLightsShadowSlices == null || m_AdditionalLightsShadowSlices.Length < totalShadowSliceCount)
             m_AdditionalLightsShadowSlices = new ShadowSliceData[totalShadowSliceCount];
@@ -159,6 +161,31 @@ public class AdditionalLightsShadowPass
 
                                 Vector4 shadowParams = new Vector4(light.shadowStrength, 0, LightTypeIdentifierInShadowParams_Spot, perLightFirstShadowSliceIndex);
                                 m_AdditionalLightIndexToShadowParams[additionalLightIndex] = shadowParams;
+                                isValidShadowCastingLight = true;
+                            }
+                        }
+                        else if (lightType == LightType.Point)
+                        {
+                            bool success = ShadowUtils.ExtractPointLightMatrix(ref cullResults, visibleLightIndex, (CubemapFace)perLightShadowSlice, fovBias, out ShadowSliceData shadowSliceData);
+                            if (success)
+                            {
+                                m_ShadowSliceToAdditionalLightIndex.Add(additionalLightIndex);
+
+                                m_AdditionalLightsShadowSlices[globalShadowSliceIndex].viewMatrix = shadowSliceData.viewMatrix;
+                                m_AdditionalLightsShadowSlices[globalShadowSliceIndex].projectionMatrix = shadowSliceData.projectionMatrix;
+                                m_AdditionalLightsShadowSlices[globalShadowSliceIndex].splitData = shadowSliceData.splitData;
+
+                                m_AdditionalLightsShadowSlices[globalShadowSliceIndex].offsetX = shadowSliceData.offsetX = (globalShadowSliceIndex % shadowmapSplitCount) * perShadowSliceResolution;
+                                m_AdditionalLightsShadowSlices[globalShadowSliceIndex].offsetY = shadowSliceData.offsetY = (globalShadowSliceIndex / shadowmapSplitCount) * perShadowSliceResolution;
+                                m_AdditionalLightsShadowSlices[globalShadowSliceIndex].resolution = shadowSliceData.resolution = perShadowSliceResolution;
+                                ShadowUtils.ApplySliceTransform(ref shadowSliceData, m_RenderTargetWidth, m_RenderTargetHeight);
+
+                                var light = vl.light;
+                                m_AdditionalLightShadowSliceIndexTo_WorldShadowMatrix[globalShadowSliceIndex] = shadowSliceData.shadowTransform;
+
+                                Vector4 shadowParams = new Vector4(light.shadowStrength, 0, LightTypeIdentifierInShadowParams_Point, perLightFirstShadowSliceIndex);
+                                m_AdditionalLightIndexToShadowParams[additionalLightIndex] = shadowParams;
+
                                 isValidShadowCastingLight = true;
                             }
                         }
