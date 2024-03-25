@@ -17,7 +17,6 @@ public struct ShadowData
     public bool additionalLightsShadowEnabled;
     public int additionalLightsShadowmapWidth;
     public int additionalLightsShadowmapHeight;
-    public AdditionalLightsShadowAtlasLayout additionalLightsShadowAtlasLayout;
 }
 
 public struct RenderingData

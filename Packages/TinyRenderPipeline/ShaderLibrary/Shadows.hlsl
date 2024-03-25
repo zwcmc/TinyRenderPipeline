@@ -106,6 +106,7 @@ half AdditionalLightShadow(int lightIndex, float3 positionWS, half3 lightDirecti
     if (shadowSliceIndex < 0)
         return 1.0;
 
+    // 0: spot light, 1: point light
     half isPointLight = shadowParams.z;
 
     UNITY_BRANCH

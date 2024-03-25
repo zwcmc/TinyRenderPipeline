@@ -182,7 +182,6 @@ public class TinyRenderPipeline : RenderPipeline
 
         renderingData.shadowData.additionalLightsShadowEnabled = SystemInfo.supportsShadows && additionalLightsCastShadows;
         renderingData.shadowData.additionalLightsShadowmapWidth = renderingData.shadowData.additionalLightsShadowmapHeight = asset.additionalLightsShadowmapResolution;
-        renderingData.shadowData.additionalLightsShadowAtlasLayout = new AdditionalLightsShadowAtlasLayout(ref cullResults, mainLightIndex, renderingData.shadowData.additionalLightsShadowmapWidth);
 
         renderingData.perObjectData = GetPerObjectLightFlags(renderingData.additionalLightsCount);
     }

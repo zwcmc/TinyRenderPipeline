@@ -7,8 +7,9 @@ public class AdditionalLightsShadowAtlasLayout
     private int m_TotalShadowSlicesCount;
     private int m_ShadowSliceResolution;
 
-    public AdditionalLightsShadowAtlasLayout(ref CullingResults cullResults, int mainLightIndex, int atlasSize)
+    public AdditionalLightsShadowAtlasLayout(ref RenderingData renderingData, int atlasSize)
     {
+        ref var cullResults = ref renderingData.cullResults;
         NativeArray<VisibleLight> visibleLights = cullResults.visibleLights;
 
         int maxVisibleAdditionalLightsCount = TinyRenderPipeline.maxVisibleAdditionalLights;
@@ -20,10 +21,10 @@ public class AdditionalLightsShadowAtlasLayout
             if (additionalLightsCount >= maxVisibleAdditionalLightsCount)
                 break;
 
-            if (visibleLightIndex == mainLightIndex)
+            if (visibleLightIndex == renderingData.mainLightIndex)
                 continue;
 
-            if (ShadowUtils.IsValidShadowCastingLight(ref cullResults, mainLightIndex, visibleLightIndex))
+            if (ShadowUtils.IsValidShadowCastingLight(ref renderingData, visibleLightIndex))
             {
                 VisibleLight vl = visibleLights[visibleLightIndex];
 

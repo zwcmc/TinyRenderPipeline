@@ -75,7 +75,7 @@ public static class ShadowUtils
         }
         else
         {
-            Debug.LogWarning("Only directional shadow casters are supported now.");
+            Debug.LogWarning("Only point, spot and directional shadow casters are supported.");
             frustumSize = 0.0f;
         }
 
@@ -163,6 +163,12 @@ public static class ShadowUtils
         shadowSliceData = default;
         bool success = cullResults.ComputePointShadowMatricesAndCullingPrimitives(shadowLightIndex, cubemapFace, fovBias, out shadowSliceData.viewMatrix, out shadowSliceData.projectionMatrix, out shadowSliceData.splitData);
 
+        // In native API CullingResults.ComputeSpotShadowMatricesAndCullingPrimitives there is code that inverts the 3rd component of shadow-casting spot light's "world-to-local" matrix
+        // (the same transformation has also always been used in the Built-In Render Pipeline)
+        // However native API CullingResults.ComputePointShadowMatricesAndCullingPrimitives does not contain this transformation.
+        // As a result, the view matrices returned for a point light shadow face, and for a spot light with same direction as that face, have opposite 3rd component.
+        // This causes normalBias to be incorrectly applied to shadow caster vertices during the point light shadow pass.
+        // To counter this effect, we invert the point light shadow view matrix component here:
         {
             shadowSliceData.viewMatrix.m10 = -shadowSliceData.viewMatrix.m10;
             shadowSliceData.viewMatrix.m11 = -shadowSliceData.viewMatrix.m11;
@@ -197,11 +203,12 @@ public static class ShadowUtils
         }
     }
 
-    public static bool IsValidShadowCastingLight(ref CullingResults cullResults, int mainLightIndex, int visibleLightIndex)
+    public static bool IsValidShadowCastingLight(ref RenderingData renderingData, int visibleLightIndex)
     {
-        if (visibleLightIndex == mainLightIndex)
+        if (visibleLightIndex == renderingData.mainLightIndex)
             return false;
 
+        ref var cullResults = ref renderingData.cullResults;
         VisibleLight vl = cullResults.visibleLights[visibleLightIndex];
 
         if (vl.lightType == LightType.Directional)
@@ -228,24 +235,32 @@ public static class ShadowUtils
 
     public static float GetPointLightShadowFrustumFovBiasInDegrees(int shadowSliceResolution)
     {
-        float fovBias = 4.00f;
+        float fudgeFactor = 1.5f;
+        return fudgeFactor * CalcGuardAngle(90, 1, shadowSliceResolution);
+    }
 
-        // Empirical value found to remove gaps between point light shadow faces in test scenes.
-        // We can see that the guard angle is roughly proportional to the inverse of resolution https://docs.google.com/spreadsheets/d/1QrIZJn18LxVKq2-K1XS4EFRZcZdZOJTTKKhDN8Z1b_s
-        if (shadowSliceResolution <= 32)
-            fovBias = 18.55f;
-        else if (shadowSliceResolution <= 64)
-            fovBias = 8.63f;
-        else if (shadowSliceResolution <= 128)
-            fovBias = 4.13f;
-        else if (shadowSliceResolution <= 256)
-            fovBias = 2.03f;
-        else if (shadowSliceResolution <= 512)
-            fovBias = 1.00f;
-        else if (shadowSliceResolution <= 1024)
-            fovBias = 0.50f;
+    // Returns the guard angle that must be added to a frustum angle covering a projection map of resolution sliceResolutionInTexels,
+    // in order to also cover a guard band of size guardBandSizeInTexels around the projection map.
+    // Formula illustrated in https://i.ibb.co/wpW5Mnf/Calc-Guard-Angle.png
+    private static float CalcGuardAngle(float frustumAngleInDegrees, float guardBandSizeInTexels, float sliceResolutionInTexels)
+    {
+        float frustumAngle = frustumAngleInDegrees * Mathf.Deg2Rad;
+        float halfFrustumAngle = frustumAngle / 2;
+        float tanHalfFrustumAngle = Mathf.Tan(halfFrustumAngle);
 
-        return fovBias;
+        float halfSliceResolution = sliceResolutionInTexels / 2;
+        float halfGuardBand = guardBandSizeInTexels / 2;
+        float factorBetweenAngleTangents = 1 + halfGuardBand / halfSliceResolution;
+
+        float tanHalfGuardAnglePlusHalfFrustumAngle = tanHalfFrustumAngle * factorBetweenAngleTangents;
+
+        float halfGuardAnglePlusHalfFrustumAngle = Mathf.Atan(tanHalfGuardAnglePlusHalfFrustumAngle);
+        float halfGuardAngleInRadian = halfGuardAnglePlusHalfFrustumAngle - halfFrustumAngle;
+
+        float guardAngleInRadian = 2 * halfGuardAngleInRadian;
+        float guardAngleInDegree = guardAngleInRadian * Mathf.Rad2Deg;
+
+        return guardAngleInDegree;
     }
 
     private static RenderTextureDescriptor GetTemporaryShadowTextureDescriptor(int width, int height, int bits)
