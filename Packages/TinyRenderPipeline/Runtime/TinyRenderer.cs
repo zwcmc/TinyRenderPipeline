@@ -99,7 +99,7 @@ public partial class TinyRenderer
             // When drawing to an intermediate frame buffer we render to a texture filled with arbitrary data.
             // To prevent random results, when post-processing enabled always clear depth and color.
             // ----------------
-            // Dont understand why doing this?
+            // Dont understand why doing this now?
             // ----------------
             if (clearFlag > CameraClearFlags.Color)
                 clearFlag = CameraClearFlags.Color;

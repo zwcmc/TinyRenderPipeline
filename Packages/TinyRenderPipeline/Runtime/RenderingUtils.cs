@@ -9,7 +9,8 @@ public static class RenderingUtils
     private static List<ShaderTagId> m_TinyRPShaderTagIds = new List<ShaderTagId>
     {
         new ShaderTagId("TinyRPUnlit"),
-        new ShaderTagId("TinyRPLit")
+        new ShaderTagId("TinyRPLit"),
+        new ShaderTagId("SRPDefaultUnlit")
     };
 
     private static void AddStaleResourceToPoolOrRelease(TextureDesc desc, RTHandle handle)
@@ -27,7 +28,9 @@ public static class RenderingUtils
         DrawingSettings settings = new DrawingSettings(m_TinyRPShaderTagIds[0], sortingSettings)
         {
             perObjectData = renderingData.perObjectData,
+            // Disable dynamic batching
             enableDynamicBatching = false,
+            // Disable instancing
             enableInstancing = false
         };
 

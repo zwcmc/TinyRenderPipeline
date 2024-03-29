@@ -92,7 +92,10 @@ public class TinyRenderPipeline : RenderPipeline
             // Setup culling parameters
             SetupCullingParameters(ref cullingParameters, ref camera);
 
-            // Render UI in Scene view.
+
+            // Emit scene/game view UI. The main game camera UI is always rendered, so this needs to be handled only for different camera types
+            if (camera.cameraType == CameraType.Reflection || camera.cameraType == CameraType.Preview)
+                ScriptableRenderContext.EmitGeometryForCamera(camera);
 #if UNITY_EDITOR
             if (camera.cameraType == CameraType.SceneView)
                 ScriptableRenderContext.EmitWorldGeometryForSceneView(camera);
