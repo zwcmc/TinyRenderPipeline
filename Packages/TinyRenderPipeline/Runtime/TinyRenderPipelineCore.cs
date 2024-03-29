@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -23,7 +22,10 @@ public struct RenderingData
 {
     internal ScriptableRenderContext renderContext;
     internal CommandBuffer commandBuffer;
+
     public Camera camera;
+    public RenderTextureDescriptor cameraTargetDescriptor;
+
     public CullingResults cullResults;
 
     public int mainLightIndex;

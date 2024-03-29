@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using Unity.Collections;
 using UnityEngine;
@@ -12,6 +11,8 @@ public class TinyRenderPipeline : RenderPipeline
 
     private readonly TinyRenderPipelineAsset pipelineAsset;
     private TinyRenderer m_TinyRenderer;
+
+    public static RTHandleResourcePool s_RTHandlePool;
 
     private static class Profiling
     {
@@ -42,7 +43,9 @@ public class TinyRenderPipeline : RenderPipeline
         // Light intensity in linear space
         GraphicsSettings.lightsUseLinearIntensity = true;
 
-        m_TinyRenderer = new TinyRenderer();
+        m_TinyRenderer = new TinyRenderer(pipelineAsset.postProcessingSettings);
+
+        s_RTHandlePool = new RTHandleResourcePool();
     }
 
     protected override void Render(ScriptableRenderContext context, Camera[] cameras)
@@ -57,6 +60,8 @@ public class TinyRenderPipeline : RenderPipeline
             var camera = cameras[i];
             RenderSingleCamera(context, camera);
         }
+
+        s_RTHandlePool.PurgeUnusedResources(Time.frameCount);
     }
 
     protected override void Dispose(bool disposing)
@@ -64,6 +69,9 @@ public class TinyRenderPipeline : RenderPipeline
         base.Dispose(disposing);
 
         m_TinyRenderer?.Dispose(disposing);
+
+        s_RTHandlePool.Cleanup();
+        s_RTHandlePool = null;
     }
 
     private void RenderSingleCamera(ScriptableRenderContext context, Camera camera)
@@ -140,6 +148,7 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.renderContext = context;
         renderingData.commandBuffer = cmd;
         renderingData.camera = camera;
+        renderingData.cameraTargetDescriptor = RenderingUtils.CreateRenderTextureDescriptor(renderingData.camera);
         renderingData.cullResults = cullResults;
 
         var visibleLights = cullResults.visibleLights;

@@ -4,7 +4,7 @@
 struct VertexPositionInputs
 {
     float3 positionWS; // World space position
-    float3 positionCS; // Homogeneous clip space position
+    float4 positionCS; // Homogeneous clip space position
 };
 
 struct VertexNormalInputs
@@ -18,7 +18,8 @@ VertexPositionInputs GetVertexPositionInputs(float3 positionOS)
     VertexPositionInputs input = (VertexPositionInputs)0;
 
     input.positionWS = TransformObjectToWorld(positionOS);
-    input.positionCS = TransformWorldToHClip(input.positionWS);
+
+    input.positionCS = TransformWorldToHClip(input.positionWS.xyz);
 
     return input;
 }

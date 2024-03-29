@@ -61,9 +61,9 @@ int GetPerObjectLightIndex(uint index)
 Light GetAdditionalPerObjectLight(int perObjectLightIndex, float3 positionWS)
 {
     float4 lightPositionWS = _AdditionalLightsPosition[perObjectLightIndex];
-    half3 color = _AdditionalLightsColor[perObjectLightIndex];
+    half3 color = _AdditionalLightsColor[perObjectLightIndex].rgb;
     float4 distanceAndSpotAttenuation = _AdditionalLightsAttenuation[perObjectLightIndex];
-    half4 spotDirection = _AdditionalLightsSpotDir[perObjectLightIndex];
+    half3 spotDirection = _AdditionalLightsSpotDir[perObjectLightIndex].xyz;
 
     // Directional lights store direction in lightPosition.xyz and have .w set to 0.0.
     // This way the following code will work for both directional and punctual lights.

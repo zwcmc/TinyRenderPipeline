@@ -5,17 +5,6 @@ using UnityEngine.Rendering;
 [CreateAssetMenu(menuName = "Rendering/Tiny Render Pipeline Asset")]
 public class TinyRenderPipelineAsset : RenderPipelineAsset
 {
-    public enum ShadowResolution
-    {
-        _256 = 256,
-        _512 = 512,
-        _1024 = 1024,
-        _2048 = 2048,
-        _4096 = 4096
-    }
-
-    public TinyRenderPipeline renderPipeline;
-
     [Serializable]
     private struct MainLightShadow
     {
@@ -47,9 +36,11 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
         public AdditionalLightsShadow additionalLightsShadow;
     }
 
-    [SerializeField] private bool m_UseSRPBatcher = true;
+    [SerializeField]
+    private bool m_UseSRPBatcher = true;
 
-    [SerializeField] private Shadows m_Shadows = new Shadows
+    [SerializeField]
+    private Shadows m_Shadows = new Shadows
     {
         shadowDistance = 150.0f,
         cascadeBorder = 0.2f,
@@ -66,6 +57,20 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
             shadowResolution = ShadowResolution._2048
         }
     };
+
+    [SerializeField]
+    private PostProcessingSettings m_PostProcessingSettings = default;
+
+    public enum ShadowResolution
+    {
+        _256 = 256,
+        _512 = 512,
+        _1024 = 1024,
+        _2048 = 2048,
+        _4096 = 4096
+    }
+
+    public TinyRenderPipeline renderPipeline;
 
     public bool useSRPBatcher
     {
@@ -96,6 +101,8 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
         get { return (int)m_Shadows.additionalLightsShadow.shadowResolution; }
         set { m_Shadows.additionalLightsShadow.shadowResolution = (ShadowResolution)value; }
     }
+
+    public PostProcessingSettings postProcessingSettings => m_PostProcessingSettings;
 
     public override Type pipelineType => renderPipeline.GetType();
 

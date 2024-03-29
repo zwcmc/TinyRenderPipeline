@@ -181,9 +181,9 @@ public static class ShadowUtils
         return success;
     }
 
-    public static void ShadowRTReAllocateIfNeeded(ref RTHandle handle, int width, int height, int bits, string name = "")
+    public static void ShadowRTReAllocateIfNeeded(ref RTHandle handle, int width, int height, int bits, int anisoLevel = 1, float mipMapBias = 0, string name = "")
     {
-        if (ShadowRTNeedsReAlloc(handle, width, height, bits, name))
+        if (ShadowRTNeedsReAlloc(handle, width, height, bits, anisoLevel, mipMapBias, name))
         {
             handle?.Release();
             handle = AllocShadowRT(width, height, bits, name);
@@ -271,13 +271,13 @@ public static class ShadowUtils
         return rtd;
     }
 
-    private static bool ShadowRTNeedsReAlloc(RTHandle handle, int width, int height, int bits, string name)
+    private static bool ShadowRTNeedsReAlloc(RTHandle handle, int width, int height, int bits, int anisoLevel, float mipMapBias, string name)
     {
         if (handle == null || handle.rt == null)
             return true;
 
         var descriptor = GetTemporaryShadowTextureDescriptor(width, height, bits);
-        TextureDesc shadowDesc = RenderingUtils.CreateTextureDesc(descriptor, TextureSizeMode.Explicit, FilterMode.Bilinear, TextureWrapMode.Clamp, name);
+        TextureDesc shadowDesc = RTHandleResourcePool.CreateTextureDesc(descriptor, TextureSizeMode.Explicit, anisoLevel, mipMapBias, FilterMode.Bilinear, TextureWrapMode.Clamp, name);
         return RenderingUtils.RTHandleNeedsReAlloc(handle, shadowDesc, false);
     }
 

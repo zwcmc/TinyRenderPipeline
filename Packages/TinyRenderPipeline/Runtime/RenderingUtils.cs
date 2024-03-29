@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
@@ -10,6 +11,14 @@ public static class RenderingUtils
         new ShaderTagId("TinyRPUnlit"),
         new ShaderTagId("TinyRPLit")
     };
+
+    private static void AddStaleResourceToPoolOrRelease(TextureDesc desc, RTHandle handle)
+    {
+        if (!TinyRenderPipeline.s_RTHandlePool.AddResourceToPool(desc, handle, Time.frameCount))
+        {
+            RTHandles.Release(handle);
+        }
+    }
 
     public static DrawingSettings CreateDrawingSettings(ref RenderingData renderingData, SortingCriteria sortingCriteria)
     {
@@ -28,59 +37,144 @@ public static class RenderingUtils
         return settings;
     }
 
-    public static TextureDesc CreateTextureDesc(RenderTextureDescriptor desc, TextureSizeMode textureSizeMode = TextureSizeMode.Explicit,
-        FilterMode filterMode = FilterMode.Point, TextureWrapMode wrapMode = TextureWrapMode.Clamp, string name = "")
+    public static RenderTextureDescriptor GetCompatibleDescriptor(RenderTextureDescriptor desc, int width, int height,
+        GraphicsFormat format, DepthBits depthBufferBits = DepthBits.None)
     {
-        TextureDesc rgDesc = new TextureDesc(desc.width, desc.height);
-        rgDesc.sizeMode = textureSizeMode;
-        rgDesc.slices = desc.volumeDepth;
-        rgDesc.depthBufferBits = (DepthBits)desc.depthBufferBits;
-        rgDesc.colorFormat = desc.graphicsFormat;
-        rgDesc.filterMode = filterMode;
-        rgDesc.wrapMode = wrapMode;
-        rgDesc.dimension = desc.dimension;
-        rgDesc.enableRandomWrite = desc.enableRandomWrite;
-        rgDesc.useMipMap = desc.useMipMap;
-        rgDesc.autoGenerateMips = desc.autoGenerateMips;
-        rgDesc.isShadowMap = desc.shadowSamplingMode != ShadowSamplingMode.None;
-        rgDesc.anisoLevel = 1;
-        rgDesc.mipMapBias = 0;
-        rgDesc.msaaSamples = (MSAASamples)desc.msaaSamples;
-        rgDesc.bindTextureMS = desc.bindMS;
-        rgDesc.useDynamicScale = desc.useDynamicScale;
-        rgDesc.memoryless = RenderTextureMemoryless.None;
-        rgDesc.vrUsage = VRTextureUsage.None;
-        rgDesc.name = name;
-        return rgDesc;
+        desc.depthBufferBits = (int)depthBufferBits;
+        desc.msaaSamples = 1;
+        desc.width = width;
+        desc.height = height;
+        desc.graphicsFormat = format;
+        return desc;
+    }
+
+    public static RenderTextureDescriptor CreateRenderTextureDescriptor(Camera camera, float renderScale = 1.0f, bool isHdrEnabled = false)
+    {
+        int scaledWidth = (int)((float)camera.pixelWidth * renderScale);
+        int scaledHeight = (int)((float)camera.pixelHeight * renderScale);
+
+        RenderTextureDescriptor desc;
+        if (camera.targetTexture == null)
+        {
+            desc = new RenderTextureDescriptor(camera.pixelWidth, camera.pixelHeight);
+            desc.width = scaledWidth;
+            desc.height = scaledHeight;
+            desc.graphicsFormat = isHdrEnabled ? SystemInfo.GetGraphicsFormat(DefaultFormat.HDR) : SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
+            desc.depthBufferBits = 32;
+            desc.msaaSamples = 1;
+            desc.sRGB = (QualitySettings.activeColorSpace == ColorSpace.Linear);
+        }
+        else
+        {
+            desc = camera.targetTexture.descriptor;
+            desc.width = scaledWidth;
+            desc.height = scaledHeight;
+
+            if (camera.cameraType == CameraType.SceneView && !isHdrEnabled)
+            {
+                desc.graphicsFormat = SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
+            }
+        }
+
+        // Make sure dimension is non zero
+        desc.width = Mathf.Max(1, desc.width);
+        desc.height = Mathf.Max(1, desc.height);
+
+        desc.useMipMap = false;
+        desc.autoGenerateMips = false;
+
+        return desc;
     }
 
     public static bool RTHandleNeedsReAlloc(RTHandle handle, in TextureDesc descriptor, bool scaled)
     {
         if (handle == null || handle.rt == null)
+        {
             return true;
+        }
 
         if (handle.useScaling != scaled)
+        {
             return true;
+        }
 
         if (!scaled && (handle.rt.width != descriptor.width || handle.rt.height != descriptor.height))
+        {
             return true;
+        }
 
-        return
-            (DepthBits)handle.rt.descriptor.depthBufferBits != descriptor.depthBufferBits ||
-            (handle.rt.descriptor.depthBufferBits == (int)DepthBits.None && !descriptor.isShadowMap &&
-            handle.rt.descriptor.graphicsFormat != descriptor.colorFormat) ||
-            handle.rt.descriptor.dimension != descriptor.dimension ||
-            handle.rt.descriptor.enableRandomWrite != descriptor.enableRandomWrite ||
-            handle.rt.descriptor.useMipMap != descriptor.useMipMap ||
-            handle.rt.descriptor.autoGenerateMips != descriptor.autoGenerateMips ||
-            (MSAASamples)handle.rt.descriptor.msaaSamples != descriptor.msaaSamples ||
-            handle.rt.descriptor.bindMS != descriptor.bindTextureMS ||
-            handle.rt.descriptor.useDynamicScale != descriptor.useDynamicScale ||
-            handle.rt.descriptor.memoryless != descriptor.memoryless ||
-            handle.rt.filterMode != descriptor.filterMode ||
-            handle.rt.wrapMode != descriptor.wrapMode ||
-            handle.rt.anisoLevel != descriptor.anisoLevel ||
-            handle.rt.mipMapBias != descriptor.mipMapBias ||
-            handle.name != descriptor.name;
+        return (DepthBits)handle.rt.descriptor.depthBufferBits != descriptor.depthBufferBits ||
+               (handle.rt.descriptor.depthBufferBits == (int)DepthBits.None && !descriptor.isShadowMap &&
+                handle.rt.descriptor.graphicsFormat != descriptor.colorFormat) ||
+               handle.rt.descriptor.dimension != descriptor.dimension ||
+               handle.rt.descriptor.enableRandomWrite != descriptor.enableRandomWrite ||
+               handle.rt.descriptor.useMipMap != descriptor.useMipMap ||
+               handle.rt.descriptor.autoGenerateMips != descriptor.autoGenerateMips ||
+               (MSAASamples)handle.rt.descriptor.msaaSamples != descriptor.msaaSamples ||
+               handle.rt.descriptor.bindMS != descriptor.bindTextureMS ||
+               handle.rt.descriptor.useDynamicScale != descriptor.useDynamicScale ||
+               handle.rt.descriptor.memoryless != descriptor.memoryless ||
+               handle.rt.filterMode != descriptor.filterMode ||
+               handle.rt.wrapMode != descriptor.wrapMode ||
+               handle.rt.anisoLevel != descriptor.anisoLevel ||
+               handle.rt.mipMapBias != descriptor.mipMapBias ||
+               handle.name != descriptor.name;
+    }
+
+    public static bool ReAllocateIfNeeded(
+        ref RTHandle handle,
+        in RenderTextureDescriptor descriptor,
+        FilterMode filterMode = FilterMode.Point,
+        TextureWrapMode wrapMode = TextureWrapMode.Repeat,
+        bool isShadowMap = false,
+        int anisoLevel = 1,
+        float mipMapBias = 0,
+        string name = "")
+    {
+        TextureDesc requestRTDesc = RTHandleResourcePool.CreateTextureDesc(descriptor, TextureSizeMode.Explicit, anisoLevel, 0, filterMode, wrapMode, name);
+        if (RTHandleNeedsReAlloc(handle, requestRTDesc, false))
+        {
+            if (handle != null && handle.rt != null)
+            {
+                TextureDesc currentRTDesc = RTHandleResourcePool.CreateTextureDesc(handle.rt.descriptor, TextureSizeMode.Explicit, handle.rt.anisoLevel, handle.rt.mipMapBias, handle.rt.filterMode, handle.rt.wrapMode, handle.name);
+                AddStaleResourceToPoolOrRelease(currentRTDesc, handle);
+            }
+
+            if (TinyRenderPipeline.s_RTHandlePool.TryGetResource(requestRTDesc, out handle))
+            {
+                return true;
+            }
+            else
+            {
+                handle = RTHandles.Alloc(descriptor, filterMode, wrapMode, isShadowMap, anisoLevel, mipMapBias, name);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static void FinalBlit(
+        CommandBuffer cmd,
+        Camera camera,
+        RTHandle source,
+        RTHandle destination,
+        RenderBufferLoadAction loadAction,
+        RenderBufferStoreAction storeAction,
+        Material material, int passIndex)
+    {
+        var cameraType = camera.cameraType;
+        bool isRenderToBackBufferTarget = cameraType != CameraType.SceneView;
+
+        // We y-flip if
+        // 1) we are blitting from render texture to back buffer(UV starts at bottom) and
+        // 2) renderTexture starts UV at top
+        bool yFlip = isRenderToBackBufferTarget && camera.targetTexture == null && SystemInfo.graphicsUVStartsAtTop;
+        Vector4 scaleBias = yFlip ? new Vector4(1, -1, 0, 1) : new Vector4(1, 1, 0, 0);
+
+        CoreUtils.SetRenderTarget(cmd, destination, loadAction, storeAction, ClearFlag.None, Color.clear);
+        if (isRenderToBackBufferTarget)
+            cmd.SetViewport(camera.pixelRect);
+
+        Blitter.BlitTexture(cmd, source, scaleBias, material, passIndex);
     }
 }
