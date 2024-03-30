@@ -22,9 +22,11 @@ public partial class TinyRenderer
     private AdditionalLightsShadowPass m_AdditionalLightsShadowPass;
     private PostProcessingPass m_PostProcessingPass;
 
-    private RTHandle m_CameraColorAttachmentHandle;
-    private RTHandle m_CameraDepthAttachmentHandle;
+    private RenderTargetBufferSystem m_ColorBufferSystem;
 
+    private RTHandle m_ActiveCameraColorAttachment;
+    private RTHandle m_ActiveCameraDepthAttachment;
+    private RTHandle m_CameraDepthAttachment;
     private RTHandle m_TargetColorHandle;
     private RTHandle m_TargetDepthHandle;
 
@@ -43,6 +45,8 @@ public partial class TinyRenderer
         m_MainLightShadowPass = new MainLightShadowPass();
         m_AdditionalLightsShadowPass = new AdditionalLightsShadowPass();
         m_PostProcessingPass = new PostProcessingPass();
+
+        m_ColorBufferSystem = new RenderTargetBufferSystem("_CameraColorAttachment");
     }
 
     public void Execute(ref RenderingData renderingData)
@@ -66,60 +70,66 @@ public partial class TinyRenderer
             m_AdditionalLightsShadowPass.Render(context, ref renderingData);
         }
 
+        var cameraTargetDescriptor = renderingData.cameraTargetDescriptor;
+        var colorDescriptor = cameraTargetDescriptor;
+        colorDescriptor.useMipMap = false;
+        colorDescriptor.autoGenerateMips = false;
+        colorDescriptor.depthBufferBits = (int)DepthBits.None;
+        m_ColorBufferSystem.SetCameraSettings(colorDescriptor, FilterMode.Bilinear);
+
+        RenderTargetIdentifier targetId = BuiltinRenderTextureType.CameraTarget;
+        if (m_TargetColorHandle == null)
+        {
+            m_TargetColorHandle = RTHandles.Alloc(targetId);
+        }
+        else if (m_TargetColorHandle.nameID != targetId)
+        {
+            RTHandleStaticHelpers.SetRTHandleUserManagedWrapper(ref m_TargetColorHandle, targetId);
+        }
+
+        if (m_TargetDepthHandle == null)
+        {
+            m_TargetDepthHandle = RTHandles.Alloc(targetId);
+        }
+        else if (m_TargetDepthHandle.nameID != targetId)
+        {
+            RTHandleStaticHelpers.SetRTHandleUserManagedWrapper(ref m_TargetDepthHandle, targetId);
+        }
+
         // Setup camera properties
-        SetCameraProperties(context, camera);
+        context.SetupCameraProperties(camera);
 
         // Post processing
-        bool applyPostProcessingEffects = (m_PostProcessingSettings != null) && (m_PostProcessingMaterial != null) &&
-                                          (camera.cameraType <= CameraType.SceneView);
-
+        bool applyPostProcessingEffects = (m_PostProcessingSettings != null) && (m_PostProcessingMaterial != null);
+        // Only game camera and scene camera have post processing effects
+        applyPostProcessingEffects &= camera.cameraType <= CameraType.SceneView;
         // Check if disable post processing effects in scene view
         applyPostProcessingEffects &= CoreUtils.ArePostProcessesEnabled(camera);
 
-        CameraClearFlags clearFlag = camera.clearFlags;
+        if (applyPostProcessingEffects)
+            CreateCameraRenderTarget(context, ref cameraTargetDescriptor, cmd, camera);
+
+        m_ActiveCameraColorAttachment = applyPostProcessingEffects ? m_ColorBufferSystem.PeekBackBuffer() : m_TargetColorHandle;
+        m_ActiveCameraDepthAttachment = applyPostProcessingEffects ? m_CameraDepthAttachment : m_TargetDepthHandle;
+
+        // Setup render target
+        cmd.SetRenderTarget(m_ActiveCameraColorAttachment, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
+            m_ActiveCameraDepthAttachment, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+
+        // Setup clear flags
+        CameraClearFlags clearFlags = camera.clearFlags;
         if (applyPostProcessingEffects)
         {
-            m_PostProcessingPass.Setup(m_PostProcessingSettings, m_PostProcessingMaterial);
-
-            var cameraDescriptor = renderingData.cameraTargetDescriptor;
-            cameraDescriptor.useMipMap = false;
-            cameraDescriptor.autoGenerateMips = false;
-            cameraDescriptor.depthBufferBits = (int)DepthBits.None;
-            cameraDescriptor.bindMS = false;
-            RenderingUtils.ReAllocateIfNeeded(ref m_CameraColorAttachmentHandle, cameraDescriptor, FilterMode.Bilinear, TextureWrapMode.Clamp, name: "_CameraColorAttachment");
-
-            cameraDescriptor.graphicsFormat = GraphicsFormat.None;
-            cameraDescriptor.depthStencilFormat = GraphicsFormat.D32_SFloat_S8_UInt;;
-            RenderingUtils.ReAllocateIfNeeded(ref m_CameraDepthAttachmentHandle, cameraDescriptor, FilterMode.Bilinear, TextureWrapMode.Clamp, name: "_CameraDepthAttachment");
-
-            // Configure target
-            cmd.SetRenderTarget(m_CameraColorAttachmentHandle, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
-                m_CameraDepthAttachmentHandle, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
-
-            // When drawing to an intermediate frame buffer we render to a texture filled with arbitrary data.
-            // To prevent random results, when post-processing enabled always clear depth and color.
-            // ----------------
-            // Dont understand why doing this now?
-            // ----------------
-            if (clearFlag > CameraClearFlags.Color)
-                clearFlag = CameraClearFlags.Color;
+            if (clearFlags > CameraClearFlags.Color)
+                clearFlags = CameraClearFlags.Color;
         }
-        else
-        {
-            RenderTargetIdentifier targetId = BuiltinRenderTextureType.CameraTarget;
-            m_TargetColorHandle ??= RTHandles.Alloc(targetId);
-            m_TargetDepthHandle ??= RTHandles.Alloc(targetId);
+        cmd.ClearRenderTarget(clearFlags <= CameraClearFlags.Depth, clearFlags <= CameraClearFlags.Color,
+            clearFlags == CameraClearFlags.Color ? camera.backgroundColor.linear : Color.clear);
 
-            // Configure target
-            cmd.SetRenderTarget(m_TargetColorHandle, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
-                m_TargetDepthHandle, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
-        }
-
-        cmd.ClearRenderTarget(clearFlag <= CameraClearFlags.Depth, clearFlag <= CameraClearFlags.Color,
-            clearFlag == CameraClearFlags.Color ? camera.backgroundColor.linear : Color.clear);
         context.ExecuteCommandBuffer(cmd);
         cmd.Clear();
 
+        // Start rendering
         DrawOpaque(context, ref renderingData);
 
         DrawSkybox(context, camera);
@@ -130,29 +140,31 @@ public partial class TinyRenderer
 
         if (applyPostProcessingEffects)
         {
-            m_PostProcessingPass.Execute(context, ref renderingData, ref m_CameraColorAttachmentHandle);
+            m_PostProcessingPass.Setup(m_PostProcessingSettings, m_PostProcessingMaterial);
+            m_PostProcessingPass.Execute(context, ref renderingData, ref m_ActiveCameraColorAttachment);
         }
 
         DrawGizmos(context, cmd, camera, GizmoSubset.PostImageEffects);
+
+        // Finish rendering
+        m_ColorBufferSystem.Clear();
+        m_ActiveCameraColorAttachment = null;
+        m_ActiveCameraDepthAttachment = null;
     }
 
     public void Dispose(bool disposing)
     {
+        m_ColorBufferSystem.Dispose();
+
         m_MainLightShadowPass?.Dispose();
         m_AdditionalLightsShadowPass?.Dispose();
 
-        m_CameraColorAttachmentHandle?.Release();
-        m_CameraDepthAttachmentHandle?.Release();
+        m_CameraDepthAttachment?.Release();
 
         m_TargetColorHandle?.Release();
         m_TargetDepthHandle?.Release();
 
         CoreUtils.Destroy(m_PostProcessingMaterial);
-    }
-
-    private void SetCameraProperties(ScriptableRenderContext context, Camera camera)
-    {
-        context.SetupCameraProperties(camera);
     }
 
     private void DrawGizmos(ScriptableRenderContext context, CommandBuffer cmd, Camera camera, GizmoSubset gizmoSubset)
@@ -172,5 +184,30 @@ public partial class TinyRenderer
         context.ExecuteCommandBuffer(cmd);
         cmd.Clear();
 #endif
+    }
+
+    private void CreateCameraRenderTarget(ScriptableRenderContext context, ref RenderTextureDescriptor descriptor, CommandBuffer cmd, Camera camera)
+    {
+        if (m_ColorBufferSystem.PeekBackBuffer() == null || m_ColorBufferSystem.PeekBackBuffer().nameID != BuiltinRenderTextureType.CameraTarget)
+        {
+            m_ActiveCameraColorAttachment = m_ColorBufferSystem.GetBackBuffer(cmd);
+            cmd.SetGlobalTexture("_CameraColorTexture", m_ActiveCameraColorAttachment.nameID);
+        }
+
+        if (m_CameraDepthAttachment == null || m_CameraDepthAttachment.nameID != BuiltinRenderTextureType.CameraTarget)
+        {
+            var depthDescriptor = descriptor;
+            depthDescriptor.useMipMap = false;
+            depthDescriptor.autoGenerateMips = false;
+            depthDescriptor.bindMS = false;
+
+            depthDescriptor.graphicsFormat = GraphicsFormat.None;
+            depthDescriptor.depthStencilFormat = GraphicsFormat.D32_SFloat_S8_UInt;
+            RenderingUtils.ReAllocateIfNeeded(ref m_CameraDepthAttachment, depthDescriptor, FilterMode.Point, TextureWrapMode.Clamp, name: "_CameraDepthAttachment");
+            cmd.SetGlobalTexture(m_CameraDepthAttachment.name, m_CameraDepthAttachment.nameID);
+        }
+
+        context.ExecuteCommandBuffer(cmd);
+        cmd.Clear();
     }
 }
