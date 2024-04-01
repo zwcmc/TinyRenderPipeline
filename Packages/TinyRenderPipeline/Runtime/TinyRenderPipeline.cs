@@ -34,6 +34,11 @@ public class TinyRenderPipeline : RenderPipeline
 
     public static int maxVisibleAdditionalLights => k_MaxVisibleAdditionalLights;
 
+    public static TinyRenderPipelineAsset asset
+    {
+        get => GraphicsSettings.currentRenderPipeline as TinyRenderPipelineAsset;
+    }
+
     public TinyRenderPipeline(TinyRenderPipelineAsset asset)
     {
         pipelineAsset = asset;
@@ -43,7 +48,7 @@ public class TinyRenderPipeline : RenderPipeline
         // Light intensity in linear space
         GraphicsSettings.lightsUseLinearIntensity = true;
 
-        m_TinyRenderer = new TinyRenderer(pipelineAsset.postProcessingSettings);
+        m_TinyRenderer = new TinyRenderer();
 
         s_RTHandlePool = new RTHandleResourcePool();
     }

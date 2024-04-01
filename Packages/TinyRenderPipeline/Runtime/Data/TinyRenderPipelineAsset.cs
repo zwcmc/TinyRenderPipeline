@@ -23,6 +23,7 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
         public ShadowResolution shadowResolution;
     }
 
+    // Shadows
     [Serializable]
     private struct Shadows
     {
@@ -34,6 +35,13 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
         public MainLightShadow mainLightShadow;
 
         public AdditionalLightsShadow additionalLightsShadow;
+    }
+
+    // Post processing
+    [Serializable]
+    private struct PostProcessing
+    {
+        public PostProcessingSettings settings;
     }
 
     [SerializeField]
@@ -59,7 +67,7 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     };
 
     [SerializeField]
-    private PostProcessingSettings m_PostProcessingSettings = default;
+    private PostProcessing m_PostProcessing = default;
 
     public enum ShadowResolution
     {
@@ -102,7 +110,7 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
         set { m_Shadows.additionalLightsShadow.shadowResolution = (ShadowResolution)value; }
     }
 
-    public PostProcessingSettings postProcessingSettings => m_PostProcessingSettings;
+    public PostProcessingSettings postProcessingSettings => m_PostProcessing.settings;
 
     public override Type pipelineType => renderPipeline.GetType();
 

@@ -15,8 +15,6 @@ public partial class TinyRenderer
         public static readonly ProfilingSampler drawGizmos = new ProfilingSampler($"{nameof(DrawGizmos)}");
     }
 
-    private PostProcessingSettings m_PostProcessingSettings;
-
     private ForwardLights m_ForwardLights;
     private MainLightShadowPass m_MainLightShadowPass;
     private AdditionalLightsShadowPass m_AdditionalLightsShadowPass;
@@ -30,21 +28,12 @@ public partial class TinyRenderer
     private RTHandle m_TargetColorHandle;
     private RTHandle m_TargetDepthHandle;
 
-    private Material m_PostProcessingMaterial;
-
-    public TinyRenderer(PostProcessingSettings postProcessingSettings)
+    public TinyRenderer()
     {
-        m_PostProcessingSettings = postProcessingSettings;
-
-        if (m_PostProcessingSettings != null)
-        {
-            m_PostProcessingMaterial = CoreUtils.CreateEngineMaterial(m_PostProcessingSettings.postProcessingShader);
-        }
-
         m_ForwardLights = new ForwardLights();
         m_MainLightShadowPass = new MainLightShadowPass();
         m_AdditionalLightsShadowPass = new AdditionalLightsShadowPass();
-        m_PostProcessingPass = new PostProcessingPass();
+        m_PostProcessingPass = new PostProcessingPass(TinyRenderPipeline.asset);
 
         m_ColorBufferSystem = new RenderTargetBufferSystem("_CameraColorAttachment");
     }
@@ -100,7 +89,8 @@ public partial class TinyRenderer
         context.SetupCameraProperties(camera);
 
         // Post processing
-        bool applyPostProcessingEffects = (m_PostProcessingSettings != null) && (m_PostProcessingMaterial != null);
+        // Is post processing enabled
+        bool applyPostProcessingEffects = m_PostProcessingPass.isValid;
         // Only game camera and scene camera have post processing effects
         applyPostProcessingEffects &= camera.cameraType <= CameraType.SceneView;
         // Check if disable post processing effects in scene view
@@ -140,7 +130,7 @@ public partial class TinyRenderer
 
         if (applyPostProcessingEffects)
         {
-            m_PostProcessingPass.Setup(m_PostProcessingSettings, m_PostProcessingMaterial);
+            m_PostProcessingPass.Setup(in m_ActiveCameraColorAttachment);
             m_PostProcessingPass.Execute(context, ref renderingData, ref m_ActiveCameraColorAttachment);
         }
 
@@ -154,6 +144,8 @@ public partial class TinyRenderer
 
     public void Dispose(bool disposing)
     {
+        m_PostProcessingPass?.Dispose();
+
         m_ColorBufferSystem.Dispose();
 
         m_MainLightShadowPass?.Dispose();
@@ -163,8 +155,6 @@ public partial class TinyRenderer
 
         m_TargetColorHandle?.Release();
         m_TargetDepthHandle?.Release();
-
-        CoreUtils.Destroy(m_PostProcessingMaterial);
     }
 
     private void DrawGizmos(ScriptableRenderContext context, CommandBuffer cmd, Camera camera, GizmoSubset gizmoSubset)

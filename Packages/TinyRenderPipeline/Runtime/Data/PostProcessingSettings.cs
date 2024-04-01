@@ -4,7 +4,7 @@ using UnityEngine;
 public class PostProcessingSettings : ScriptableObject
 {
     [SerializeField]
-    private Shader shader = default;
+    private Shader shader;
 
     public Shader postProcessingShader => shader;
 }
