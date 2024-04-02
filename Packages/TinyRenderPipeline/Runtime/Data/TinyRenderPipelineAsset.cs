@@ -41,6 +41,9 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     private bool m_UseSRPBatcher = true;
 
     [SerializeField]
+    private bool m_SupportsHDR = true;
+
+    [SerializeField]
     private Shadows m_Shadows = new Shadows
     {
         shadowDistance = 150.0f,
@@ -77,6 +80,12 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     {
         get { return m_UseSRPBatcher; }
         set { m_UseSRPBatcher = value; }
+    }
+
+    public bool supportsHDR
+    {
+        get { return m_SupportsHDR; }
+        set { m_SupportsHDR = value; }
     }
 
     public float shadowDistance

@@ -28,6 +28,7 @@ public class PostProcessingPass
     // Bloom
     private PostProcessingData.Bloom m_Bloom;
     private const int k_MaxPyramidSize = 16;
+    private GraphicsFormat m_DefaultHDRFormat;
     private RTHandle[] m_BloomMipDown;
     private RTHandle[] m_BloomMipUp;
 
@@ -92,6 +93,8 @@ public class PostProcessingPass
     public void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
     {
         m_Bloom = m_PostProcessingData.bloom;
+
+        m_DefaultHDRFormat = renderingData.isHdrEnabled ? SystemInfo.GetGraphicsFormat(DefaultFormat.HDR) : SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
 
         var cmd = renderingData.commandBuffer;
         using (new ProfilingScope(cmd, Profiling.renderPostProcessing))
@@ -158,18 +161,19 @@ public class PostProcessingPass
         int mipCount = Mathf.Clamp(iterations, 1, m_Bloom.maxIterations);
 
         // Pre-filtering parameters
+        float clamp = m_Bloom.clamp;
         float threshold = Mathf.GammaToLinearSpace(m_Bloom.threshold);
         float thresholdKnee = threshold * 0.5f;
 
         // Material setup
+        float scatter = Mathf.Lerp(0.05f, 0.95f, m_Bloom.scatter);
         var bloomMaterial = m_Materials.bloom;
-        bloomMaterial.SetVector(ShaderConstants._BloomParams, new Vector4(0f, 65472f, threshold, thresholdKnee));
+        bloomMaterial.SetVector(ShaderConstants._BloomParams, new Vector4(scatter, clamp, threshold, thresholdKnee));
         CoreUtils.SetKeyword(bloomMaterial, ShaderKeywordStrings.BloomHQ, m_Bloom.highQualityFiltering);
         bloomMaterial.SetFloat(ShaderConstants._BloomIntensity, m_Bloom.intensity);
 
         // Prefilter
-        GraphicsFormat format = SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
-        var desc = RenderingUtils.GetCompatibleDescriptor(m_Descriptor, tw, th, format);
+        var desc = RenderingUtils.GetCompatibleDescriptor(m_Descriptor, tw, th, m_DefaultHDRFormat);
         for (int i = 0; i < mipCount; i++)
         {
             RenderingUtils.ReAllocateIfNeeded(ref m_BloomMipUp[i], desc, FilterMode.Bilinear, TextureWrapMode.Clamp, name: m_BloomMipUp[i].name);

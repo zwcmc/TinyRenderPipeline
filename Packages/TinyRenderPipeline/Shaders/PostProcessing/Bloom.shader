@@ -29,7 +29,34 @@ Shader "Hidden/Tiny Render Pipeline/Bloom"
         {
             float2 uv = input.texcoord;
 
+        #if defined(_BLOOM_HQ)
+            float texelSize = _BlitTexture_TexelSize.x;
+            half4 A = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, uv + texelSize * float2(-1.0, -1.0));
+            half4 B = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, uv + texelSize * float2(0.0, -1.0));
+            half4 C = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, uv + texelSize * float2(1.0, -1.0));
+            half4 D = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, uv + texelSize * float2(-0.5, -0.5));
+            half4 E = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, uv + texelSize * float2(0.5, -0.5));
+            half4 F = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, uv + texelSize * float2(-1.0, 0.0));
+            half4 G = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, uv);
+            half4 H = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, uv + texelSize * float2(1.0, 0.0));
+            half4 I = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, uv + texelSize * float2(-0.5, 0.5));
+            half4 J = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, uv + texelSize * float2(0.5, 0.5));
+            half4 K = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, uv + texelSize * float2(-1.0, 1.0));
+            half4 L = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, uv + texelSize * float2(0.0, 1.0));
+            half4 M = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, uv + texelSize * float2(1.0, 1.0));
+
+            half2 div = (1.0 / 4.0) * half2(0.5, 0.125);
+
+            half4 o = (D + E + I + J) * div.x;
+            o += (A + B + G + F) * div.y;
+            o += (B + C + H + G) * div.y;
+            o += (F + G + L + K) * div.y;
+            o += (G + H + M + L) * div.y;
+
+            half3 color = o.xyz;
+        #else
             half3 color = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, uv).xyz;
+        #endif
 
             // User controlled clamp to limit crazy high broken spec
             color = min(ClampMax, color);
@@ -100,7 +127,7 @@ Shader "Hidden/Tiny Render Pipeline/Bloom"
             half3 lowMip = SAMPLE_TEXTURE2D(_SourceTexLowMip, sampler_LinearClamp, uv).rgb;
         #endif
 
-            return half4(highMip + lowMip, 1.0);
+            return half4(lerp(highMip, lowMip, Scatter), 1.0);
         }
 
         ENDHLSL

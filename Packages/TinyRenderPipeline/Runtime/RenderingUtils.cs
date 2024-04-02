@@ -51,7 +51,7 @@ public static class RenderingUtils
         return desc;
     }
 
-    public static RenderTextureDescriptor CreateRenderTextureDescriptor(Camera camera, float renderScale = 1.0f, bool isHdrEnabled = false)
+    public static RenderTextureDescriptor CreateRenderTextureDescriptor(Camera camera, bool isHdrEnabled = false, float renderScale = 1.0f)
     {
         int scaledWidth = (int)((float)camera.pixelWidth * renderScale);
         int scaledHeight = (int)((float)camera.pixelHeight * renderScale);

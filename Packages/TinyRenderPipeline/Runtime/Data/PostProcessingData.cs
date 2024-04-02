@@ -26,17 +26,23 @@ public class PostProcessingData : ScriptableObject
     public class Bloom
     {
         [Min(0f)]
-        public float threshold;
+        public float threshold = 0.9f;
 
         [Min(0f)]
-        public float intensity;
+        public float intensity = 0f;
+
+        [Range(0f, 1f)]
+        public float scatter = 0.7f;
+
+        [Min(0f)]
+        public float clamp = 65472f;
 
         [Range(2, 8)]
-        public int maxIterations;
+        public int maxIterations = 6;
 
-        public BloomDownscaleMode downscale;
+        public BloomDownscaleMode downscale = BloomDownscaleMode.Half;
 
-        public bool highQualityFiltering;
+        public bool highQualityFiltering = false;
 
         public bool IsActive() => intensity > 0f;
     }

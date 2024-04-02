@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: RP Asset
   m_EditorClassIdentifier: 
   m_UseSRPBatcher: 1
+  m_SupportsHDR: 1
   m_Shadows:
     shadowDistance: 50
     cascadeBorder: 0.2
@@ -24,4 +25,4 @@ MonoBehaviour:
       cascadeRatio3: 0.467
     additionalLightsShadow:
       shadowResolution: 2048
-  m_PostProcessingData: {fileID: 11400000, guid: e6b31aa1c62609c458f485594fa768f2, type: 2}
+  m_PostProcessingData: {fileID: 11400000, guid: 90ac35e882f8867438b6345c4c8a746c, type: 2}

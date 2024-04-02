@@ -24,6 +24,12 @@ public struct RenderingData
     internal CommandBuffer commandBuffer;
 
     public Camera camera;
+
+    /// <summary>
+    /// True if this camera should render to high dynamic range color targets.
+    /// </summary>
+    public bool isHdrEnabled;
+
     public RenderTextureDescriptor cameraTargetDescriptor;
 
     public CullingResults cullResults;

@@ -156,7 +156,8 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.renderContext = context;
         renderingData.commandBuffer = cmd;
         renderingData.camera = camera;
-        renderingData.cameraTargetDescriptor = RenderingUtils.CreateRenderTextureDescriptor(renderingData.camera);
+        renderingData.isHdrEnabled = camera.allowHDR && asset.supportsHDR;
+        renderingData.cameraTargetDescriptor = RenderingUtils.CreateRenderTextureDescriptor(renderingData.camera, renderingData.isHdrEnabled);
         renderingData.cullResults = cullResults;
 
         var visibleLights = cullResults.visibleLights;
