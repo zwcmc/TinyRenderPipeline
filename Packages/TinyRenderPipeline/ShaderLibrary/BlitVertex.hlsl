@@ -1,13 +1,12 @@
-#ifndef TINY_RP_POST_PROCESSING_PASS_INCLUDED
-#define TINY_RP_POST_PROCESSING_PASS_INCLUDED
+#ifndef TINY_RP_BLIT_VERTEX_INCLUDED
+#define TINY_RP_BLIT_VERTEX_INCLUDED
 
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/Input.hlsl"
 
+// Source texture
 TEXTURE2D(_BlitTexture);
-SAMPLER(sampler_LinearClamp);
 
 float4 _BlitScaleBias;
-
 #define DYNAMIC_SCALING_APPLY_SCALEBIAS(uv) uv * _BlitScaleBias.xy + _BlitScaleBias.zw
 
 struct Attributes
@@ -32,12 +31,6 @@ Varyings Vert(Attributes input)
     output.texcoord   = DYNAMIC_SCALING_APPLY_SCALEBIAS(uv);
 
     return output;
-}
-
-half4 Frag(Varyings input) : SV_TARGET
-{
-    float2 uv = input.texcoord;
-    return SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_LinearClamp, uv, 0);
 }
 
 #endif

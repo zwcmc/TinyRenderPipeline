@@ -42,8 +42,8 @@ Shader "Tiny Render Pipeline/Unlit"
 
             #pragma shader_feature_local_fragment _ALPHATEST_ON
 
-            #include "UnlitInput.hlsl"
-            #include "UnlitForwardPass.hlsl"
+            #include "Packages/com.tiny.render-pipeline/Shaders/UnlitInput.hlsl"
+            #include "Packages/com.tiny.render-pipeline/Shaders/UnlitForwardPass.hlsl"
 
             ENDHLSL
         }

@@ -61,8 +61,8 @@ Shader "Tiny Render Pipeline/Lit"
             #pragma shader_feature_local_fragment _METALLICGLOSSMAP
             #pragma shader_feature_local_fragment _OCCLUSIONMAP
 
-            #include "LitInput.hlsl"
-            #include "LitForwardPass.hlsl"
+            #include "Packages/com.tiny.render-pipeline/Shaders/LitInput.hlsl"
+            #include "Packages/com.tiny.render-pipeline/Shaders/LitForwardPass.hlsl"
             ENDHLSL
         }
 
@@ -82,8 +82,8 @@ Shader "Tiny Render Pipeline/Lit"
 
             #pragma shader_feature_local_fragment _ALPHATEST_ON
 
-            #include "LitInput.hlsl"
-            #include "LitShadowPass.hlsl"
+            #include "Packages/com.tiny.render-pipeline/Shaders/LitInput.hlsl"
+            #include "Packages/com.tiny.render-pipeline/Shaders/LitShadowPass.hlsl"
             ENDHLSL
         }
     }

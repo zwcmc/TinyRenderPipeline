@@ -46,3 +46,16 @@ public struct ShadowSliceData
     public int resolution;
     public ShadowSplitData splitData;
 }
+
+public static class ShaderKeywordStrings
+{
+    /// <summary>
+    /// Keyword used for high quality Bloom.
+    /// </summary>
+    public const string BloomHQ = "_BLOOM_HQ";
+
+    /// <summary>
+    ///  Keyword used for calculating Bloom in uber post.
+    /// </summary>
+    public const string BloomActived = "_BLOOM_ACTIVED";
+}

@@ -24,5 +24,4 @@ MonoBehaviour:
       cascadeRatio3: 0.467
     additionalLightsShadow:
       shadowResolution: 2048
-  m_PostProcessing:
-    settings: {fileID: 11400000, guid: c5336cac20a33f044adfbd262e970027, type: 2}
+  m_PostProcessingData: {fileID: 11400000, guid: e6b31aa1c62609c458f485594fa768f2, type: 2}

@@ -89,8 +89,8 @@ public partial class TinyRenderer
         context.SetupCameraProperties(camera);
 
         // Post processing
-        // Is post processing enabled
-        bool applyPostProcessingEffects = m_PostProcessingPass.isValid;
+        // Check post processing data setup
+        bool applyPostProcessingEffects = m_PostProcessingPass.IsValid();
         // Only game camera and scene camera have post processing effects
         applyPostProcessingEffects &= camera.cameraType <= CameraType.SceneView;
         // Check if disable post processing effects in scene view
@@ -130,8 +130,9 @@ public partial class TinyRenderer
 
         if (applyPostProcessingEffects)
         {
-            m_PostProcessingPass.Setup(in m_ActiveCameraColorAttachment);
-            m_PostProcessingPass.Execute(context, ref renderingData, ref m_ActiveCameraColorAttachment);
+            // bool resolvePostProcessingToCameraTarget = true;
+            m_PostProcessingPass.Setup(cameraTargetDescriptor, m_ActiveCameraColorAttachment, true);
+            m_PostProcessingPass.Execute(context, ref renderingData);
         }
 
         DrawGizmos(context, cmd, camera, GizmoSubset.PostImageEffects);
@@ -181,7 +182,6 @@ public partial class TinyRenderer
         if (m_ColorBufferSystem.PeekBackBuffer() == null || m_ColorBufferSystem.PeekBackBuffer().nameID != BuiltinRenderTextureType.CameraTarget)
         {
             m_ActiveCameraColorAttachment = m_ColorBufferSystem.GetBackBuffer(cmd);
-            cmd.SetGlobalTexture("_CameraColorTexture", m_ActiveCameraColorAttachment.nameID);
         }
 
         if (m_CameraDepthAttachment == null || m_CameraDepthAttachment.nameID != BuiltinRenderTextureType.CameraTarget)
@@ -194,7 +194,6 @@ public partial class TinyRenderer
             depthDescriptor.graphicsFormat = GraphicsFormat.None;
             depthDescriptor.depthStencilFormat = GraphicsFormat.D32_SFloat_S8_UInt;
             RenderingUtils.ReAllocateIfNeeded(ref m_CameraDepthAttachment, depthDescriptor, FilterMode.Point, TextureWrapMode.Clamp, name: "_CameraDepthAttachment");
-            cmd.SetGlobalTexture(m_CameraDepthAttachment.name, m_CameraDepthAttachment.nameID);
         }
 
         context.ExecuteCommandBuffer(cmd);
