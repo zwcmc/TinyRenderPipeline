@@ -23,7 +23,7 @@ Varyings UnlitVertex(Attributes input)
     return output;
 }
 
-half4 UnlitFragment(Varyings input) : SV_TARGET
+half4 UnlitFragment(Varyings input) : SV_Target
 {
     half4 texColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv);
     half3 color = texColor.rgb * _BaseColor.rgb;

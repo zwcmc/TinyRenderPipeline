@@ -64,4 +64,14 @@ public static class ShaderKeywordStrings
     ///  Keyword used for calculating Bloom in uber post.
     /// </summary>
     public const string BloomActived = "_BLOOM_ACTIVED";
+
+    /// <summary>
+    /// Keyword used for ACES Tonemapping in uber post.
+    /// </summary>
+    public const string TonemapACES = "_TONEMAP_ACES";
+
+    /// <summary>
+    /// Keyword used for Neutral Tonemapping in uber post.
+    /// </summary>
+    public const string TonemapNeutral = "_TONEMAP_NEUTRAL";
 }

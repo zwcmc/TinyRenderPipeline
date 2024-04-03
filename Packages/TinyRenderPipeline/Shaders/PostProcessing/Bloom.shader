@@ -121,7 +121,7 @@ Shader "Hidden/Tiny Render Pipeline/Bloom"
 
             half3 highMip = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, uv).rgb;
 
-        #if _BLOOM_HQ
+        #if defined(_BLOOM_HQ)
             half3 lowMip = SampleTexture2DBicubic(TEXTURE2D_ARGS(_SourceTexLowMip, sampler_LinearClamp), uv, _SourceTexLowMip_TexelSize.zwxy, (1.0).xx, 0.0).rgb;
         #else
             half3 lowMip = SAMPLE_TEXTURE2D(_SourceTexLowMip, sampler_LinearClamp, uv).rgb;

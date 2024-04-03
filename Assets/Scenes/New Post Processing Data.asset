@@ -23,3 +23,5 @@ MonoBehaviour:
     maxIterations: 6
     downscale: 0
     highQualityFiltering: 0
+  tonemapping:
+    mode: 2

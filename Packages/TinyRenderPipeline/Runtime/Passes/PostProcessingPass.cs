@@ -25,8 +25,11 @@ public class PostProcessingPass
 
     private MaterialLibrary m_Materials;
 
-    // Bloom
+    // Post processing effects settings
     private PostProcessingData.Bloom m_Bloom;
+    private PostProcessingData.Tonemapping m_Tonemapping;
+
+    // Bloom
     private const int k_MaxPyramidSize = 16;
     private GraphicsFormat m_DefaultHDRFormat;
     private RTHandle[] m_BloomMipDown;
@@ -93,6 +96,7 @@ public class PostProcessingPass
     public void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
     {
         m_Bloom = m_PostProcessingData.bloom;
+        m_Tonemapping = m_PostProcessingData.tonemapping;
 
         m_DefaultHDRFormat = renderingData.isHdrEnabled ? SystemInfo.GetGraphicsFormat(DefaultFormat.HDR) : SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
 
@@ -127,14 +131,20 @@ public class PostProcessingPass
 
             if (m_Bloom.IsActive())
             {
+                // Bloom
                 using (new ProfilingScope(cmd, Profiling.bloom))
                     SetupBloom(cmd, source, m_Materials.uberPost);
+
+                // Tonemapping
+                SetupTonemapping(cmd, m_Materials.uberPost);
             }
 
             if (m_ResolveToScreen)
                 RenderingUtils.FinalBlit(cmd, renderingData.camera, source, m_Destination, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, m_Materials.uberPost, 0);
         }
     }
+
+    #region Bloom
 
     private void SetupBloom(CommandBuffer cmd, RTHandle source, Material uberMaterial)
     {
@@ -209,6 +219,27 @@ public class PostProcessingPass
         cmd.SetGlobalTexture(ShaderConstants._Bloom_Texture, m_BloomMipUp[0]);
         uberMaterial.EnableKeyword(ShaderKeywordStrings.BloomActived);
     }
+
+    #endregion
+
+    #region Tomemapping
+
+    private void SetupTonemapping(CommandBuffer cmd, Material uberMaterial)
+    {
+        switch (m_Tonemapping.mode)
+        {
+            case PostProcessingData.TonemappingMode.Neutral:
+                uberMaterial.EnableKeyword(ShaderKeywordStrings.TonemapNeutral);
+                break;
+            case PostProcessingData.TonemappingMode.ACES:
+                uberMaterial.EnableKeyword(ShaderKeywordStrings.TonemapACES);
+                break;
+            default:
+                break;
+        }
+    }
+
+    #endregion
 
     private class MaterialLibrary
     {

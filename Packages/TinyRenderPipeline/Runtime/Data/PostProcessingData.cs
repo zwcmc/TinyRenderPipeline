@@ -5,13 +5,41 @@ using UnityEngine.Rendering;
 [CreateAssetMenu(menuName = "Rendering/Post Processing Data")]
 public class PostProcessingData : ScriptableObject
 {
-    // This controls the size of the bloom texture.
+    /// <summary>
+    /// This controls the size of the bloom texture.
+    /// </summary>
     public enum BloomDownscaleMode
     {
-        // Use this to select half size as the starting resolution.
+        /// <summary>
+        /// Use this to select half size as the starting resolution.
+        /// </summary>
         Half,
-        // Use this to select quarter size as the starting resolution.
+
+        /// <summary>
+        /// Use this to select quarter size as the starting resolution.
+        /// </summary>
         Quarter
+    }
+
+    /// <summary>
+    /// Tonemapping algorithms
+    /// </summary>
+    public enum TonemappingMode
+    {
+        /// <summary>
+        /// Do not apply tonemapping.
+        /// </summary>
+        None,
+
+        /// <summary>
+        /// Neutral tonemapper
+        /// </summary>
+        Neutral,
+
+        /// <summary>
+        /// ACES Filmic reference tonemapper
+        /// </summary>
+        ACES
     }
 
     [Serializable]
@@ -47,7 +75,15 @@ public class PostProcessingData : ScriptableObject
         public bool IsActive() => intensity > 0f;
     }
 
+    [Serializable]
+    public class Tonemapping
+    {
+        public TonemappingMode mode = TonemappingMode.None;
+    }
+
     public ShaderResources shaders = default;
 
     public Bloom bloom = default;
+
+    public Tonemapping tonemapping = default;
 }

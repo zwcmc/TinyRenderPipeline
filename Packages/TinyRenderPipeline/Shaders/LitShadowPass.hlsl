@@ -28,7 +28,7 @@ float4 GetShadowPositionHClip(Attributes input)
 
     float4 positionCS = TransformWorldToHClip(ApplyShadowBias(positionWS, normalWS, lightDirection));
 
-#if UNITY_REVERSED_Z
+#if defined(UNITY_REVERSED_Z)
     positionCS.z = min(positionCS.z, UNITY_NEAR_CLIP_VALUE);
 #else
     positionCS.z = max(positionCS.z, UNITY_NEAR_CLIP_VALUE);
@@ -47,7 +47,7 @@ Varyings LitShadowVertex(Attributes input)
     return output;
 }
 
-half4 LitShadowFragment(Varyings input) : SV_TARGET
+half4 LitShadowFragment(Varyings input) : SV_Target
 {
 #ifdef _ALPHATEST_ON
     half4 albedoAlpha = SampleAlbedoAlpha(input.uv, TEXTURE2D_ARGS(_BaseMap, sampler_BaseMap));
