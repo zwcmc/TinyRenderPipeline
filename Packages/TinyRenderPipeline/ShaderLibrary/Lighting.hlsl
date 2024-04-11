@@ -43,7 +43,7 @@ half4 FragmentPBR(InputData inputData, SurfaceData surfaceData)
     }
     lightingColor += additionalLightsColor;
 
-#if REAL_IS_HALF
+#if defined(REAL_IS_HALF)
     return min(half4(lightingColor, surfaceData.alpha), HALF_MAX);
 #else
     return half4(lightingColor, surfaceData.alpha);

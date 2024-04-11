@@ -3,7 +3,7 @@
 
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/Input.hlsl"
 
-// Source texture
+// Blit source texture
 TEXTURE2D(_BlitTexture);
 
 float4 _BlitScaleBias;

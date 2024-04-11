@@ -23,7 +23,7 @@ Shader "Hidden/Tiny Render Pipeline/Post Processing"
             half4 Frag(Varyings input) : SV_Target
             {
                 float2 uv = input.texcoord;
-                return SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_LinearClamp, uv, 0);
+                return SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_LinearClamp, uv, 0.0);
             }
 
             ENDHLSL

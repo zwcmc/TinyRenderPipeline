@@ -221,7 +221,7 @@ public class AdditionalLightsShadowPass
         return true;
     }
 
-    public void Render(ScriptableRenderContext context, ref RenderingData renderingData)
+    public void ExecutePass(ScriptableRenderContext context, ref RenderingData renderingData)
     {
         var cmd = renderingData.commandBuffer;
 

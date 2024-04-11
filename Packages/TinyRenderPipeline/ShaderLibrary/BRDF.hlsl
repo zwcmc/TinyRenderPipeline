@@ -73,7 +73,7 @@ half DirectBRDFSpecular(BRDFData brdfData, half3 normalWS, half3 lightDirectionW
     // On platforms where half actually means something, the denominator has a risk of overflow
     // clamp below was added specifically to "fix" that, but dx compiler (we convert bytecode to metal/gles)
     // sees that specularTerm have only non-negative terms, so it skips max(0,..) in clamp (leaving only min(100,...))
-#if REAL_IS_HALF
+#if defined(REAL_IS_HALF)
     specularTerm = specularTerm - HALF_MIN;
     // Update: Conservative bump from 100.0 to 1000.0 to better match the full float specular look.
     // Roughly 65504.0 / 32*2 == 1023.5,
