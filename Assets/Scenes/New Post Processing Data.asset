@@ -15,6 +15,7 @@ MonoBehaviour:
   shaders:
     uberPostShader: {fileID: 4800000, guid: 2308bea0a8909ff4e98af241a4cc0112, type: 3}
     bloomShader: {fileID: 4800000, guid: 48f11e7c72d6b784b9b6bd3a6b7bc325, type: 3}
+    lutBuilderShader: {fileID: 4800000, guid: c4e352c13ccd11b4f8d6b745cfa2bd24, type: 3}
   bloom:
     threshold: 0.9
     intensity: 1

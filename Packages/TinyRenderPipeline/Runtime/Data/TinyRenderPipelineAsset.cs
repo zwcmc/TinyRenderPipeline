@@ -5,6 +5,9 @@ using UnityEngine.Rendering;
 [CreateAssetMenu(menuName = "Rendering/Tiny Render Pipeline Asset")]
 public class TinyRenderPipelineAsset : RenderPipelineAsset
 {
+    /// <summary>
+    /// Shadow map resolution.
+    /// </summary>
     public enum ShadowResolution
     {
         _1024 = 1024,
@@ -56,6 +59,10 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     [SerializeField]
     private PostProcessingData m_PostProcessingData = default;
 
+    [SerializeField]
+    [Range(32, 64)]
+    private int m_ColorGradingLutSize = 32;
+
     public bool useSRPBatcher
     {
         get { return m_UseSRPBatcher; }
@@ -90,6 +97,12 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     {
         get { return (int)m_Shadows.additionalLightsShadow.shadowResolution; }
         set { m_Shadows.additionalLightsShadow.shadowResolution = (ShadowResolution)value; }
+    }
+
+    public int colorGradingLutSize
+    {
+        get { return (int)m_ColorGradingLutSize; }
+        set { m_ColorGradingLutSize = Mathf.Clamp(value, 32, 64); }
     }
 
     public PostProcessingData postProcessingData => m_PostProcessingData;

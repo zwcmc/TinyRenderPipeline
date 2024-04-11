@@ -14,7 +14,6 @@ public class PostProcessingPass
 
     public static RTHandle k_CameraTarget = RTHandles.Alloc(BuiltinRenderTextureType.CameraTarget);
 
-    private PostProcessingData m_PostProcessingData;
     private Material m_PostProcessingMaterial;
 
     private RenderTextureDescriptor m_Descriptor;
@@ -23,11 +22,12 @@ public class PostProcessingPass
 
     private bool m_ResolveToScreen;
 
+    private RTHandle m_InternalLut;
+
     private MaterialLibrary m_Materials;
 
     // Post processing effects settings
     private PostProcessingData.Bloom m_Bloom;
-    private PostProcessingData.Tonemapping m_Tonemapping;
 
     // Bloom
     private const int k_MaxPyramidSize = 16;
@@ -45,6 +45,9 @@ public class PostProcessingPass
 
         public static readonly int _Bloom_Texture = Shader.PropertyToID("_Bloom_Texture");
 
+        public static readonly int _InternalLut = Shader.PropertyToID("_InternalLut");
+        public static readonly int _Lut_Params = Shader.PropertyToID("_Lut_Params");
+
         public static int[] _BloomMipUp;
         public static int[] _BloomMipDown;
     }
@@ -57,16 +60,13 @@ public class PostProcessingPass
         BloomUpsample,
     }
 
-    public bool IsValid() => m_PostProcessingData != null;
+    public bool IsValid() => m_Materials != null;
 
-    public PostProcessingPass(TinyRenderPipelineAsset asset)
+    public PostProcessingPass(PostProcessingData postProcessingData)
     {
-        m_PostProcessingData = null;
-
-        if (asset && asset.postProcessingData)
+        if (postProcessingData != null)
         {
-            m_PostProcessingData = asset.postProcessingData;
-            m_Materials = new MaterialLibrary(m_PostProcessingData);
+            m_Materials = new MaterialLibrary(postProcessingData);
         }
 
         ShaderConstants._BloomMipUp = new int[k_MaxPyramidSize];
@@ -83,7 +83,7 @@ public class PostProcessingPass
         }
     }
 
-    public void Setup(in RenderTextureDescriptor baseDescriptor, in RTHandle source, bool resolveToScreen)
+    public bool Setup(in RenderTextureDescriptor baseDescriptor, in RTHandle source, bool resolveToScreen, in RTHandle internalLut)
     {
         m_Descriptor = baseDescriptor;
         m_Descriptor.useMipMap = false;
@@ -91,12 +91,16 @@ public class PostProcessingPass
         m_Source = source;
         m_Destination = k_CameraTarget;
         m_ResolveToScreen = resolveToScreen;
+
+        m_InternalLut = internalLut;
+
+        return true;
     }
 
-    public void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+    public void ExecutePass(ScriptableRenderContext context, ref RenderingData renderingData)
     {
-        m_Bloom = m_PostProcessingData.bloom;
-        m_Tonemapping = m_PostProcessingData.tonemapping;
+        var asset = TinyRenderPipeline.asset;
+        m_Bloom = asset.postProcessingData.bloom;
 
         m_DefaultHDRFormat = renderingData.isHdrEnabled ? SystemInfo.GetGraphicsFormat(DefaultFormat.HDR) : SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
 
@@ -135,8 +139,8 @@ public class PostProcessingPass
                 using (new ProfilingScope(cmd, Profiling.bloom))
                     SetupBloom(cmd, source, m_Materials.uberPost);
 
-                // Tonemapping
-                SetupTonemapping(cmd, m_Materials.uberPost);
+                // Color grading
+                SetupColorGrading(ref renderingData, m_Materials.uberPost);
             }
 
             if (m_ResolveToScreen)
@@ -217,26 +221,23 @@ public class PostProcessingPass
         // Setup bloom on uber post
         uberMaterial.SetFloat(ShaderConstants._BloomIntensity, m_Bloom.intensity);
         cmd.SetGlobalTexture(ShaderConstants._Bloom_Texture, m_BloomMipUp[0]);
-        uberMaterial.EnableKeyword(ShaderKeywordStrings.BloomActived);
+        uberMaterial.EnableKeyword(ShaderKeywordStrings.Bloom);
     }
 
     #endregion
 
-    #region Tomemapping
+    #region Color Grading
 
-    private void SetupTonemapping(CommandBuffer cmd, Material uberMaterial)
+    private void SetupColorGrading(ref RenderingData renderingData, Material uberMaterial)
     {
-        switch (m_Tonemapping.mode)
-        {
-            case PostProcessingData.TonemappingMode.Neutral:
-                uberMaterial.EnableKeyword(ShaderKeywordStrings.TonemapNeutral);
-                break;
-            case PostProcessingData.TonemappingMode.ACES:
-                uberMaterial.EnableKeyword(ShaderKeywordStrings.TonemapACES);
-                break;
-            default:
-                break;
-        }
+        int lutHeight = renderingData.lutSize;
+        int lutWidth = lutHeight * lutHeight;
+
+        uberMaterial.SetTexture(ShaderConstants._InternalLut, m_InternalLut);
+        uberMaterial.SetVector(ShaderConstants._Lut_Params, new Vector4(1f / lutWidth, 1f / lutHeight, lutHeight - 1f, 1f));
+
+        if (renderingData.isHdrEnabled)
+            uberMaterial.EnableKeyword(ShaderKeywordStrings.HDRColorGrading);
     }
 
     #endregion

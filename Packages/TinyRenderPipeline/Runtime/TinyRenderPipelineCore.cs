@@ -40,6 +40,11 @@ public struct RenderingData
     public ShadowData shadowData;
 
     public PerObjectData perObjectData;
+
+    /// <summary>
+    /// The size of the color grading Look Up Table (LUT)
+    /// </summary>
+    public int lutSize;
 }
 
 public struct ShadowSliceData
@@ -63,7 +68,7 @@ public static class ShaderKeywordStrings
     /// <summary>
     ///  Keyword used for calculating Bloom in uber post.
     /// </summary>
-    public const string BloomActived = "_BLOOM_ACTIVED";
+    public const string Bloom = "_BLOOM";
 
     /// <summary>
     /// Keyword used for ACES Tonemapping in uber post.
@@ -74,4 +79,9 @@ public static class ShaderKeywordStrings
     /// Keyword used for Neutral Tonemapping in uber post.
     /// </summary>
     public const string TonemapNeutral = "_TONEMAP_NEUTRAL";
+
+    /// <summary>
+    /// Keyword used for calculating Look Up Table Color Grading in uber post.
+    /// </summary>
+    public const string HDRColorGrading = "_HDR_COLORGRADING";
 }

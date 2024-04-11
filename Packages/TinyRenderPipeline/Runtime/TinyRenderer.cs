@@ -20,6 +20,8 @@ public partial class TinyRenderer
     private AdditionalLightsShadowPass m_AdditionalLightsShadowPass;
     private PostProcessingPass m_PostProcessingPass;
 
+    private ColorGradingLutPass m_ColorGradingLutPass;
+
     private RenderTargetBufferSystem m_ColorBufferSystem;
 
     private RTHandle m_ActiveCameraColorAttachment;
@@ -28,12 +30,13 @@ public partial class TinyRenderer
     private RTHandle m_TargetColorHandle;
     private RTHandle m_TargetDepthHandle;
 
-    public TinyRenderer()
+    public TinyRenderer(PostProcessingData postProcessingData)
     {
         m_ForwardLights = new ForwardLights();
         m_MainLightShadowPass = new MainLightShadowPass();
         m_AdditionalLightsShadowPass = new AdditionalLightsShadowPass();
-        m_PostProcessingPass = new PostProcessingPass(TinyRenderPipeline.asset);
+        m_PostProcessingPass = new PostProcessingPass(postProcessingData);
+        m_ColorGradingLutPass = new ColorGradingLutPass(postProcessingData);
 
         m_ColorBufferSystem = new RenderTargetBufferSystem("_CameraColorAttachment");
     }
@@ -50,13 +53,13 @@ public partial class TinyRenderer
         // Render main light shadowmap
         if (m_MainLightShadowPass.Setup(ref renderingData))
         {
-            m_MainLightShadowPass.Render(context, ref renderingData);
+            m_MainLightShadowPass.ExecutePass(context, ref renderingData);
         }
 
         // Render additional lights shadowmap
         if (m_AdditionalLightsShadowPass.Setup(ref renderingData))
         {
-            m_AdditionalLightsShadowPass.Render(context, ref renderingData);
+            m_AdditionalLightsShadowPass.ExecutePass(context, ref renderingData);
         }
 
         var cameraTargetDescriptor = renderingData.cameraTargetDescriptor;
@@ -89,12 +92,27 @@ public partial class TinyRenderer
         context.SetupCameraProperties(camera);
 
         // Post processing
+
         // Check post processing data setup
         bool applyPostProcessingEffects = m_PostProcessingPass.IsValid();
         // Only game camera and scene camera have post processing effects
         applyPostProcessingEffects &= camera.cameraType <= CameraType.SceneView;
         // Check if disable post processing effects in scene view
         applyPostProcessingEffects &= CoreUtils.ArePostProcessesEnabled(camera);
+
+        // Color grading generating LUT pass
+        bool generateColorGradingLut = applyPostProcessingEffects && renderingData.isHdrEnabled;
+        if (generateColorGradingLut)
+        {
+            int lutHeight = renderingData.lutSize;
+            int lutWidth = lutHeight * lutHeight;
+            var lutFormat = renderingData.isHdrEnabled ? SystemInfo.GetGraphicsFormat(DefaultFormat.HDR) : SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
+            var descriptor = new RenderTextureDescriptor(lutWidth, lutHeight, lutFormat, 0);
+
+            RenderingUtils.ReAllocateIfNeeded(ref m_ColorGradingLutPass.m_ColorGradingLut, descriptor, FilterMode.Bilinear, TextureWrapMode.Clamp, name: "_InternalGradingLut");
+
+            m_ColorGradingLutPass.ExecutePass(context, ref renderingData);
+        }
 
         if (applyPostProcessingEffects)
             CreateCameraRenderTarget(context, ref cameraTargetDescriptor, cmd, camera);
@@ -130,9 +148,8 @@ public partial class TinyRenderer
 
         if (applyPostProcessingEffects)
         {
-            // bool resolvePostProcessingToCameraTarget = true;
-            m_PostProcessingPass.Setup(cameraTargetDescriptor, m_ActiveCameraColorAttachment, true);
-            m_PostProcessingPass.Execute(context, ref renderingData);
+            m_PostProcessingPass.Setup(cameraTargetDescriptor, m_ActiveCameraColorAttachment, true, m_ColorGradingLutPass.m_ColorGradingLut);
+            m_PostProcessingPass.ExecutePass(context, ref renderingData);
         }
 
         DrawGizmos(context, cmd, camera, GizmoSubset.PostImageEffects);
@@ -145,6 +162,8 @@ public partial class TinyRenderer
 
     public void Dispose(bool disposing)
     {
+        m_ColorGradingLutPass?.Dispose();
+
         m_PostProcessingPass?.Dispose();
 
         m_ColorBufferSystem.Dispose();

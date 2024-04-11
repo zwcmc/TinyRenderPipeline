@@ -48,6 +48,8 @@ public class PostProcessingData : ScriptableObject
         public Shader uberPostShader;
 
         public Shader bloomShader;
+
+        public Shader lutBuilderShader;
     }
 
     [Serializable]

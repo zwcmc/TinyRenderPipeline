@@ -48,7 +48,7 @@ public class TinyRenderPipeline : RenderPipeline
         // Light intensity in linear space
         GraphicsSettings.lightsUseLinearIntensity = true;
 
-        m_TinyRenderer = new TinyRenderer();
+        m_TinyRenderer = new TinyRenderer(pipelineAsset.postProcessingData);
 
         s_RTHandlePool = new RTHandleResourcePool();
     }
@@ -202,6 +202,8 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.shadowData.additionalLightsShadowmapWidth = renderingData.shadowData.additionalLightsShadowmapHeight = asset.additionalLightsShadowmapResolution;
 
         renderingData.perObjectData = GetPerObjectLightFlags(renderingData.additionalLightsCount);
+
+        renderingData.lutSize = asset.colorGradingLutSize;
     }
 
     private static PerObjectData GetPerObjectLightFlags(int additionalLightsCount)
