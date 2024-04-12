@@ -1,4 +1,4 @@
-Shader "Hidden/Tiny Render Pipeline/Post Processing"
+Shader "Hidden/Tiny Render Pipeline/Blit"
 {
     SubShader
     {
