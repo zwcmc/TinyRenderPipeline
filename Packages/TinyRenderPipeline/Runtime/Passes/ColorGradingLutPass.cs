@@ -11,6 +11,13 @@ public class ColorGradingLutPass
     private static class ShaderConstants
     {
         public static readonly int _Lut_Params = Shader.PropertyToID("_Lut_Params");
+
+        // Color adjustments
+        public static readonly int _HueSatConPos = Shader.PropertyToID("_HueSatConPos");
+        public static readonly int _ColorFilter = Shader.PropertyToID("_ColorFilter");
+
+        // White balance
+        public static readonly int _ColorBalance = Shader.PropertyToID("_ColorBalance");
     }
 
     public ColorGradingLutPass(PostProcessingData postProcessingData)
@@ -42,7 +49,20 @@ public class ColorGradingLutPass
             m_LutBuilder.SetVector(ShaderConstants._Lut_Params, lutParameters);
 
             var asset = TinyRenderPipeline.asset;
-            switch (asset.postProcessingData.tonemapping.mode)
+
+            var colorAdjustments = asset.postProcessingData.colorAdjustments;
+            var whiteBalance = asset.postProcessingData.whiteBalance;
+
+            float postExposureLinear = Mathf.Pow(2f, colorAdjustments.postExposure);
+            var hueSatConPos = new Vector4(colorAdjustments.hueShift / 360f, colorAdjustments.saturation * 0.01f + 1f, colorAdjustments.contrast * 0.01f + 1f, postExposureLinear);
+            var lmsColorBalance = ColorUtils.ColorBalanceToLMSCoeffs(whiteBalance.temperature, whiteBalance.tint);
+
+            m_LutBuilder.SetVector(ShaderConstants._HueSatConPos, hueSatConPos);
+            m_LutBuilder.SetVector(ShaderConstants._ColorFilter, colorAdjustments.colorFilter);
+            m_LutBuilder.SetVector(ShaderConstants._ColorBalance, lmsColorBalance);
+
+            var tonemapping = asset.postProcessingData.tonemapping;
+            switch (tonemapping.mode)
             {
                 case PostProcessingData.TonemappingMode.Neutral:
                     m_LutBuilder.EnableKeyword(ShaderKeywordStrings.TonemapNeutral);

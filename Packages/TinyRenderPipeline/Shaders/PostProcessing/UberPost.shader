@@ -51,6 +51,7 @@ Shader "Hidden/Tiny Render Pipeline/Uber Post"
                 color += SAMPLE_TEXTURE2D_LOD(_Bloom_Texture, sampler_LinearClamp, uv, 0.0).rgb * _BloomIntensity;
             #endif
 
+                // Color grading
                 {
                     color = ApplyColorGrading(color, TEXTURE2D_ARGS(_InternalLut, sampler_LinearClamp), _Lut_Params.xyz);
                 }

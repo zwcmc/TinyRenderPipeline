@@ -83,9 +83,41 @@ public class PostProcessingData : ScriptableObject
         public TonemappingMode mode = TonemappingMode.None;
     }
 
+    [Serializable]
+    public class ColorAdjustments
+    {
+        public float postExposure = 0f;
+
+        [Range(-100f, 100f)]
+        public float contrast = 0f;
+
+        [ColorUsage(false, true)]
+        public Color colorFilter = Color.white;
+
+        [Range(-180f, 180f)]
+        public float hueShift = 0f;
+
+        [Range(-100f, 100f)]
+        public float saturation = 0f;
+    }
+
+    [Serializable]
+    public class WhiteBalance
+    {
+        [Range(-100f, 100f)]
+        public float temperature = 0f;
+
+        [Range(-100f, 100f)]
+        public float tint = 0f;
+    }
+
     public ShaderResources shaders = default;
 
     public Bloom bloom = default;
 
     public Tonemapping tonemapping = default;
+
+    public ColorAdjustments colorAdjustments = default;
+
+    public WhiteBalance whiteBalance = default;
 }
