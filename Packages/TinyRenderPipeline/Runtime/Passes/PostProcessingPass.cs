@@ -138,10 +138,10 @@ public class PostProcessingPass
                 // Bloom
                 using (new ProfilingScope(cmd, Profiling.bloom))
                     SetupBloom(cmd, source, m_Materials.uberPost);
-
-                // Color grading
-                SetupColorGrading(ref renderingData, m_Materials.uberPost);
             }
+
+            // Color grading
+            SetupColorGrading(ref renderingData, m_Materials.uberPost);
 
             if (m_ResolveToScreen)
                 RenderingUtils.FinalBlit(cmd, renderingData.camera, source, m_Destination, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, m_Materials.uberPost, 0);
