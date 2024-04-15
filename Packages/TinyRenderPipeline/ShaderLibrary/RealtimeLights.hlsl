@@ -3,10 +3,11 @@
 
 struct Light
 {
-    half3 direction;
-    half3 color;
-    float distanceAttenuation;
-    half shadowAttenuation;
+    half3  direction;
+    half3  color;
+    float  distanceAttenuation;
+    half   shadowAttenuation;
+    uint   layerMask;
 };
 
 float DistanceAttenuation(float distanceSqr, float distanceAttenuation)
@@ -37,6 +38,8 @@ Light GetMainLight()
     light.color = _MainLightColor.rgb;
     light.distanceAttenuation = unity_LightData.z; // unity_LightData.z is 1 when not culled by the culling mask, otherwise 0.
     light.shadowAttenuation = 1.0;
+    light.layerMask = _MainLightLayerMask;
+
     return light;
 }
 
@@ -64,6 +67,7 @@ Light GetAdditionalPerObjectLight(int perObjectLightIndex, float3 positionWS)
     half3 color = _AdditionalLightsColor[perObjectLightIndex].rgb;
     float4 distanceAndSpotAttenuation = _AdditionalLightsAttenuation[perObjectLightIndex];
     half3 spotDirection = _AdditionalLightsSpotDir[perObjectLightIndex].xyz;
+    uint lightLayerMask = asuint(_AdditionalLightsLayerMasks[perObjectLightIndex]);
 
     // Directional lights store direction in lightPosition.xyz and have .w set to 0.0.
     // This way the following code will work for both directional and punctual lights.
@@ -78,6 +82,7 @@ Light GetAdditionalPerObjectLight(int perObjectLightIndex, float3 positionWS)
     light.color = color;
     light.distanceAttenuation = attenuation;
     light.shadowAttenuation = 1.0;
+    light.layerMask = lightLayerMask;
 
     return light;
 }

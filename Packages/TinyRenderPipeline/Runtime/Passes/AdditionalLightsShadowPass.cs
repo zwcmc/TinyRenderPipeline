@@ -254,6 +254,8 @@ public class AdditionalLightsShadowPass
                 ShadowSliceData shadowSliceData = m_AdditionalLightsShadowSlices[globalShadowSliceIndex];
 
                 var shadowDrawingSettings = new ShadowDrawingSettings(cullResults, shadowLightIndex);
+                shadowDrawingSettings.useRenderingLayerMaskTest = true;
+
                 shadowDrawingSettings.splitData = shadowSliceData.splitData;
 
                 Vector4 shadowBias = ShadowUtils.GetShadowBias(shadowLight, shadowLightIndex, shadowSliceData.projectionMatrix, shadowSliceData.resolution);

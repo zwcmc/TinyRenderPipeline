@@ -114,4 +114,9 @@ float3 NormalizeNormalPerPixel(float3 normalWS)
 #endif
 }
 
+uint GetMeshRenderingLayer()
+{
+    return asuint(unity_RenderingLayer.x);
+}
+
 #endif

@@ -22,6 +22,8 @@ half4 FragmentPBR(InputData inputData, SurfaceData surfaceData)
     BRDFData brdfData;
     InitializeBRDFData(surfaceData, brdfData);
 
+    uint meshRenderingLayers = GetMeshRenderingLayer();
+
     half3 lightingColor = 0.0;
     Light mainLight = GetMainLight(inputData);
 
@@ -31,15 +33,21 @@ half4 FragmentPBR(InputData inputData, SurfaceData surfaceData)
     half3 giColor = GlobalIllumination(brdfData, inputData.bakedGI, surfaceData.occlusion, inputData.normalWS, inputData.viewDirectionWS);
     lightingColor += giColor;
 
-    half3 mainLightColor = LightingPBR(brdfData, mainLight, inputData.normalWS, inputData.viewDirectionWS);
-    lightingColor += mainLightColor;
+    if (IsMatchingLightLayer(mainLight.layerMask, meshRenderingLayers))
+    {
+        half3 mainLightColor = LightingPBR(brdfData, mainLight, inputData.normalWS, inputData.viewDirectionWS);
+        lightingColor += mainLightColor;
+    }
 
     half3 additionalLightsColor = 0.0;
     uint additionalLightCount = GetAdditionalLightsCount();
     for (uint i = 0u; i < additionalLightCount; ++i)
     {
         Light light = GetAdditionalLight(i, inputData.positionWS);
-        additionalLightsColor += LightingPBR(brdfData, light, inputData.normalWS, inputData.viewDirectionWS);
+        if (IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
+        {
+            additionalLightsColor += LightingPBR(brdfData, light, inputData.normalWS, inputData.viewDirectionWS);
+        }
     }
     lightingColor += additionalLightsColor;
 

@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -16,34 +17,41 @@ public class ForwardLights
     {
         public static int _MainLightPosition;
         public static int _MainLightColor;
+        public static int _MainLightLayerMask;
 
         public static int _AdditionalLightsCount;
         public static int _AdditionalLightsPosition;
         public static int _AdditionalLightsColor;
         public static int _AdditionalLightsAttenuation;
         public static int _AdditionalLightsSpotDir;
+        public static int _AdditionalLightsLayerMasks;
     }
 
     private Vector4[] m_AdditionalLightPositions;
     private Vector4[] m_AdditionalLightColors;
     private Vector4[] m_AdditionalLightAttenuations;
     private Vector4[] m_AdditionalLightSpotDirections;
+    private float[] m_AdditionalLightsLayerMasks;  // Unity has no support for binding uint arrays. We will use asuint() in the shader instead.
 
     public ForwardLights()
     {
         LightConstantBuffer._MainLightPosition = Shader.PropertyToID("_MainLightPosition");
         LightConstantBuffer._MainLightColor = Shader.PropertyToID("_MainLightColor");
+        LightConstantBuffer._MainLightLayerMask = Shader.PropertyToID("_MainLightLayerMask");
+
         LightConstantBuffer._AdditionalLightsCount = Shader.PropertyToID("_AdditionalLightsCount");
         LightConstantBuffer._AdditionalLightsPosition = Shader.PropertyToID("_AdditionalLightsPosition");
         LightConstantBuffer._AdditionalLightsColor = Shader.PropertyToID("_AdditionalLightsColor");
         LightConstantBuffer._AdditionalLightsAttenuation = Shader.PropertyToID("_AdditionalLightsAttenuation");
         LightConstantBuffer._AdditionalLightsSpotDir = Shader.PropertyToID("_AdditionalLightsSpotDir");
+        LightConstantBuffer._AdditionalLightsLayerMasks = Shader.PropertyToID("_AdditionalLightsLayerMasks");
 
         int maxAdditionalLights = TinyRenderPipeline.maxVisibleAdditionalLights;
         m_AdditionalLightPositions = new Vector4[maxAdditionalLights];
         m_AdditionalLightColors = new Vector4[maxAdditionalLights];
         m_AdditionalLightAttenuations = new Vector4[maxAdditionalLights];
         m_AdditionalLightSpotDirections = new Vector4[maxAdditionalLights];
+        m_AdditionalLightsLayerMasks = new float[maxAdditionalLights];
     }
 
     public void Setup(ScriptableRenderContext context, ref RenderingData renderingData)
@@ -72,11 +80,12 @@ public class ForwardLights
     private void SetupMainLightConstants(CommandBuffer cmd, ref RenderingData renderingData)
     {
         Vector4 lightPos, lightColor, lightAttenuation, lightSpotDir;
-        InitializeLightConstants(renderingData.cullResults.visibleLights, renderingData.mainLightIndex, out lightPos, out lightColor, out lightAttenuation,
-            out lightSpotDir);
+        uint lightLayerMask;
+        InitializeLightConstants(renderingData.cullResults.visibleLights, renderingData.mainLightIndex, out lightPos, out lightColor, out lightAttenuation, out lightSpotDir, out lightLayerMask);
 
         cmd.SetGlobalVector(LightConstantBuffer._MainLightPosition, lightPos);
         cmd.SetGlobalVector(LightConstantBuffer._MainLightColor, lightColor);
+        cmd.SetGlobalInt(LightConstantBuffer._MainLightLayerMask, (int)lightLayerMask);
     }
 
     private void SetupAdditionalLightConstants(CommandBuffer cmd, ref RenderingData renderingData)
@@ -91,7 +100,9 @@ public class ForwardLights
                 if (renderingData.mainLightIndex != i)
                 {
                     InitializeLightConstants(visibleLights, i, out m_AdditionalLightPositions[lightIter], out m_AdditionalLightColors[lightIter],
-                        out m_AdditionalLightAttenuations[lightIter], out m_AdditionalLightSpotDirections[lightIter]);
+                        out m_AdditionalLightAttenuations[lightIter], out m_AdditionalLightSpotDirections[lightIter], out uint lightLayerMask);
+
+                    m_AdditionalLightsLayerMasks[lightIter] = AsFloat((int)lightLayerMask);
                     lightIter++;
                 }
             }
@@ -100,6 +111,7 @@ public class ForwardLights
             cmd.SetGlobalVectorArray(LightConstantBuffer._AdditionalLightsColor, m_AdditionalLightColors);
             cmd.SetGlobalVectorArray(LightConstantBuffer._AdditionalLightsAttenuation, m_AdditionalLightAttenuations);
             cmd.SetGlobalVectorArray(LightConstantBuffer._AdditionalLightsSpotDir, m_AdditionalLightSpotDirections);
+            cmd.SetGlobalFloatArray(LightConstantBuffer._AdditionalLightsLayerMasks, m_AdditionalLightsLayerMasks);
 
             cmd.SetGlobalVector(LightConstantBuffer._AdditionalLightsCount, new Vector4(TinyRenderPipeline.maxVisibleAdditionalLights, 0.0f, 0.0f, 0.0f));
         }
@@ -110,12 +122,14 @@ public class ForwardLights
     }
 
     private void InitializeLightConstants(NativeArray<VisibleLight> lights, int lightIndex, out Vector4 lightPos, out Vector4 lightColor, out Vector4 lightAttenuation,
-        out Vector4 lightSpotDir)
+        out Vector4 lightSpotDir, out uint lightLayerMask)
     {
         lightPos = LightDefaultValue.DefaultLightPosition;
         lightColor = LightDefaultValue.DefaultLightColor;
         lightAttenuation = LightDefaultValue.DefaultLightAttenuation;
         lightSpotDir = LightDefaultValue.DefaultLightSpotDirection;
+
+        lightLayerMask = 0;
 
         if (lightIndex < 0)
             return;
@@ -153,6 +167,7 @@ public class ForwardLights
 
         // VisibleLight.finalColor already returns color in active color space
         lightColor = visibleLight.finalColor;
+        lightLayerMask = (uint)light.renderingLayerMask;
     }
 
     private int SetupPerObjectLightIndices(ref RenderingData renderingData)
@@ -239,5 +254,24 @@ public class ForwardLights
     {
         Vector4 dir = lightLocalToWorldMatrix.GetColumn(2);
         lightSpotDir = new Vector4(-dir.x, -dir.y, -dir.z, 0.0f);
+    }
+
+    [StructLayout(LayoutKind.Explicit)]
+    private struct IntFloatUnion
+    {
+        [FieldOffset(0)]
+        public int intValue;
+
+        [FieldOffset(0)]
+        public float floatValue;
+    }
+
+    private static float AsFloat(int x)
+    {
+        IntFloatUnion u;
+        u.floatValue = 0;
+        u.intValue = x;
+
+        return u.floatValue;
     }
 }

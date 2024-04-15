@@ -148,6 +148,21 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     }
 #endif
 
+    // Renaming rendering layer masks
+#if UNITY_EDITOR
+    private static string[] m_RenderingLayerNames;
+    static TinyRenderPipelineAsset()
+    {
+        m_RenderingLayerNames = new string[31];
+        for (int i = 0; i < m_RenderingLayerNames.Length; ++i)
+        {
+            m_RenderingLayerNames[i] = "Rendering Layer " + (i + 1);
+        }
+    }
+    public override string[] renderingLayerMaskNames => m_RenderingLayerNames;
+    public override string[] prefixedRenderingLayerMaskNames => m_RenderingLayerNames;
+#endif
+
     protected override RenderPipeline CreatePipeline()
     {
         renderPipeline = new TinyRenderPipeline(this);

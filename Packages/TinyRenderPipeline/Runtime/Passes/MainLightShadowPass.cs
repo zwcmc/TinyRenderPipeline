@@ -122,6 +122,7 @@ public class MainLightShadowPass
             VisibleLight shadowLight = cullResults.visibleLights[shadowLightIndex];
 
             var shadowDrawingSettings = new ShadowDrawingSettings(cullResults, shadowLightIndex);
+            shadowDrawingSettings.useRenderingLayerMaskTest = true;
 
             Vector3 cascadesSplit = renderingData.shadowData.cascadesSplit;
             int cascadeResolution = ShadowUtils.GetMaxTileResolutionInAtlas(renderingData.shadowData.mainLightShadowmapWidth, renderingData.shadowData.mainLightShadowmapHeight, m_ShadowCasterCascadesCount);
