@@ -29,7 +29,7 @@ MonoBehaviour:
   colorAdjustments:
     postExposure: 0
     contrast: 0
-    colorFilter: {r: 1, g: 0.4764151, b: 0.4764151, a: 1}
+    colorFilter: {r: 1, g: 1, b: 1, a: 1}
     hueShift: 0
     saturation: 0
   whiteBalance:
