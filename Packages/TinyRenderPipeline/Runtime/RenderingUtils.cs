@@ -180,4 +180,10 @@ public static class RenderingUtils
 
         Blitter.BlitTexture(cmd, source, scaleBias, material, passIndex);
     }
+
+    public static RenderTargetIdentifier GetCameraTargetIdentifier(Camera camera)
+    {
+        RenderTargetIdentifier cameraTarget = (camera.targetTexture != null) ? new RenderTargetIdentifier(camera.targetTexture) : BuiltinRenderTextureType.CameraTarget;
+        return cameraTarget;
+    }
 }

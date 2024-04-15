@@ -1,8 +1,11 @@
+#if UNITY_EDITOR
+using UnityEditor;
+using UnityEditor.ProjectWindowCallback;
+#endif
 using System;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-[CreateAssetMenu(menuName = "Rendering/Tiny Render Pipeline Asset")]
 public class TinyRenderPipelineAsset : RenderPipelineAsset
 {
     /// <summary>
@@ -33,6 +36,13 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
         public ShadowResolution shadowResolution = ShadowResolution._2048;
     }
 
+    [Serializable, ReloadGroup]
+    public class ShaderResources
+    {
+        [Reload("Shaders/Utils/Blit.shader")]
+        public Shader blitShader;
+    }
+
     // Shadows
     [Serializable]
     private class Shadows
@@ -46,6 +56,9 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
 
         public AdditionalLightsShadow additionalLightsShadow = default;
     }
+
+    [SerializeField]
+    private ShaderResources m_Shaders;
 
     [SerializeField]
     private bool m_UseSRPBatcher = true;
@@ -105,11 +118,35 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
         set { m_ColorGradingLutSize = Mathf.Clamp(value, 32, 64); }
     }
 
+    public ShaderResources shaders => m_Shaders;
+
     public PostProcessingData postProcessingData => m_PostProcessingData;
 
     public TinyRenderPipeline renderPipeline;
 
     public override Type pipelineType => renderPipeline.GetType();
+
+    public static readonly string packagePath = "Packages/com.tiny.render-pipeline";
+
+#if UNITY_EDITOR
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1812")]
+    private class CreateTinyRenderPipelineAsset : EndNameEditAction
+    {
+        public override void Action(int instanceId, string pathName, string resourceFile)
+        {
+            var instance = CreateInstance<TinyRenderPipelineAsset>();
+            AssetDatabase.CreateAsset(instance, pathName);
+            ResourceReloader.ReloadAllNullIn(instance, packagePath);
+            Selection.activeObject = instance;
+        }
+    }
+
+    [MenuItem("Assets/Create/Rendering/Tiny Render Pipeline Asset")]
+    private static void CreateTinyRenderPipeline()
+    {
+        ProjectWindowUtil.StartNameEditingIfProjectWindowExists(0, CreateInstance<CreateTinyRenderPipelineAsset>(), "New RP Asset.asset", null, null);
+    }
+#endif
 
     protected override RenderPipeline CreatePipeline()
     {

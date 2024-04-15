@@ -32,6 +32,8 @@ public struct RenderingData
 
     public RenderTextureDescriptor cameraTargetDescriptor;
 
+    public bool isDefaultCameraViewport;
+
     public CullingResults cullResults;
 
     public int mainLightIndex;
@@ -40,6 +42,8 @@ public struct RenderingData
     public ShadowData shadowData;
 
     public PerObjectData perObjectData;
+
+    public PostProcessingData postProcessingData;
 
     /// <summary>
     /// The size of the color grading Look Up Table (LUT)

@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f6bffb9a94e3beb4b8e4a90178d8f8be, type: 3}
-  m_Name: New Post Processing Data
+  m_Name: Second Camera Post Processing Data
   m_EditorClassIdentifier: 
   shaders:
     uberPostShader: {fileID: 4800000, guid: 2308bea0a8909ff4e98af241a4cc0112, type: 3}
@@ -18,20 +18,20 @@ MonoBehaviour:
     lutBuilderShader: {fileID: 4800000, guid: c4e352c13ccd11b4f8d6b745cfa2bd24, type: 3}
   bloom:
     threshold: 0.9
-    intensity: 2
+    intensity: 4
     scatter: 0.7
     clamp: 65472
-    maxIterations: 8
+    maxIterations: 6
     downscale: 0
     highQualityFiltering: 0
   tonemapping:
-    mode: 2
+    mode: 1
   colorAdjustments:
     postExposure: 0
     contrast: 0
-    colorFilter: {r: 1, g: 0.4764151, b: 0.4764151, a: 1}
-    hueShift: 0
-    saturation: 0
+    colorFilter: {r: 1, g: 1, b: 1, a: 1}
+    hueShift: -124
+    saturation: 100
   whiteBalance:
-    temperature: 0
-    tint: 0
+    temperature: 59
+    tint: 67

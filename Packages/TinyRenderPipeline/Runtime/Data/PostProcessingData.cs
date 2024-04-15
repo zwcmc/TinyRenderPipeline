@@ -1,8 +1,12 @@
+#if UNITY_EDITOR
+using UnityEditor;
+using UnityEditor.ProjectWindowCallback;
+#endif
 using System;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-[CreateAssetMenu(menuName = "Rendering/Post Processing Data")]
+[Serializable]
 public class PostProcessingData : ScriptableObject
 {
     /// <summary>
@@ -42,13 +46,36 @@ public class PostProcessingData : ScriptableObject
         ACES
     }
 
-    [Serializable]
+#if UNITY_EDITOR
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1812")]
+    private class CreatePostProcessingDataAsset : EndNameEditAction
+    {
+        public override void Action(int instanceId, string pathName, string resourceFile)
+        {
+            var instance = CreateInstance<PostProcessingData>();
+            AssetDatabase.CreateAsset(instance, pathName);
+            ResourceReloader.ReloadAllNullIn(instance, TinyRenderPipelineAsset.packagePath);
+            Selection.activeObject = instance;
+        }
+    }
+
+    [MenuItem("Assets/Create/Rendering/Post Processing Data")]
+    private static void CreatePostProcessingData()
+    {
+        ProjectWindowUtil.StartNameEditingIfProjectWindowExists(0, CreateInstance<CreatePostProcessingDataAsset>(), "New Post Processing Data.asset", null, null);
+    }
+#endif
+
+    [Serializable, ReloadGroup]
     public class ShaderResources
     {
+        [Reload("Shaders/PostProcessing/UberPost.shader")]
         public Shader uberPostShader;
 
+        [Reload("Shaders/PostProcessing/Bloom.shader")]
         public Shader bloomShader;
 
+        [Reload("Shaders/PostProcessing/LutBuilder.shader")]
         public Shader lutBuilderShader;
     }
 

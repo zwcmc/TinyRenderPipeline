@@ -34,10 +34,10 @@ public class TinyRenderPipeline : RenderPipeline
 
     public static int maxVisibleAdditionalLights => k_MaxVisibleAdditionalLights;
 
-    public static TinyRenderPipelineAsset asset
-    {
-        get => GraphicsSettings.currentRenderPipeline as TinyRenderPipelineAsset;
-    }
+    // public static TinyRenderPipelineAsset asset
+    // {
+    //     get => GraphicsSettings.currentRenderPipeline as TinyRenderPipelineAsset;
+    // }
 
     public TinyRenderPipeline(TinyRenderPipelineAsset asset)
     {
@@ -48,7 +48,7 @@ public class TinyRenderPipeline : RenderPipeline
         // Light intensity in linear space
         GraphicsSettings.lightsUseLinearIntensity = true;
 
-        m_TinyRenderer = new TinyRenderer(pipelineAsset.postProcessingData);
+        m_TinyRenderer = new TinyRenderer(pipelineAsset);
 
         s_RTHandlePool = new RTHandleResourcePool();
     }
@@ -158,6 +158,9 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.camera = camera;
         renderingData.isHdrEnabled = camera.allowHDR && asset.supportsHDR;
         renderingData.cameraTargetDescriptor = RenderingUtils.CreateRenderTextureDescriptor(renderingData.camera, renderingData.isHdrEnabled);
+
+        var cameraRect = camera.rect;
+        renderingData.isDefaultCameraViewport = !(Math.Abs(cameraRect.x) > 0.0f || Math.Abs(cameraRect.y) > 0.0f || Math.Abs(cameraRect.width) < 1.0f || Math.Abs(cameraRect.height) < 1.0f);
         renderingData.cullResults = cullResults;
 
         var visibleLights = cullResults.visibleLights;
@@ -202,6 +205,8 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.shadowData.additionalLightsShadowmapWidth = renderingData.shadowData.additionalLightsShadowmapHeight = asset.additionalLightsShadowmapResolution;
 
         renderingData.perObjectData = GetPerObjectLightFlags(renderingData.additionalLightsCount);
+
+        renderingData.postProcessingData = asset.postProcessingData;
 
         renderingData.lutSize = asset.colorGradingLutSize;
     }

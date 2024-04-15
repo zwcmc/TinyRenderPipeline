@@ -3,8 +3,10 @@ using UnityEngine.Rendering;
 
 public class ColorGradingLutPass
 {
-    private readonly Material m_LutBuilder;
+    private Material m_LutBuilder;
     private static readonly ProfilingSampler m_ProfilingSampler = new ProfilingSampler("ColorGradingLUT");
+
+    private PostProcessingData m_PostProcessingData;
 
     public RTHandle m_ColorGradingLut;
 
@@ -20,16 +22,30 @@ public class ColorGradingLutPass
         public static readonly int _ColorBalance = Shader.PropertyToID("_ColorBalance");
     }
 
-    public ColorGradingLutPass(PostProcessingData postProcessingData)
+    public void Setup(PostProcessingData postProcessingData)
     {
-        if (postProcessingData != null)
+        m_PostProcessingData = postProcessingData;
+
+        if (m_LutBuilder == null && m_PostProcessingData != null)
         {
-            m_LutBuilder = CoreUtils.CreateEngineMaterial(postProcessingData.shaders.lutBuilderShader);
+            m_LutBuilder = CoreUtils.CreateEngineMaterial(m_PostProcessingData.shaders.lutBuilderShader);
         }
     }
 
     public void ExecutePass(ScriptableRenderContext context, ref RenderingData renderingData)
     {
+        if (m_LutBuilder == null)
+        {
+            Debug.LogError("Color Grading Lut Pass: lut builder material is null.");
+            return;
+        }
+
+        if (m_PostProcessingData == null)
+        {
+            Debug.LogError("Color Grading Lut Pass: post-processing data is null.");
+            return;
+        }
+
         var cmd = renderingData.commandBuffer;
 
         // Set render target
@@ -48,10 +64,8 @@ public class ColorGradingLutPass
 
             m_LutBuilder.SetVector(ShaderConstants._Lut_Params, lutParameters);
 
-            var asset = TinyRenderPipeline.asset;
-
-            var colorAdjustments = asset.postProcessingData.colorAdjustments;
-            var whiteBalance = asset.postProcessingData.whiteBalance;
+            var colorAdjustments = m_PostProcessingData.colorAdjustments;
+            var whiteBalance = m_PostProcessingData.whiteBalance;
 
             float postExposureLinear = Mathf.Pow(2f, colorAdjustments.postExposure);
             var hueSatConPos = new Vector4(colorAdjustments.hueShift / 360f, colorAdjustments.saturation * 0.01f + 1f, colorAdjustments.contrast * 0.01f + 1f, postExposureLinear);
@@ -61,7 +75,7 @@ public class ColorGradingLutPass
             m_LutBuilder.SetVector(ShaderConstants._ColorFilter, colorAdjustments.colorFilter);
             m_LutBuilder.SetVector(ShaderConstants._ColorBalance, lmsColorBalance);
 
-            var tonemapping = asset.postProcessingData.tonemapping;
+            var tonemapping = m_PostProcessingData.tonemapping;
             switch (tonemapping.mode)
             {
                 case PostProcessingData.TonemappingMode.Neutral:

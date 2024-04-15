@@ -35,6 +35,8 @@ public class PostProcessingPass
     private RTHandle[] m_BloomMipDown;
     private RTHandle[] m_BloomMipUp;
 
+    private PostProcessingData m_PostProcessingData;
+
     private static class ShaderConstants
     {
         public static readonly int _SourceTexLowMip = Shader.PropertyToID("_SourceTexLowMip");
@@ -60,15 +62,8 @@ public class PostProcessingPass
         BloomUpsample,
     }
 
-    public bool IsValid() => m_Materials != null;
-
-    public PostProcessingPass(PostProcessingData postProcessingData)
+    public PostProcessingPass()
     {
-        if (postProcessingData != null)
-        {
-            m_Materials = new MaterialLibrary(postProcessingData);
-        }
-
         ShaderConstants._BloomMipUp = new int[k_MaxPyramidSize];
         ShaderConstants._BloomMipDown = new int[k_MaxPyramidSize];
         m_BloomMipUp = new RTHandle[k_MaxPyramidSize];
@@ -83,8 +78,14 @@ public class PostProcessingPass
         }
     }
 
-    public bool Setup(in RenderTextureDescriptor baseDescriptor, in RTHandle source, bool resolveToScreen, in RTHandle internalLut)
+    public void Setup(in RenderTextureDescriptor baseDescriptor, in RTHandle source, bool resolveToScreen, in RTHandle internalLut, PostProcessingData postProcessingData)
     {
+        m_PostProcessingData = postProcessingData;
+        if (m_PostProcessingData != null)
+        {
+            m_Materials = new MaterialLibrary(m_PostProcessingData);
+        }
+
         m_Descriptor = baseDescriptor;
         m_Descriptor.useMipMap = false;
         m_Descriptor.autoGenerateMips = false;
@@ -93,14 +94,23 @@ public class PostProcessingPass
         m_ResolveToScreen = resolveToScreen;
 
         m_InternalLut = internalLut;
-
-        return true;
     }
 
     public void ExecutePass(ScriptableRenderContext context, ref RenderingData renderingData)
     {
-        var asset = TinyRenderPipeline.asset;
-        m_Bloom = asset.postProcessingData.bloom;
+        if (m_Materials == null)
+        {
+            Debug.LogError("Post Processing Pass: post-processing materials is null.");
+            return;
+        }
+
+        if (m_PostProcessingData == null)
+        {
+            Debug.LogError("Post Processing Pass: post-processing data is null.");
+            return;
+        }
+
+        m_Bloom = m_PostProcessingData.bloom;
 
         m_DefaultHDRFormat = renderingData.isHdrEnabled ? SystemInfo.GetGraphicsFormat(DefaultFormat.HDR) : SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
 

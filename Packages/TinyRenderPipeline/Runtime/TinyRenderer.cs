@@ -19,8 +19,8 @@ public partial class TinyRenderer
     private MainLightShadowPass m_MainLightShadowPass;
     private AdditionalLightsShadowPass m_AdditionalLightsShadowPass;
     private PostProcessingPass m_PostProcessingPass;
-
     private ColorGradingLutPass m_ColorGradingLutPass;
+    private FinalBlitPass m_FinalBlitPass;
 
     private RenderTargetBufferSystem m_ColorBufferSystem;
 
@@ -30,13 +30,19 @@ public partial class TinyRenderer
     private RTHandle m_TargetColorHandle;
     private RTHandle m_TargetDepthHandle;
 
-    public TinyRenderer(PostProcessingData postProcessingData)
+    private Material m_BlitMaterial;
+
+    public TinyRenderer(TinyRenderPipelineAsset asset)
     {
+        if (asset.shaders != null)
+            m_BlitMaterial = CoreUtils.CreateEngineMaterial(asset.shaders.blitShader);
+
         m_ForwardLights = new ForwardLights();
         m_MainLightShadowPass = new MainLightShadowPass();
         m_AdditionalLightsShadowPass = new AdditionalLightsShadowPass();
-        m_PostProcessingPass = new PostProcessingPass(postProcessingData);
-        m_ColorGradingLutPass = new ColorGradingLutPass(postProcessingData);
+        m_PostProcessingPass = new PostProcessingPass();
+        m_ColorGradingLutPass = new ColorGradingLutPass();
+        m_FinalBlitPass = new FinalBlitPass(m_BlitMaterial);
 
         m_ColorBufferSystem = new RenderTargetBufferSystem("_CameraColorAttachment");
     }
@@ -92,16 +98,17 @@ public partial class TinyRenderer
         context.SetupCameraProperties(camera);
 
         // Post processing
-
         // Check post processing data setup
-        bool applyPostProcessingEffects = m_PostProcessingPass.IsValid();
+        var additionalCameraData = camera.GetComponent<AdditionalCameraData>();
+        var postProcessingData = additionalCameraData ? (additionalCameraData.isOverridePostProcessingData ? additionalCameraData.overridePostProcessingData : renderingData.postProcessingData) : renderingData.postProcessingData;
+        bool applyPostProcessing = postProcessingData != null;
         // Only game camera and scene camera have post processing effects
-        applyPostProcessingEffects &= camera.cameraType <= CameraType.SceneView;
+        applyPostProcessing &= camera.cameraType <= CameraType.SceneView;
         // Check if disable post processing effects in scene view
-        applyPostProcessingEffects &= CoreUtils.ArePostProcessesEnabled(camera);
+        applyPostProcessing &= CoreUtils.ArePostProcessesEnabled(camera);
 
         // Color grading generating LUT pass
-        bool generateColorGradingLut = applyPostProcessingEffects && renderingData.isHdrEnabled;
+        bool generateColorGradingLut = applyPostProcessing && renderingData.isHdrEnabled;
         if (generateColorGradingLut)
         {
             int lutHeight = renderingData.lutSize;
@@ -111,14 +118,22 @@ public partial class TinyRenderer
 
             RenderingUtils.ReAllocateIfNeeded(ref m_ColorGradingLutPass.m_ColorGradingLut, descriptor, FilterMode.Bilinear, TextureWrapMode.Clamp, name: "_InternalGradingLut");
 
+            m_ColorGradingLutPass.Setup(postProcessingData);
             m_ColorGradingLutPass.ExecutePass(context, ref renderingData);
         }
 
-        if (applyPostProcessingEffects)
+        // Check if need to create color buffer:
+        // 1. Post-processing is active
+        // 2. Camera's viewport rect is not default({0, 0, 1, 1})
+        bool createColorTexture = false;
+        createColorTexture |= applyPostProcessing;
+        createColorTexture |= !renderingData.isDefaultCameraViewport;
+
+        if (createColorTexture)
             CreateCameraRenderTarget(context, ref cameraTargetDescriptor, cmd, camera);
 
-        m_ActiveCameraColorAttachment = applyPostProcessingEffects ? m_ColorBufferSystem.PeekBackBuffer() : m_TargetColorHandle;
-        m_ActiveCameraDepthAttachment = applyPostProcessingEffects ? m_CameraDepthAttachment : m_TargetDepthHandle;
+        m_ActiveCameraColorAttachment = createColorTexture ? m_ColorBufferSystem.PeekBackBuffer() : m_TargetColorHandle;
+        m_ActiveCameraDepthAttachment = createColorTexture ? m_CameraDepthAttachment : m_TargetDepthHandle;
 
         // Setup render target
         cmd.SetRenderTarget(m_ActiveCameraColorAttachment, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
@@ -126,7 +141,7 @@ public partial class TinyRenderer
 
         // Setup clear flags
         CameraClearFlags clearFlags = camera.clearFlags;
-        if (applyPostProcessingEffects)
+        if (applyPostProcessing)
         {
             if (clearFlags > CameraClearFlags.Color)
                 clearFlags = CameraClearFlags.Color;
@@ -146,10 +161,15 @@ public partial class TinyRenderer
 
         DrawGizmos(context, cmd, camera, GizmoSubset.PreImageEffects);
 
-        if (applyPostProcessingEffects)
+        if (applyPostProcessing)
         {
-            m_PostProcessingPass.Setup(cameraTargetDescriptor, m_ActiveCameraColorAttachment, true, m_ColorGradingLutPass.m_ColorGradingLut);
+            m_PostProcessingPass.Setup(cameraTargetDescriptor, m_ActiveCameraColorAttachment, true, m_ColorGradingLutPass.m_ColorGradingLut, postProcessingData);
             m_PostProcessingPass.ExecutePass(context, ref renderingData);
+        }
+        else if (createColorTexture)
+        {
+            m_FinalBlitPass.Setup(m_ActiveCameraColorAttachment);
+            m_FinalBlitPass.ExecutePass(context, ref renderingData);
         }
 
         DrawGizmos(context, cmd, camera, GizmoSubset.PostImageEffects);
@@ -171,10 +191,14 @@ public partial class TinyRenderer
         m_MainLightShadowPass?.Dispose();
         m_AdditionalLightsShadowPass?.Dispose();
 
+        m_FinalBlitPass?.Dispose();
+
         m_CameraDepthAttachment?.Release();
 
         m_TargetColorHandle?.Release();
         m_TargetDepthHandle?.Release();
+
+        CoreUtils.Destroy(m_BlitMaterial);
     }
 
     private void DrawGizmos(ScriptableRenderContext context, CommandBuffer cmd, Camera camera, GizmoSubset gizmoSubset)
