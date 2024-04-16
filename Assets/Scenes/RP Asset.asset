@@ -27,5 +27,5 @@ MonoBehaviour:
       cascadeRatio3: 0.467
     additionalLightsShadow:
       shadowResolution: 2048
-  m_PostProcessingData: {fileID: 11400000, guid: 90ac35e882f8867438b6345c4c8a746c, type: 2}
+  m_PostProcessingData: {fileID: 0}
   m_ColorGradingLutSize: 32

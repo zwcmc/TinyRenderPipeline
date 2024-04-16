@@ -73,8 +73,8 @@ Material:
     - _Blend: 0
     - _BumpScale: 1
     - _CameraFadingEnabled: 1
-    - _CameraFarFadeDistance: 6
-    - _CameraNearFadeDistance: 2
+    - _CameraFarFadeDistance: 2
+    - _CameraNearFadeDistance: 1
     - _Cull: 2
     - _Cutoff: 0.5
     - _DetailNormalMapScale: 1
