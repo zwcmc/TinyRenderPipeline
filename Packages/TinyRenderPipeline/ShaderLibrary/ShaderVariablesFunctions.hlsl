@@ -119,4 +119,13 @@ uint GetMeshRenderingLayer()
     return asuint(unity_RenderingLayer.x);
 }
 
+float LinearDepthToEyeDepth(float rawDepth)
+{
+#if UNITY_REVERSED_Z
+    return _ProjectionParams.z - (_ProjectionParams.z - _ProjectionParams.y) * rawDepth;
+#else
+    return _ProjectionParams.y + (_ProjectionParams.z - _ProjectionParams.y) * rawDepth;
+#endif
+}
+
 #endif
