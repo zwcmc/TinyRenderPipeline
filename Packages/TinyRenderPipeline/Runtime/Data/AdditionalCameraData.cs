@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 [DisallowMultipleComponent]
@@ -11,6 +10,9 @@ public class AdditionalCameraData : MonoBehaviour
     [SerializeField]
     private PostProcessingData m_PostProcessingData = default;
 
+    [SerializeField]
+    private bool m_RequireDepthTexture = false;
+
     public bool isOverridePostProcessingData
     {
         get => m_OverridePostProcessingData;
@@ -18,4 +20,10 @@ public class AdditionalCameraData : MonoBehaviour
     }
 
     public PostProcessingData overridePostProcessingData => m_PostProcessingData;
+
+    public bool requireDepthTexture
+    {
+        get => m_RequireDepthTexture;
+        set => m_RequireDepthTexture = value;
+    }
 }

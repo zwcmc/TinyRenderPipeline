@@ -5244,6 +5244,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_OverridePostProcessingData: 0
   m_PostProcessingData: {fileID: 0}
+  m_RequireDepthTexture: 1
 --- !u!1 &1099130133
 GameObject:
   m_ObjectHideFlags: 0
@@ -5435,6 +5436,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_OverridePostProcessingData: 1
   m_PostProcessingData: {fileID: 11400000, guid: 4570dceca915c784893c56b8b5b1bf4f, type: 2}
+  m_RequireDepthTexture: 0
 --- !u!1 &1892537013
 GameObject:
   m_ObjectHideFlags: 0

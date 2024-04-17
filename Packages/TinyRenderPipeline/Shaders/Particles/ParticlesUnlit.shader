@@ -9,6 +9,9 @@ Shader "Tiny Render Pipeline/Particles/Unlit"
         _CameraNearFadeDistance("Camera Near Fade", Float) = 1.0
         _CameraFarFadeDistance("Camera Far Fade", Float) = 2.0
 
+        _SoftParticlesNearFadeDistance("Soft Particles Near Fade", Float) = 0.0
+        _SoftParticlesFarFadeDistance("Soft Particles Far Fade", Float) = 1.0
+
         _Surface("__surface", Float) = 0.0
         _Blend("__mode", Float) = 0.0
         _Cull("__cull", Float) = 2.0
@@ -18,8 +21,9 @@ Shader "Tiny Render Pipeline/Particles/Unlit"
         [HideInInspector] _SrcBlendAlpha("__srcA", Float) = 1.0
         [HideInInspector] _DstBlendAlpha("__dstA", Float) = 0.0
         [HideInInspector] _ZWrite("__zw", Float) = 1.0
-        [Toggle] _FlipbookBlending("__flipbookblending", Float) = 0.0
-        [Toggle] _CameraFadingEnabled("__camerafadingenabled", Float) = 0.0
+        [ToggleUI] _FlipbookBlending("__flipbookblending", Float) = 0.0
+        [ToggleUI] _CameraFadingEnabled("__camerafadingenabled", Float) = 0.0
+        [ToggleUI] _SoftParticlesEnabled("__softparticlesenabled", Float) = 0.0
     }
     SubShader
     {
@@ -48,6 +52,7 @@ Shader "Tiny Render Pipeline/Particles/Unlit"
             #pragma shader_feature_local_fragment _ALPHATEST_ON
             #pragma shader_feature_local _FLIPBOOKBLENDING_ON
             #pragma shader_feature_local _FADING_ON
+            #pragma shader_feature_local _SOFTPARTICLES_ON
 
             #include "Packages/com.tiny.render-pipeline/Shaders/Particles/ParticlesUnlitInput.hlsl"
             #include "Packages/com.tiny.render-pipeline/Shaders/Particles/ParticlesUnlitForwardPass.hlsl"

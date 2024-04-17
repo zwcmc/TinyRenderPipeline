@@ -8,6 +8,8 @@ CBUFFER_START(UnityPerMaterial)
 half4 _BaseColor;
 float _CameraNearFadeDistance;
 float _CameraFarFadeDistance;
+float _SoftParticlesNearFadeDistance;
+float _SoftParticlesFarFadeDistance;
 half _Cutoff;
 half _Surface;
 CBUFFER_END

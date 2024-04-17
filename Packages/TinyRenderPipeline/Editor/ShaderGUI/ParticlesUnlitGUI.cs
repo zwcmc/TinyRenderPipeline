@@ -54,33 +54,39 @@ namespace TinyRenderPipeline.CustomShaderGUI
             public static readonly GUIContent flipbookBlending = EditorGUIUtility.TrTextContent("Flip-Book Blending");
 
             public static readonly GUIContent cameraFadingEnabled = EditorGUIUtility.TrTextContent("Camera Fading");
-
             public static GUIContent cameraFadingDistanceText = EditorGUIUtility.TrTextContent("Distance");
             public static GUIContent cameraNearFadeDistanceText = EditorGUIUtility.TrTextContent("Near");
             public static GUIContent cameraFarFadeDistanceText = EditorGUIUtility.TrTextContent("Far");
+
+
+            public static GUIContent softParticlesEnabled = EditorGUIUtility.TrTextContent("Soft Particles");
+            public static GUIContent softParticlesFadeText = EditorGUIUtility.TrTextContent("Surface Fade");
+            public static GUIContent softParticlesNearFadeDistanceText = EditorGUIUtility.TrTextContent("Near");
+            public static GUIContent softParticlesFarFadeDistanceText = EditorGUIUtility.TrTextContent("Far");
         }
 
         #endregion
 
         #region Variables
 
-        private MaterialEditor materialEditor { get; set; }
-        private MaterialProperty surfaceTypeProp { get; set; }
-        private MaterialProperty blendModeProp { get; set; }
-        private MaterialProperty cullingProp { get; set; }
-        private MaterialProperty zwriteProp { get; set; }
-        private MaterialProperty baseMapProp { get; set; }
-        private MaterialProperty baseColorProp { get; set; }
-        private MaterialProperty alphaClipProp { get; set; }
-        private MaterialProperty alphaCutoffProp { get; set; }
+        private MaterialEditor materialEditor;
+        private MaterialProperty surfaceTypeProp;
+        private MaterialProperty blendModeProp;
+        private MaterialProperty cullingProp;
+        private MaterialProperty zwriteProp;
+        private MaterialProperty baseMapProp;
+        private MaterialProperty baseColorProp;
+        private MaterialProperty alphaClipProp;
+        private MaterialProperty alphaCutoffProp;
+        private MaterialProperty flipbookMode;
 
-        private MaterialProperty flipbookMode { get; set; }
+        private MaterialProperty cameraFading;
+        private MaterialProperty cameraNearFadeDistance;
+        private MaterialProperty cameraFarFadeDistance;
 
-        private MaterialProperty cameraFading { get; set; }
-
-        public MaterialProperty cameraNearFadeDistance;
-
-        public MaterialProperty cameraFarFadeDistance;
+        private MaterialProperty softParticlesEnabled;
+        private MaterialProperty softParticlesNearFadeDistance;
+        private MaterialProperty softParticlesFarFadeDistance;
 
         #endregion
 
@@ -101,10 +107,14 @@ namespace TinyRenderPipeline.CustomShaderGUI
             baseColorProp = FindProperty("_BaseColor", properties, false);
 
             flipbookMode = FindProperty("_FlipbookBlending", properties, false);
-            cameraFading = FindProperty("_CameraFadingEnabled", properties, false);
 
+            cameraFading = FindProperty("_CameraFadingEnabled", properties, false);
             cameraNearFadeDistance = FindProperty("_CameraNearFadeDistance", properties);
             cameraFarFadeDistance = FindProperty("_CameraFarFadeDistance", properties);
+
+            softParticlesEnabled = FindProperty("_SoftParticlesEnabled", properties);
+            softParticlesNearFadeDistance = FindProperty("_SoftParticlesNearFadeDistance", properties);
+            softParticlesFarFadeDistance = FindProperty("_SoftParticlesFarFadeDistance", properties);
         }
 
         public override void OnGUI(MaterialEditor materialEditorIn, MaterialProperty[] properties)
@@ -153,17 +163,50 @@ namespace TinyRenderPipeline.CustomShaderGUI
 
             materialEditor.ShaderProperty(flipbookMode, Styles.flipbookBlending);
 
-            materialEditor.ShaderProperty(cameraFading, Styles.cameraFadingEnabled);
-            if (cameraFading.floatValue >= 0.5f)
+            // Z write doesn't work with fading
+            bool hasZWrite = (material.GetFloat("_ZWrite") > 0.0f);
+            if (!hasZWrite)
             {
-                EditorGUI.indentLevel++;
-                TwoFloatSingleLine(Styles.cameraFadingDistanceText,
-                    cameraNearFadeDistance,
-                    Styles.cameraNearFadeDistanceText,
-                    cameraFarFadeDistance,
-                    Styles.cameraFarFadeDistanceText,
-                    materialEditor);
-                EditorGUI.indentLevel--;
+                // Camera fading
+                {
+                    materialEditor.ShaderProperty(cameraFading, Styles.cameraFadingEnabled);
+                    if (cameraFading.floatValue >= 0.5f)
+                    {
+                        EditorGUI.indentLevel++;
+                        TwoFloatSingleLine(Styles.cameraFadingDistanceText,
+                            cameraNearFadeDistance,
+                            Styles.cameraNearFadeDistanceText,
+                            cameraFarFadeDistance,
+                            Styles.cameraFarFadeDistanceText,
+                            materialEditor);
+                        EditorGUI.indentLevel--;
+                    }
+                }
+
+                // Soft particles
+                {
+                    materialEditor.ShaderProperty(softParticlesEnabled, Styles.softParticlesEnabled);
+                    if (softParticlesEnabled.floatValue >= 0.5f)
+                    {
+                        TinyRenderPipelineAsset asset = GraphicsSettings.currentRenderPipeline as TinyRenderPipelineAsset;
+                        if (asset != null && !asset.requireDepthTexture)
+                        {
+                            GUIStyle warnStyle = new GUIStyle(GUI.skin.label);
+                            warnStyle.fontStyle = FontStyle.BoldAndItalic;
+                            warnStyle.wordWrap = true;
+                            EditorGUILayout.HelpBox("Soft Particles require depth texture. Please enable \"Depth Texture\" in the Universal Render Pipeline settings.", MessageType.Warning);
+                        }
+
+                        EditorGUI.indentLevel++;
+                        TwoFloatSingleLine(Styles.softParticlesFadeText,
+                            softParticlesNearFadeDistance,
+                            Styles.softParticlesNearFadeDistanceText,
+                            softParticlesFarFadeDistance,
+                            Styles.softParticlesFarFadeDistanceText,
+                            materialEditor);
+                        EditorGUI.indentLevel--;
+                    }
+                }
             }
         }
 
@@ -197,6 +240,62 @@ namespace TinyRenderPipeline.CustomShaderGUI
 
             if (material.HasProperty("_Cull"))
                 material.doubleSidedGI = (RenderFace)material.GetFloat("_Cull") != RenderFace.Front;
+
+            // Is the material transparent
+            bool isTransparent = material.GetTag("RenderType", false) == "Transparent";
+            // Z write doesn't work with distortion/fading
+            bool hasZWrite = (material.GetFloat("_ZWrite") > 0.0f);
+
+            // Flipbook blending
+            if (material.HasProperty("_FlipbookBlending"))
+                CoreUtils.SetKeyword(material, "_FLIPBOOKBLENDING_ON", material.GetFloat("_FlipbookBlending") > 0.5f);
+
+            // Camera fading
+            var useCameraFading = false;
+            if (material.HasProperty("_CameraFadingEnabled") && isTransparent)
+            {
+                useCameraFading = material.GetFloat("_CameraFadingEnabled") > 0.5f;
+                if (useCameraFading)
+                {
+                    var cameraNearFadeDistance = material.GetFloat("_CameraNearFadeDistance");
+                    var cameraFarFadeDistance = material.GetFloat("_CameraFarFadeDistance");
+                    // clamp values
+                    if (cameraNearFadeDistance < 0.0f)
+                    {
+                        material.SetFloat("_CameraNearFadeDistance", 0.0f);
+                    }
+
+                    if (cameraFarFadeDistance < 0.0f)
+                    {
+                        material.SetFloat("_CameraFarFadeDistance", 0.0f);
+                    }
+                }
+                var useFading = useCameraFading && !hasZWrite;
+                CoreUtils.SetKeyword(material, "_FADING_ON", useFading);
+            }
+
+            // Soft particles
+            var useSoftParticles = false;
+            if (material.HasProperty("_SoftParticlesEnabled") && isTransparent)
+            {
+                useSoftParticles = (material.GetFloat("_SoftParticlesEnabled") > 0.5f);
+                if (useSoftParticles)
+                {
+                    var softParticlesNearFadeDistance = material.GetFloat("_SoftParticlesNearFadeDistance");
+                    var softParticlesFarFadeDistance = material.GetFloat("_SoftParticlesFarFadeDistance");
+                    // clamp values
+                    if (softParticlesNearFadeDistance < 0.0f)
+                    {
+                        material.SetFloat("_SoftParticlesNearFadeDistance", 0.0f);
+                    }
+
+                    if (softParticlesFarFadeDistance < 0.0f)
+                    {
+                        material.SetFloat("_SoftParticlesFarFadeDistance", 0.0f);
+                    }
+                }
+                CoreUtils.SetKeyword(material, "_SOFTPARTICLES_ON", useSoftParticles);
+            }
         }
 
         private static void SetupMaterialBlendModeInternal(Material material)
@@ -271,14 +370,6 @@ namespace TinyRenderPipeline.CustomShaderGUI
 
             if (renderQueue != material.renderQueue)
                 material.renderQueue = renderQueue;
-
-            // Flipbook blending
-            if (material.HasProperty("_FlipbookBlending"))
-                CoreUtils.SetKeyword(material, "_FLIPBOOKBLENDING_ON", material.GetFloat("_FlipbookBlending") > 0.5f);
-
-            // Camera fading
-            if (material.HasProperty("_CameraFadingEnabled"))
-                CoreUtils.SetKeyword(material, "_FADING_ON", material.GetFloat("_CameraFadingEnabled") > 0.5f);
         }
 
         private static void SetMaterialSrcDstBlendProperties(Material material,

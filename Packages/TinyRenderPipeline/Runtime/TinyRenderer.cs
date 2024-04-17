@@ -140,7 +140,7 @@ public partial class TinyRenderer
         bool createColorTexture = applyPostProcessing;
         createColorTexture |= !renderingData.isDefaultCameraViewport;
 
-        bool createDepthTexture = renderingData.copyDepthTexture;
+        bool createDepthTexture = renderingData.copyDepthTexture && additionalCameraData.requireDepthTexture;
 
         bool sceneViewFilterEnabled = camera.sceneViewFilterMode == Camera.SceneViewFilterMode.ShowFiltered;
         bool intermediateRenderTexture = (createColorTexture || createDepthTexture) && !sceneViewFilterEnabled;
@@ -199,6 +199,10 @@ public partial class TinyRenderer
                 m_ActiveCameraDepthAttachment, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
+        }
+        else
+        {
+            Shader.SetGlobalTexture("_CameraDepthTexture", SystemInfo.usesReversedZBuffer ? Texture2D.blackTexture : Texture2D.whiteTexture);
         }
 
         DrawTransparent(context, ref renderingData);
