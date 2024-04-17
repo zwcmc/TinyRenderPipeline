@@ -39,7 +39,6 @@ public class FinalBlitPass
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
 
-
             CoreUtils.SetRenderTarget(cmd, cameraTargetHandle, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, ClearFlag.None, Color.clear);
 
             var cameraType = camera.cameraType;

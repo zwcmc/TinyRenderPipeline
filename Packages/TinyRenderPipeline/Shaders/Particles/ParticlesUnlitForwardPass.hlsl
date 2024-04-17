@@ -30,7 +30,7 @@ struct VaryingsParticle
 
 half CameraFade(float near, float far, float4 projection)
 {
-    float invFadeDistance = 1.0 / (far - near);
+    float invFadeDistance = rcp(far - near);
     float rawDepth = projection.z / projection.w;
     float thisZ = (unity_OrthoParams.w == 0) ? LinearEyeDepth(rawDepth, _ZBufferParams) : LinearDepthToEyeDepth(rawDepth);
     return half(saturate((thisZ - near) * invFadeDistance));
@@ -54,7 +54,7 @@ VaryingsParticle ParticleUnlitVertex(AttributesParticle input)
 
 #if defined(_FADING_ON)
     float4 ndc = output.positionCS * 0.5;
-    output.projectedPosition.xy = float2(ndc.x, ndc.y + _ProjectionParams.x) + ndc.w;
+    output.projectedPosition.xy = float2(ndc.x, ndc.y * _ProjectionParams.x) + ndc.w;
     output.projectedPosition.zw = output.positionCS.zw;
 #endif
 
