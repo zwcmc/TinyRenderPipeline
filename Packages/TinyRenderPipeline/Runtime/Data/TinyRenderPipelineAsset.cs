@@ -41,6 +41,9 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     {
         [Reload("Shaders/Utils/Blit.shader")]
         public Shader blitShader;
+
+        [Reload("Shaders/Utils/CopyDepth.shader")]
+        public Shader copyDepthShader;
     }
 
     // Shadows
@@ -64,6 +67,9 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     private bool m_UseSRPBatcher = true;
 
     [SerializeField]
+    private bool m_RequireDepthTexture = false;
+
+    [SerializeField]
     private bool m_SupportsHDR = true;
 
     [SerializeField]
@@ -80,6 +86,12 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     {
         get { return m_UseSRPBatcher; }
         set { m_UseSRPBatcher = value; }
+    }
+
+    public bool requireDepthTexture
+    {
+        get { return m_RequireDepthTexture; }
+        set { m_RequireDepthTexture = value; }
     }
 
     public bool supportsHDR

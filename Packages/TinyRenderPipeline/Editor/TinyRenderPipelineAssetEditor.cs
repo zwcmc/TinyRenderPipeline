@@ -1,4 +1,3 @@
-using System;
 using UnityEditor;
 
 [CustomEditor(typeof(TinyRenderPipelineAsset), true)]
@@ -11,6 +10,7 @@ public class TinyRenderPipelineAssetEditor : Editor
     private SerializedProperty m_Shadows;
     private SerializedProperty m_PostProcessingData;
     private SerializedProperty m_ColorGradingLutSize;
+    private SerializedProperty m_RequireDepthTexture;
 
     private void OnEnable()
     {
@@ -21,6 +21,7 @@ public class TinyRenderPipelineAssetEditor : Editor
         m_Shadows = serializedObject.FindProperty("m_Shadows");
         m_PostProcessingData = serializedObject.FindProperty("m_PostProcessingData");
         m_ColorGradingLutSize = serializedObject.FindProperty("m_ColorGradingLutSize");
+        m_RequireDepthTexture = serializedObject.FindProperty("m_RequireDepthTexture");
     }
 
     public override void OnInspectorGUI()
@@ -32,11 +33,12 @@ public class TinyRenderPipelineAssetEditor : Editor
             EditorGUILayout.PropertyField(m_Shaders, true);
         }
 
-        EditorGUILayout.PropertyField(m_UseSRPBatcher, true);
-        EditorGUILayout.PropertyField(m_SupportsHDR, true);
+        EditorGUILayout.PropertyField(m_RequireDepthTexture, EditorGUIUtility.TrTempContent("Copy Depth Texture"));
+        EditorGUILayout.PropertyField(m_UseSRPBatcher, EditorGUIUtility.TrTempContent("SRP Batcher"));
+        EditorGUILayout.PropertyField(m_SupportsHDR, EditorGUIUtility.TrTempContent("HDR"));
         EditorGUILayout.PropertyField(m_Shadows, true);
         EditorGUILayout.PropertyField(m_PostProcessingData, true);
-        EditorGUILayout.PropertyField(m_ColorGradingLutSize, true);
+        EditorGUILayout.PropertyField(m_ColorGradingLutSize);
 
         serializedObject.ApplyModifiedProperties();
     }

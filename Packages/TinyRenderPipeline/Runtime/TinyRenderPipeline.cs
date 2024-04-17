@@ -209,6 +209,8 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.postProcessingData = asset.postProcessingData;
 
         renderingData.lutSize = asset.colorGradingLutSize;
+
+        renderingData.copyDepthTexture = asset.requireDepthTexture;
     }
 
     private static PerObjectData GetPerObjectLightFlags(int additionalLightsCount)

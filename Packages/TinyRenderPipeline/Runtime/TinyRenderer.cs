@@ -8,6 +8,9 @@ using UnityEngine.Experimental.Rendering;
 
 public partial class TinyRenderer
 {
+    const GraphicsFormat k_DepthStencilFormat = GraphicsFormat.D32_SFloat_S8_UInt;
+    const int k_DepthBufferBits = 32;
+
     private static class Profiling
     {
         public static readonly ProfilingSampler drawOpaque = new ProfilingSampler($"{nameof(DrawOpaque)}");
@@ -22,6 +25,8 @@ public partial class TinyRenderer
     private ColorGradingLutPass m_ColorGradingLutPass;
     private FinalBlitPass m_FinalBlitPass;
 
+    private CopyDepthPass m_CopyDepthPass;
+
     private RenderTargetBufferSystem m_ColorBufferSystem;
 
     private RTHandle m_ActiveCameraColorAttachment;
@@ -30,12 +35,18 @@ public partial class TinyRenderer
     private RTHandle m_TargetColorHandle;
     private RTHandle m_TargetDepthHandle;
 
+    private RTHandle m_DepthTexture;
+
     private Material m_BlitMaterial;
+    private Material m_CopyDepthMaterial;
 
     public TinyRenderer(TinyRenderPipelineAsset asset)
     {
         if (asset.shaders != null)
+        {
             m_BlitMaterial = CoreUtils.CreateEngineMaterial(asset.shaders.blitShader);
+            m_CopyDepthMaterial = CoreUtils.CreateEngineMaterial(asset.shaders.copyDepthShader);
+        }
 
         m_ForwardLights = new ForwardLights();
         m_MainLightShadowPass = new MainLightShadowPass();
@@ -43,6 +54,7 @@ public partial class TinyRenderer
         m_PostProcessingPass = new PostProcessingPass();
         m_ColorGradingLutPass = new ColorGradingLutPass();
         m_FinalBlitPass = new FinalBlitPass(m_BlitMaterial);
+        m_CopyDepthPass = new CopyDepthPass(m_CopyDepthMaterial);
 
         m_ColorBufferSystem = new RenderTargetBufferSystem("_CameraColorAttachment");
     }
@@ -125,15 +137,34 @@ public partial class TinyRenderer
         // Check if need to create color buffer:
         // 1. Post-processing is active
         // 2. Camera's viewport rect is not default({0, 0, 1, 1})
-        bool createColorTexture = false;
-        createColorTexture |= applyPostProcessing;
+        bool createColorTexture = applyPostProcessing;
         createColorTexture |= !renderingData.isDefaultCameraViewport;
 
-        if (createColorTexture)
+        bool createDepthTexture = renderingData.copyDepthTexture;
+
+        bool sceneViewFilterEnabled = camera.sceneViewFilterMode == Camera.SceneViewFilterMode.ShowFiltered;
+        bool intermediateRenderTexture = (createColorTexture || createDepthTexture) && !sceneViewFilterEnabled;
+
+        if (intermediateRenderTexture)
             CreateCameraRenderTarget(context, ref cameraTargetDescriptor, cmd, camera);
 
+        if (createDepthTexture)
+        {
+            var depthDescriptor = cameraTargetDescriptor;
+            depthDescriptor.graphicsFormat = GraphicsFormat.R32_SFloat;
+            depthDescriptor.depthStencilFormat = GraphicsFormat.None;
+            depthDescriptor.depthBufferBits = 0;
+
+            depthDescriptor.msaaSamples = 1;
+            RenderingUtils.ReAllocateIfNeeded(ref m_DepthTexture, depthDescriptor, FilterMode.Point, wrapMode: TextureWrapMode.Clamp, name: "_CameraDepthTexture");
+
+            cmd.SetGlobalTexture(m_DepthTexture.name, m_DepthTexture.nameID);
+            context.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
+        }
+
         m_ActiveCameraColorAttachment = createColorTexture ? m_ColorBufferSystem.PeekBackBuffer() : m_TargetColorHandle;
-        m_ActiveCameraDepthAttachment = createColorTexture ? m_CameraDepthAttachment : m_TargetDepthHandle;
+        m_ActiveCameraDepthAttachment = createDepthTexture ? m_CameraDepthAttachment : m_TargetDepthHandle;
 
         // Setup render target
         cmd.SetRenderTarget(m_ActiveCameraColorAttachment, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
@@ -156,6 +187,19 @@ public partial class TinyRenderer
         DrawOpaque(context, ref renderingData);
 
         DrawSkybox(context, camera);
+
+        // Copy depth texture if needed
+        if (createDepthTexture)
+        {
+            m_CopyDepthPass.Setup(m_ActiveCameraDepthAttachment, m_DepthTexture);
+            m_CopyDepthPass.ExecutePass(context, ref renderingData);
+
+            // Switch back to active render targets after coping depth
+            cmd.SetRenderTarget(m_ActiveCameraColorAttachment, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
+                m_ActiveCameraDepthAttachment, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+            context.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
+        }
 
         DrawTransparent(context, ref renderingData);
 
@@ -198,7 +242,10 @@ public partial class TinyRenderer
         m_TargetColorHandle?.Release();
         m_TargetDepthHandle?.Release();
 
+        m_DepthTexture?.Release();
+
         CoreUtils.Destroy(m_BlitMaterial);
+        CoreUtils.Destroy(m_CopyDepthMaterial);
     }
 
     private void DrawGizmos(ScriptableRenderContext context, CommandBuffer cmd, Camera camera, GizmoSubset gizmoSubset)
@@ -235,7 +282,8 @@ public partial class TinyRenderer
             depthDescriptor.bindMS = false;
 
             depthDescriptor.graphicsFormat = GraphicsFormat.None;
-            depthDescriptor.depthStencilFormat = GraphicsFormat.D32_SFloat_S8_UInt;
+            depthDescriptor.depthStencilFormat = k_DepthStencilFormat;
+            depthDescriptor.depthBufferBits = k_DepthBufferBits;
             RenderingUtils.ReAllocateIfNeeded(ref m_CameraDepthAttachment, depthDescriptor, FilterMode.Point, TextureWrapMode.Clamp, name: "_CameraDepthAttachment");
         }
 
