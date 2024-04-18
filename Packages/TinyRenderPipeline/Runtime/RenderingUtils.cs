@@ -83,6 +83,7 @@ public static class RenderingUtils
         desc.width = Mathf.Max(1, desc.width);
         desc.height = Mathf.Max(1, desc.height);
 
+        desc.enableRandomWrite = false;
         desc.useMipMap = false;
         desc.autoGenerateMips = false;
 
