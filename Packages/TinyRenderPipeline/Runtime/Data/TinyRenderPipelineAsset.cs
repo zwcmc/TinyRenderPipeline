@@ -112,11 +112,27 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
         set { m_Shadows.mainLightShadow.shadowResolution = (ShadowResolution)value; }
     }
 
-    public int cascadesCount => m_Shadows.mainLightShadow.cascadeCount;
+    public int cascadesCount
+    {
+        get { return m_Shadows.mainLightShadow.cascadeCount; }
+    }
 
-    public Vector3 cascadesSplit => new Vector3(m_Shadows.mainLightShadow.cascadeRatio1, m_Shadows.mainLightShadow.cascadeRatio2, m_Shadows.mainLightShadow.cascadeRatio3);
+    public Vector3 cascadesSplit
+    {
+        get
+        {
+            return new Vector3(
+                m_Shadows.mainLightShadow.cascadeRatio1,
+                m_Shadows.mainLightShadow.cascadeRatio2,
+                m_Shadows.mainLightShadow.cascadeRatio3
+            );
+        }
+    }
 
-    public float cascadeBorder => m_Shadows.cascadeBorder;
+    public float cascadeBorder
+    {
+        get { return m_Shadows.cascadeBorder; }
+    }
 
     public int additionalLightsShadowmapResolution
     {
@@ -130,9 +146,15 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
         set { m_ColorGradingLutSize = Mathf.Clamp(value, 32, 64); }
     }
 
-    public ShaderResources shaders => m_Shaders;
+    public ShaderResources shaders
+    {
+        get { return m_Shaders; }
+    }
 
-    public PostProcessingData postProcessingData => m_PostProcessingData;
+    public PostProcessingData postProcessingData
+    {
+        get { return m_PostProcessingData; }
+    }
 
     public TinyRenderPipeline renderPipeline;
 

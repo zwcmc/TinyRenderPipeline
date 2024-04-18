@@ -15,15 +15,18 @@ public class AdditionalCameraData : MonoBehaviour
 
     public bool isOverridePostProcessingData
     {
-        get => m_OverridePostProcessingData;
-        set => m_OverridePostProcessingData = value;
+        get { return m_OverridePostProcessingData; }
+        set { m_OverridePostProcessingData = value; }
     }
 
-    public PostProcessingData overridePostProcessingData => m_PostProcessingData;
+    public PostProcessingData overridePostProcessingData
+    {
+        get { return m_PostProcessingData; }
+    }
 
     public bool requireDepthTexture
     {
-        get => m_RequireDepthTexture;
-        set => m_RequireDepthTexture = value;
+        get { return m_RequireDepthTexture; }
+        set { m_RequireDepthTexture = value; }
     }
 }
