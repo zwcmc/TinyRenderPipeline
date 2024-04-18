@@ -140,7 +140,9 @@ public partial class TinyRenderer
         bool createColorTexture = applyPostProcessing;
         createColorTexture |= !renderingData.isDefaultCameraViewport;
 
-        bool createDepthTexture = renderingData.copyDepthTexture && additionalCameraData.requireDepthTexture;
+        bool createDepthTexture = renderingData.copyDepthTexture;
+        if (additionalCameraData)
+            createDepthTexture &= additionalCameraData.requireDepthTexture;
 
         bool sceneViewFilterEnabled = camera.sceneViewFilterMode == Camera.SceneViewFilterMode.ShowFiltered;
         bool intermediateRenderTexture = (createColorTexture || createDepthTexture) && !sceneViewFilterEnabled;
