@@ -8,8 +8,8 @@ using UnityEngine.Experimental.Rendering;
 
 public partial class TinyRenderer
 {
-    const GraphicsFormat k_DepthStencilFormat = GraphicsFormat.D32_SFloat_S8_UInt;
-    const int k_DepthBufferBits = 32;
+    private const GraphicsFormat k_DepthStencilFormat = GraphicsFormat.D32_SFloat_S8_UInt;
+    private const int k_DepthBufferBits = 32;
 
     private static class Profiling
     {
@@ -17,6 +17,8 @@ public partial class TinyRenderer
         public static readonly ProfilingSampler drawTransparent = new ProfilingSampler($"{nameof(DrawTransparent)}");
         public static readonly ProfilingSampler drawGizmos = new ProfilingSampler($"{nameof(DrawGizmos)}");
     }
+
+    private static readonly RTHandle k_CameraTarget = RTHandles.Alloc(BuiltinRenderTextureType.CameraTarget);
 
     private ForwardLights m_ForwardLights;
     private MainLightShadowPass m_MainLightShadowPass;
@@ -26,6 +28,10 @@ public partial class TinyRenderer
     private FinalBlitPass m_FinalBlitPass;
 
     private CopyDepthPass m_CopyDepthPass;
+
+#if UNITY_EDITOR
+    private CopyDepthPass m_FinalDepthCopyPass;
+#endif
 
     private RenderTargetBufferSystem m_ColorBufferSystem;
 
@@ -55,6 +61,10 @@ public partial class TinyRenderer
         m_ColorGradingLutPass = new ColorGradingLutPass();
         m_FinalBlitPass = new FinalBlitPass(m_BlitMaterial);
         m_CopyDepthPass = new CopyDepthPass(m_CopyDepthMaterial);
+
+#if UNITY_EDITOR
+        m_FinalDepthCopyPass = new CopyDepthPass(m_CopyDepthMaterial);
+#endif
 
         m_ColorBufferSystem = new RenderTargetBufferSystem("_CameraColorAttachment");
     }
@@ -228,6 +238,15 @@ public partial class TinyRenderer
             m_FinalBlitPass.Setup(m_ActiveCameraColorAttachment);
             m_FinalBlitPass.ExecutePass(context, ref renderingData);
         }
+
+        // Blit depth buffer to camera target for Gizmos rendering in scene view and game view while using intermediate rendering
+#if UNITY_EDITOR
+        if (intermediateRenderTexture)
+        {
+            m_FinalDepthCopyPass.Setup(m_ActiveCameraDepthAttachment, k_CameraTarget, copyToDepthTexture: true);
+            m_FinalDepthCopyPass.ExecutePass(context, ref renderingData);
+        }
+#endif
 
         DrawGizmos(context, cmd, camera, GizmoSubset.PostImageEffects);
 

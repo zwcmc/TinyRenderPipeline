@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 
 public class CopyDepthPass
@@ -8,6 +9,8 @@ public class CopyDepthPass
 
     private Material m_CopyDepthMaterial;
 
+    private bool m_CopyToDepthTexture;
+
     private static readonly ProfilingSampler m_ProfilingSampler = new ProfilingSampler("Copy Depth");
 
     public CopyDepthPass(Material copyDepthMaterial)
@@ -15,10 +18,11 @@ public class CopyDepthPass
         m_CopyDepthMaterial = copyDepthMaterial;
     }
 
-    public void Setup(RTHandle source, RTHandle destination)
+    public void Setup(RTHandle source, RTHandle destination, bool copyToDepthTexture = false)
     {
         m_Source = source;
         m_Destination = destination;
+        m_CopyToDepthTexture = copyToDepthTexture;
     }
 
     public void ExecutePass(ScriptableRenderContext context, ref RenderingData renderingData)
@@ -40,8 +44,12 @@ public class CopyDepthPass
 
             CoreUtils.SetRenderTarget(cmd, m_Destination, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, ClearFlag.None, Color.black);
 
-            var camera = renderingData.camera;
+            if (m_CopyToDepthTexture || m_Destination.rt.graphicsFormat == GraphicsFormat.None)
+                cmd.EnableShaderKeyword("_OUTPUT_DEPTH");
+            else
+                cmd.DisableShaderKeyword("_OUTPUT_DEPTH");
 
+            var camera = renderingData.camera;
             bool yFlip = RenderingUtils.IsHandleYFlipped(m_Source, camera) != RenderingUtils.IsHandleYFlipped(m_Destination, camera);
             Vector4 scaleBias = yFlip ? new Vector4(1, -1, 0, 1) : new Vector4(1, 1, 0, 0);
 
