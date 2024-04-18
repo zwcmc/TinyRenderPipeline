@@ -41,12 +41,15 @@ public class CopyDepthPass
             CoreUtils.SetRenderTarget(cmd, m_Destination, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, ClearFlag.None, Color.black);
 
             var camera = renderingData.camera;
-            bool isRenderToBackBufferTarget = camera.cameraType != CameraType.SceneView;
 
-            bool yFlip = isRenderToBackBufferTarget && camera.targetTexture == null && SystemInfo.graphicsUVStartsAtTop;
+            bool yFlip = RenderingUtils.IsHandleYFlipped(m_Source, camera) != RenderingUtils.IsHandleYFlipped(m_Destination, camera);
             Vector4 scaleBias = yFlip ? new Vector4(1, -1, 0, 1) : new Vector4(1, 1, 0, 0);
-            if (isRenderToBackBufferTarget)
+
+            bool isGameViewFinalTarget = camera.cameraType == CameraType.Game && m_Destination.nameID == BuiltinRenderTextureType.CameraTarget;
+            if (isGameViewFinalTarget)
                 cmd.SetViewport(camera.pixelRect);
+            else
+                cmd.SetViewport(new Rect(0, 0, renderingData.cameraTargetDescriptor.width, renderingData.cameraTargetDescriptor.height));
 
             Blitter.BlitTexture(cmd, m_Source, scaleBias, m_CopyDepthMaterial, 0);
         }

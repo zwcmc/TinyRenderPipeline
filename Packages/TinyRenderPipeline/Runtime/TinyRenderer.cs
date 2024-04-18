@@ -140,17 +140,20 @@ public partial class TinyRenderer
         bool createColorTexture = applyPostProcessing;
         createColorTexture |= !renderingData.isDefaultCameraViewport;
 
-        bool createDepthTexture = renderingData.copyDepthTexture;
+        // Check if need copy depth texture
+        bool needCopyDepth = renderingData.copyDepthTexture;
         if (additionalCameraData)
-            createDepthTexture &= additionalCameraData.requireDepthTexture;
+            needCopyDepth &= additionalCameraData.requireDepthTexture;
 
-        bool sceneViewFilterEnabled = camera.sceneViewFilterMode == Camera.SceneViewFilterMode.ShowFiltered;
-        bool intermediateRenderTexture = (createColorTexture || createDepthTexture) && !sceneViewFilterEnabled;
+        // Use intermediate rendering textures while:
+        // 1. need create color texture || 2. need copy depth texture
+        bool intermediateRenderTexture = createColorTexture || needCopyDepth;
 
+        // Create color buffer and depth buffer for intermediate rendering
         if (intermediateRenderTexture)
             CreateCameraRenderTarget(context, ref cameraTargetDescriptor, cmd, camera);
 
-        if (createDepthTexture)
+        if (needCopyDepth)
         {
             var depthDescriptor = cameraTargetDescriptor;
             depthDescriptor.graphicsFormat = GraphicsFormat.R32_SFloat;
@@ -165,8 +168,8 @@ public partial class TinyRenderer
             cmd.Clear();
         }
 
-        m_ActiveCameraColorAttachment = createColorTexture ? m_ColorBufferSystem.PeekBackBuffer() : m_TargetColorHandle;
-        m_ActiveCameraDepthAttachment = createDepthTexture ? m_CameraDepthAttachment : m_TargetDepthHandle;
+        m_ActiveCameraColorAttachment = intermediateRenderTexture ? m_ColorBufferSystem.PeekBackBuffer() : m_TargetColorHandle;
+        m_ActiveCameraDepthAttachment = intermediateRenderTexture ? m_CameraDepthAttachment : m_TargetDepthHandle;
 
         // Setup render target
         cmd.SetRenderTarget(m_ActiveCameraColorAttachment, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
@@ -174,7 +177,7 @@ public partial class TinyRenderer
 
         // Setup clear flags
         CameraClearFlags clearFlags = camera.clearFlags;
-        if (applyPostProcessing)
+        if (intermediateRenderTexture)
         {
             if (clearFlags > CameraClearFlags.Color)
                 clearFlags = CameraClearFlags.Color;
@@ -185,13 +188,14 @@ public partial class TinyRenderer
         context.ExecuteCommandBuffer(cmd);
         cmd.Clear();
 
-        // Start rendering
+        // Opaque objects
         DrawOpaque(context, ref renderingData);
 
+        // Skybox
         DrawSkybox(context, camera);
 
         // Copy depth texture if needed
-        if (createDepthTexture)
+        if (needCopyDepth)
         {
             m_CopyDepthPass.Setup(m_ActiveCameraDepthAttachment, m_DepthTexture);
             m_CopyDepthPass.ExecutePass(context, ref renderingData);
@@ -207,16 +211,19 @@ public partial class TinyRenderer
             Shader.SetGlobalTexture("_CameraDepthTexture", SystemInfo.usesReversedZBuffer ? Texture2D.blackTexture : Texture2D.whiteTexture);
         }
 
+        // Transparent objects
         DrawTransparent(context, ref renderingData);
 
         DrawGizmos(context, cmd, camera, GizmoSubset.PreImageEffects);
 
+        // If post-processing effect is enabled: first applying post-processing effects, and then blit to final camera target
         if (applyPostProcessing)
         {
             m_PostProcessingPass.Setup(cameraTargetDescriptor, m_ActiveCameraColorAttachment, true, m_ColorGradingLutPass.m_ColorGradingLut, postProcessingData);
             m_PostProcessingPass.ExecutePass(context, ref renderingData);
         }
-        else if (createColorTexture)
+        // If post-processing effect is disabled and intermediate rendering is in use: just blit to final camera target
+        else if (intermediateRenderTexture)
         {
             m_FinalBlitPass.Setup(m_ActiveCameraColorAttachment);
             m_FinalBlitPass.ExecutePass(context, ref renderingData);
@@ -257,7 +264,7 @@ public partial class TinyRenderer
     private void DrawGizmos(ScriptableRenderContext context, CommandBuffer cmd, Camera camera, GizmoSubset gizmoSubset)
     {
 #if UNITY_EDITOR
-        if (!Handles.ShouldRenderGizmos() || camera.sceneViewFilterMode == Camera.SceneViewFilterMode.ShowFiltered)
+        if (!Handles.ShouldRenderGizmos())
             return;
 
         using (new ProfilingScope(cmd, Profiling.drawGizmos))
@@ -291,6 +298,7 @@ public partial class TinyRenderer
             depthDescriptor.depthStencilFormat = k_DepthStencilFormat;
             depthDescriptor.depthBufferBits = k_DepthBufferBits;
             RenderingUtils.ReAllocateIfNeeded(ref m_CameraDepthAttachment, depthDescriptor, FilterMode.Point, TextureWrapMode.Clamp, name: "_CameraDepthAttachment");
+            cmd.SetGlobalTexture(m_CameraDepthAttachment.name, m_CameraDepthAttachment.nameID);
         }
 
         context.ExecuteCommandBuffer(cmd);

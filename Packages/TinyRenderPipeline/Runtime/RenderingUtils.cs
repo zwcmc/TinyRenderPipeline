@@ -186,4 +186,19 @@ public static class RenderingUtils
         RenderTargetIdentifier cameraTarget = (camera.targetTexture != null) ? new RenderTargetIdentifier(camera.targetTexture) : BuiltinRenderTextureType.CameraTarget;
         return cameraTarget;
     }
+
+    public static bool IsHandleYFlipped(RTHandle handle, Camera camera)
+    {
+        if (!SystemInfo.graphicsUVStartsAtTop)
+            return false;
+
+        var cameraType = camera.cameraType;
+        if (cameraType == CameraType.SceneView || cameraType == CameraType.Preview)
+            return true;
+
+        var handleID = new RenderTargetIdentifier(handle.nameID, 0, CubemapFace.Unknown, 0);
+        bool isBackbuffer = handleID == BuiltinRenderTextureType.CameraTarget;
+
+        return !isBackbuffer;
+    }
 }
