@@ -18,13 +18,13 @@ public class AdditionalCameraDataEditor : Editor
     {
         serializedObject.Update();
 
-        EditorGUILayout.PropertyField(m_OverridePostProcessingData, true);
+        EditorGUILayout.PropertyField(m_OverridePostProcessingData, EditorGUIUtility.TrTempContent("Override Post Processing"));
         if (m_OverridePostProcessingData.boolValue)
         {
-            EditorGUILayout.PropertyField(m_PostProcessingData, true);
+            EditorGUILayout.PropertyField(m_PostProcessingData);
         }
 
-        EditorGUILayout.PropertyField(m_RequireDepthTexture, true);
+        EditorGUILayout.PropertyField(m_RequireDepthTexture, EditorGUIUtility.TrTempContent("Copy Depth"));
 
         serializedObject.ApplyModifiedProperties();
     }

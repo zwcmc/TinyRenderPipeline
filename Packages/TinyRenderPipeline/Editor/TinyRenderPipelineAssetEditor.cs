@@ -30,14 +30,14 @@ public class TinyRenderPipelineAssetEditor : Editor
 
         if (EditorPrefs.GetBool("DeveloperMode"))
         {
-            EditorGUILayout.PropertyField(m_Shaders, true);
+            EditorGUILayout.PropertyField(m_Shaders);
         }
 
-        EditorGUILayout.PropertyField(m_RequireDepthTexture, EditorGUIUtility.TrTempContent("Copy Depth Texture"));
+        EditorGUILayout.PropertyField(m_RequireDepthTexture, EditorGUIUtility.TrTempContent("Copy Depth"));
         EditorGUILayout.PropertyField(m_UseSRPBatcher, EditorGUIUtility.TrTempContent("SRP Batcher"));
         EditorGUILayout.PropertyField(m_SupportsHDR, EditorGUIUtility.TrTempContent("HDR"));
-        EditorGUILayout.PropertyField(m_Shadows, true);
-        EditorGUILayout.PropertyField(m_PostProcessingData, true);
+        EditorGUILayout.PropertyField(m_Shadows);
+        EditorGUILayout.PropertyField(m_PostProcessingData);
         EditorGUILayout.PropertyField(m_ColorGradingLutSize);
 
         serializedObject.ApplyModifiedProperties();
