@@ -10,11 +10,13 @@ float _CameraNearFadeDistance;
 float _CameraFarFadeDistance;
 float _SoftParticlesNearFadeDistance;
 float _SoftParticlesFarFadeDistance;
+half _DistortionBlend;
+half _DistortionStrength;
 half _Cutoff;
 half _Surface;
 CBUFFER_END
 
-TEXTURE2D(_BaseMap);
-SAMPLER(sampler_BaseMap);
+TEXTURE2D(_BaseMap);               SAMPLER(sampler_BaseMap);
+TEXTURE2D(_DistortionNormal);      SAMPLER(sampler_DistortionNormal);
 
 #endif

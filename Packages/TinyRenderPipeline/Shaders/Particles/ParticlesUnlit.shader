@@ -12,6 +12,10 @@ Shader "Tiny Render Pipeline/Particles/Unlit"
         _SoftParticlesNearFadeDistance("Soft Particles Near Fade", Float) = 0.0
         _SoftParticlesFarFadeDistance("Soft Particles Far Fade", Float) = 1.0
 
+        _DistortionNormal("Distortion Normal Map", 2D) = "bump" {}
+        _DistortionBlend("Distortion Blend", Range(0.0, 1.0)) = 0.5
+        _DistortionStrength("Distortion Strength", Float) = 1.0
+
         _Surface("__surface", Float) = 0.0
         _Blend("__mode", Float) = 0.0
         _Cull("__cull", Float) = 2.0
@@ -24,6 +28,7 @@ Shader "Tiny Render Pipeline/Particles/Unlit"
         [ToggleUI] _FlipbookBlending("__flipbookblending", Float) = 0.0
         [ToggleUI] _CameraFadingEnabled("__camerafadingenabled", Float) = 0.0
         [ToggleUI] _SoftParticlesEnabled("__softparticlesenabled", Float) = 0.0
+        [ToggleUI] _DistortionEnabled("__distortionenabled", Float) = 0.0
     }
     SubShader
     {
@@ -54,6 +59,8 @@ Shader "Tiny Render Pipeline/Particles/Unlit"
             #pragma shader_feature_local _FLIPBOOKBLENDING_ON
             #pragma shader_feature_local _FADING_ON
             #pragma shader_feature_local _SOFTPARTICLES_ON
+            #pragma shader_feature_local _DISTORTION_ON
+            #pragma shader_feature_local _DISTORTION_NORMALMAP
 
             #include "Packages/com.tiny.render-pipeline/Shaders/Particles/ParticlesUnlitInput.hlsl"
             #include "Packages/com.tiny.render-pipeline/Shaders/Particles/ParticlesUnlitForwardPass.hlsl"

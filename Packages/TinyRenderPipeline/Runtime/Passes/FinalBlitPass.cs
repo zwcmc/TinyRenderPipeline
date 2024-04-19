@@ -8,8 +8,6 @@ public class FinalBlitPass
 
     private static readonly ProfilingSampler m_ProfilingSampler = new ProfilingSampler("Final Blit");
 
-    private static RTHandle k_CameraTarget = RTHandles.Alloc(BuiltinRenderTextureType.CameraTarget);
-
     public FinalBlitPass(Material blitMaterial)
     {
         m_BlitMaterial = blitMaterial;
@@ -35,7 +33,7 @@ public class FinalBlitPass
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
 
-            CoreUtils.SetRenderTarget(cmd, k_CameraTarget, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, ClearFlag.None, Color.clear);
+            CoreUtils.SetRenderTarget(cmd, TinyRenderPipeline.k_CameraTarget, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, ClearFlag.None, Color.clear);
 
             var camera = renderingData.camera;
             var cameraType = camera.cameraType;

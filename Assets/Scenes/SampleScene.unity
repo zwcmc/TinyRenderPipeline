@@ -349,7 +349,7 @@ ParticleSystem:
     startSpeed:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 1
+      scalar: 0.5
       minScalar: 5
       maxCurve:
         serializedVersion: 2
@@ -845,7 +845,7 @@ ParticleSystem:
     serializedVersion: 6
     enabled: 1
     type: 4
-    angle: 25
+    angle: 60
     length: 5
     boxThickness: {x: 0, y: 0, z: 0}
     radiusThickness: 1
@@ -5245,7 +5245,7 @@ MonoBehaviour:
   m_OverridePostProcessingData: 0
   m_PostProcessingData: {fileID: 0}
   m_RequireDepthTexture: 1
-  m_RequireColorTexture: 0
+  m_RequireColorTexture: 1
 --- !u!1 &1099130133
 GameObject:
   m_ObjectHideFlags: 0
@@ -5396,7 +5396,7 @@ Camera:
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 53
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
@@ -5666,13 +5666,13 @@ GameObject:
   - component: {fileID: 2121992861}
   - component: {fileID: 2121992860}
   - component: {fileID: 2121992859}
-  m_Layer: 0
+  m_Layer: 1
   m_Name: Sphere
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &2121992858
 Transform:
   m_ObjectHideFlags: 0

@@ -18,8 +18,6 @@ public partial class TinyRenderer
         public static readonly ProfilingSampler drawGizmos = new ProfilingSampler($"{nameof(DrawGizmos)}");
     }
 
-    private static readonly RTHandle k_CameraTarget = RTHandles.Alloc(BuiltinRenderTextureType.CameraTarget);
-
     private ForwardLights m_ForwardLights;
     private MainLightShadowPass m_MainLightShadowPass;
     private AdditionalLightsShadowPass m_AdditionalLightsShadowPass;
@@ -150,8 +148,13 @@ public partial class TinyRenderer
         }
 
         // Create color texture logic
+        bool needCopyColor = renderingData.copyColorTexture;
+        if (additionalCameraData)
+            needCopyColor &= additionalCameraData.requireColorTexture;
+
         bool createColorTexture = applyPostProcessing;  // post-processing is active
         createColorTexture |= !renderingData.isDefaultCameraViewport;  // camera's viewport rect is not default(0, 0, 1, 1)
+        createColorTexture |= needCopyColor;  // copy color texture is enabled
 
         // Check if need copy depth texture
         bool needCopyDepth = renderingData.copyDepthTexture;
@@ -166,21 +169,6 @@ public partial class TinyRenderer
         // Create color buffer and depth buffer for intermediate rendering
         if (intermediateRenderTexture)
             CreateCameraRenderTarget(context, ref cameraTargetDescriptor, cmd, camera);
-
-        if (needCopyDepth)
-        {
-            var depthDescriptor = cameraTargetDescriptor;
-            depthDescriptor.graphicsFormat = GraphicsFormat.R32_SFloat;
-            depthDescriptor.depthStencilFormat = GraphicsFormat.None;
-            depthDescriptor.depthBufferBits = 0;
-
-            depthDescriptor.msaaSamples = 1;
-            RenderingUtils.ReAllocateIfNeeded(ref m_DepthTexture, depthDescriptor, FilterMode.Point, wrapMode: TextureWrapMode.Clamp, name: "_CameraDepthTexture");
-
-            cmd.SetGlobalTexture(m_DepthTexture.name, m_DepthTexture.nameID);
-            context.ExecuteCommandBuffer(cmd);
-            cmd.Clear();
-        }
 
         m_ActiveCameraColorAttachment = intermediateRenderTexture ? m_ColorBufferSystem.PeekBackBuffer() : m_TargetColorHandle;
         m_ActiveCameraDepthAttachment = intermediateRenderTexture ? m_CameraDepthAttachment : m_TargetDepthHandle;
@@ -214,12 +202,22 @@ public partial class TinyRenderer
         // Copy depth texture if needed after rendering opaque objects
         if (needCopyDepth)
         {
+            var depthDescriptor = cameraTargetDescriptor;
+            depthDescriptor.graphicsFormat = GraphicsFormat.R32_SFloat;
+            depthDescriptor.depthStencilFormat = GraphicsFormat.None;
+            depthDescriptor.depthBufferBits = 0;
+
+            depthDescriptor.msaaSamples = 1;
+            RenderingUtils.ReAllocateIfNeeded(ref m_DepthTexture, depthDescriptor, FilterMode.Point, wrapMode: TextureWrapMode.Clamp, name: "_CameraDepthTexture");
+            cmd.SetGlobalTexture(m_DepthTexture.name, m_DepthTexture.nameID);
+
             m_CopyDepthPass.Setup(m_ActiveCameraDepthAttachment, m_DepthTexture);
             m_CopyDepthPass.ExecutePass(context, ref renderingData);
 
             // Switch back to active render targets after coping depth
             cmd.SetRenderTarget(m_ActiveCameraColorAttachment, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
                 m_ActiveCameraDepthAttachment, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
         }
@@ -230,6 +228,30 @@ public partial class TinyRenderer
 
         // Skybox
         DrawSkybox(context, camera);
+
+        // Copy color texture if needed after rendering skybox
+        if (needCopyColor)
+        {
+            var descriptor = cameraTargetDescriptor;
+            descriptor.msaaSamples = 1;
+            descriptor.depthBufferBits = 0;
+            RenderingUtils.ReAllocateIfNeeded(ref m_OpaqueColor, descriptor, FilterMode.Bilinear, TextureWrapMode.Clamp, name: "_CameraOpaqueTexture");
+            cmd.SetGlobalTexture(m_OpaqueColor.name, m_OpaqueColor.nameID);
+
+            m_CopyColorPass.Setup(m_ActiveCameraColorAttachment, m_OpaqueColor);
+            m_CopyColorPass.ExecutePass(context, ref renderingData);
+
+            // Switch back to active render targets after coping depth
+            cmd.SetRenderTarget(m_ActiveCameraColorAttachment, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
+                m_ActiveCameraDepthAttachment, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+
+            context.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
+        }
+        else
+        {
+            Shader.SetGlobalTexture("_CameraOpaqueTexture", Texture2D.grayTexture);
+        }
 
         // Transparent objects
         DrawTransparent(context, ref renderingData);
@@ -243,7 +265,7 @@ public partial class TinyRenderer
             m_PostProcessingPass.ExecutePass(context, ref renderingData);
         }
 
-        // Blit to final camera target
+        // Blit to final camera target if active color attachment is not final camera target
         bool cameraTargetResolved = applyPostProcessing || m_ActiveCameraColorAttachment.nameID == m_TargetColorHandle.nameID;
         if (!cameraTargetResolved)
         {
@@ -258,7 +280,7 @@ public partial class TinyRenderer
         bool isSceneViewOrPreviewCamera = cameraType == CameraType.SceneView || cameraType == CameraType.Preview;
         if (intermediateRenderTexture && (isSceneViewOrPreviewCamera || isGizmosEnabled))
         {
-            m_FinalDepthCopyPass.Setup(m_ActiveCameraDepthAttachment, k_CameraTarget, copyToDepthTexture: true);
+            m_FinalDepthCopyPass.Setup(m_ActiveCameraDepthAttachment, TinyRenderPipeline.k_CameraTarget, copyToDepthTexture: true);
             m_FinalDepthCopyPass.ExecutePass(context, ref renderingData);
         }
 #endif

@@ -12,8 +12,6 @@ public class PostProcessingPass
         public static readonly ProfilingSampler bloom = new ProfilingSampler("Bloom");
     }
 
-    private static RTHandle k_CameraTarget = RTHandles.Alloc(BuiltinRenderTextureType.CameraTarget);
-
     private Material m_PostProcessingMaterial;
 
     private RenderTextureDescriptor m_Descriptor;
@@ -90,7 +88,7 @@ public class PostProcessingPass
         m_Descriptor.useMipMap = false;
         m_Descriptor.autoGenerateMips = false;
         m_Source = source;
-        m_Destination = k_CameraTarget;
+        m_Destination = TinyRenderPipeline.k_CameraTarget;
         m_ResolveToScreen = resolveToScreen;
 
         m_InternalLut = internalLut;

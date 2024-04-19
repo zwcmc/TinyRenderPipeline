@@ -58,11 +58,16 @@ namespace TinyRenderPipeline.CustomShaderGUI
             public static GUIContent cameraNearFadeDistanceText = EditorGUIUtility.TrTextContent("Near");
             public static GUIContent cameraFarFadeDistanceText = EditorGUIUtility.TrTextContent("Far");
 
-
             public static GUIContent softParticlesEnabled = EditorGUIUtility.TrTextContent("Soft Particles");
             public static GUIContent softParticlesFadeText = EditorGUIUtility.TrTextContent("Surface Fade");
             public static GUIContent softParticlesNearFadeDistanceText = EditorGUIUtility.TrTextContent("Near");
             public static GUIContent softParticlesFarFadeDistanceText = EditorGUIUtility.TrTextContent("Far");
+
+
+            public static GUIContent distortionEnabled = EditorGUIUtility.TrTextContent("Distortion");
+            public static GUIContent distortionNormalMap = EditorGUIUtility.TrTextContent("Normal Map");
+            public static GUIContent distortionStrength = EditorGUIUtility.TrTextContent("Strength");
+            public static GUIContent distortionBlend = EditorGUIUtility.TrTextContent("Blend");
         }
 
         #endregion
@@ -87,6 +92,11 @@ namespace TinyRenderPipeline.CustomShaderGUI
         private MaterialProperty softParticlesEnabled;
         private MaterialProperty softParticlesNearFadeDistance;
         private MaterialProperty softParticlesFarFadeDistance;
+
+        private MaterialProperty distortionEnabled;
+        private MaterialProperty distortionNormalMap;
+        private MaterialProperty distortionBlend;
+        private MaterialProperty distortionStrength;
 
         #endregion
 
@@ -115,6 +125,11 @@ namespace TinyRenderPipeline.CustomShaderGUI
             softParticlesEnabled = FindProperty("_SoftParticlesEnabled", properties);
             softParticlesNearFadeDistance = FindProperty("_SoftParticlesNearFadeDistance", properties);
             softParticlesFarFadeDistance = FindProperty("_SoftParticlesFarFadeDistance", properties);
+
+            distortionEnabled = FindProperty("_DistortionEnabled", properties);
+            distortionNormalMap = FindProperty("_DistortionNormal", properties);
+            distortionBlend = FindProperty("_DistortionBlend", properties);
+            distortionStrength = FindProperty("_DistortionStrength", properties);
         }
 
         public override void OnGUI(MaterialEditor materialEditorIn, MaterialProperty[] properties)
@@ -207,6 +222,19 @@ namespace TinyRenderPipeline.CustomShaderGUI
                         EditorGUI.indentLevel--;
                     }
                 }
+
+                // Distortion
+                {
+                    materialEditor.ShaderProperty(distortionEnabled, Styles.distortionEnabled);
+                    if (distortionEnabled.floatValue >= 0.5f)
+                    {
+                        EditorGUI.indentLevel++;
+                        materialEditor.TexturePropertySingleLine(Styles.distortionNormalMap, distortionNormalMap);
+                        materialEditor.ShaderProperty(distortionStrength, Styles.distortionStrength);
+                        materialEditor.ShaderProperty(distortionBlend, Styles.distortionBlend);
+                        EditorGUI.indentLevel--;
+                    }
+                }
             }
         }
 
@@ -295,6 +323,13 @@ namespace TinyRenderPipeline.CustomShaderGUI
                     }
                 }
                 CoreUtils.SetKeyword(material, "_SOFTPARTICLES_ON", useSoftParticles);
+            }
+
+            // Distortion
+            if (material.HasProperty("_DistortionEnabled") && isTransparent)
+            {
+                CoreUtils.SetKeyword(material, "_DISTORTION_ON", material.GetFloat("_DistortionEnabled") > 0.5f);
+                CoreUtils.SetKeyword(material, "_DISTORTION_NORMALMAP", material.GetTexture("_DistortionNormal"));
             }
         }
 

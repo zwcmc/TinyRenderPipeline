@@ -34,10 +34,7 @@ public class TinyRenderPipeline : RenderPipeline
 
     public static int maxVisibleAdditionalLights => k_MaxVisibleAdditionalLights;
 
-    // public static TinyRenderPipelineAsset asset
-    // {
-    //     get => GraphicsSettings.currentRenderPipeline as TinyRenderPipelineAsset;
-    // }
+    public static RTHandle k_CameraTarget = RTHandles.Alloc(BuiltinRenderTextureType.CameraTarget);
 
     public TinyRenderPipeline(TinyRenderPipelineAsset asset)
     {

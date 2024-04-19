@@ -42,7 +42,8 @@ public class CopyDepthPass
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
 
-            CoreUtils.SetRenderTarget(cmd, m_Destination, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, ClearFlag.None, Color.black);
+            CoreUtils.SetRenderTarget(cmd, m_Destination, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
+                TinyRenderPipeline.k_CameraTarget, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, ClearFlag.None, Color.black);
 
             if (m_CopyToDepthTexture || m_Destination.rt.graphicsFormat == GraphicsFormat.None)
                 cmd.EnableShaderKeyword("_OUTPUT_DEPTH");

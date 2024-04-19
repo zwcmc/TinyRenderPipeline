@@ -8,8 +8,6 @@
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/Shadows.hlsl"
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/Lighting.hlsl"
 
-#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Packing.hlsl"
-
 CBUFFER_START(UnityPerMaterial)
 float4 _BaseMap_ST;
 half4 _BaseColor;
