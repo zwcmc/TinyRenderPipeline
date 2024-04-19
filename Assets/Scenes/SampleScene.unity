@@ -5245,6 +5245,7 @@ MonoBehaviour:
   m_OverridePostProcessingData: 0
   m_PostProcessingData: {fileID: 0}
   m_RequireDepthTexture: 1
+  m_RequireColorTexture: 0
 --- !u!1 &1099130133
 GameObject:
   m_ObjectHideFlags: 0
@@ -5437,6 +5438,7 @@ MonoBehaviour:
   m_OverridePostProcessingData: 0
   m_PostProcessingData: {fileID: 0}
   m_RequireDepthTexture: 0
+  m_RequireColorTexture: 0
 --- !u!1 &1892537013
 GameObject:
   m_ObjectHideFlags: 0

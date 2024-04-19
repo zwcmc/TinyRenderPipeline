@@ -28,6 +28,7 @@ public partial class TinyRenderer
     private FinalBlitPass m_FinalBlitPass;
 
     private CopyDepthPass m_CopyDepthPass;
+    private CopyColorPass m_CopyColorPass;
 
 #if UNITY_EDITOR
     private CopyDepthPass m_FinalDepthCopyPass;
@@ -42,6 +43,7 @@ public partial class TinyRenderer
     private RTHandle m_TargetDepthHandle;
 
     private RTHandle m_DepthTexture;
+    private RTHandle m_OpaqueColor;
 
     private Material m_BlitMaterial;
     private Material m_CopyDepthMaterial;
@@ -61,6 +63,7 @@ public partial class TinyRenderer
         m_ColorGradingLutPass = new ColorGradingLutPass();
         m_FinalBlitPass = new FinalBlitPass(m_BlitMaterial);
         m_CopyDepthPass = new CopyDepthPass(m_CopyDepthMaterial);
+        m_CopyColorPass = new CopyColorPass(m_BlitMaterial);
 
 #if UNITY_EDITOR
         m_FinalDepthCopyPass = new CopyDepthPass(m_CopyDepthMaterial);
@@ -73,6 +76,8 @@ public partial class TinyRenderer
     {
         var context = renderingData.renderContext;
         var camera = renderingData.camera;
+        var cameraType = camera.cameraType;
+
         var cmd = renderingData.commandBuffer;
 
         // Setup lighting data
@@ -125,7 +130,7 @@ public partial class TinyRenderer
         var postProcessingData = additionalCameraData ? (additionalCameraData.isOverridePostProcessingData ? additionalCameraData.overridePostProcessingData : renderingData.postProcessingData) : renderingData.postProcessingData;
         bool applyPostProcessing = postProcessingData != null;
         // Only game camera and scene camera have post processing effects
-        applyPostProcessing &= camera.cameraType <= CameraType.SceneView;
+        applyPostProcessing &= cameraType <= CameraType.SceneView;
         // Check if disable post processing effects in scene view
         applyPostProcessing &= CoreUtils.ArePostProcessesEnabled(camera);
 
@@ -144,11 +149,9 @@ public partial class TinyRenderer
             m_ColorGradingLutPass.ExecutePass(context, ref renderingData);
         }
 
-        // Check if need to create color buffer:
-        // 1. Post-processing is active
-        // 2. Camera's viewport rect is not default({0, 0, 1, 1})
-        bool createColorTexture = applyPostProcessing;
-        createColorTexture |= !renderingData.isDefaultCameraViewport;
+        // Create color texture logic
+        bool createColorTexture = applyPostProcessing;  // post-processing is active
+        createColorTexture |= !renderingData.isDefaultCameraViewport;  // camera's viewport rect is not default(0, 0, 1, 1)
 
         // Check if need copy depth texture
         bool needCopyDepth = renderingData.copyDepthTexture;
@@ -156,7 +159,8 @@ public partial class TinyRenderer
             needCopyDepth &= additionalCameraData.requireDepthTexture;
 
         // Use intermediate rendering textures while:
-        // 1. need create color texture || 2. need copy depth texture
+        // 1. need create color texture
+        // 2. need copy depth texture
         bool intermediateRenderTexture = createColorTexture || needCopyDepth;
 
         // Create color buffer and depth buffer for intermediate rendering
@@ -195,7 +199,7 @@ public partial class TinyRenderer
 
         var cameraBackgroundColorSRGB = camera.backgroundColor;
 #if UNITY_EDITOR
-        if (camera.cameraType == CameraType.Preview)
+        if (cameraType == CameraType.Preview)
             cameraBackgroundColorSRGB = new Color(82f / 255.0f, 82f / 255.0f, 82.0f / 255.0f, 0.0f);
 #endif
         cmd.ClearRenderTarget(clearFlags <= CameraClearFlags.Depth, clearFlags <= CameraClearFlags.Color,
@@ -207,10 +211,7 @@ public partial class TinyRenderer
         // Opaque objects
         DrawOpaque(context, ref renderingData);
 
-        // Skybox
-        DrawSkybox(context, camera);
-
-        // Copy depth texture if needed
+        // Copy depth texture if needed after rendering opaque objects
         if (needCopyDepth)
         {
             m_CopyDepthPass.Setup(m_ActiveCameraDepthAttachment, m_DepthTexture);
@@ -227,6 +228,9 @@ public partial class TinyRenderer
             Shader.SetGlobalTexture("_CameraDepthTexture", SystemInfo.usesReversedZBuffer ? Texture2D.blackTexture : Texture2D.whiteTexture);
         }
 
+        // Skybox
+        DrawSkybox(context, camera);
+
         // Transparent objects
         DrawTransparent(context, ref renderingData);
 
@@ -238,8 +242,10 @@ public partial class TinyRenderer
             m_PostProcessingPass.Setup(cameraTargetDescriptor, m_ActiveCameraColorAttachment, true, m_ColorGradingLutPass.m_ColorGradingLut, postProcessingData);
             m_PostProcessingPass.ExecutePass(context, ref renderingData);
         }
-        // If post-processing effect is disabled and intermediate rendering is in use: just blit to final camera target
-        else if (intermediateRenderTexture)
+
+        // Blit to final camera target
+        bool cameraTargetResolved = applyPostProcessing || m_ActiveCameraColorAttachment.nameID == m_TargetColorHandle.nameID;
+        if (!cameraTargetResolved)
         {
             m_FinalBlitPass.Setup(m_ActiveCameraColorAttachment);
             m_FinalBlitPass.ExecutePass(context, ref renderingData);
@@ -249,7 +255,6 @@ public partial class TinyRenderer
         bool isGizmosEnabled = false;
 #if UNITY_EDITOR
         isGizmosEnabled = Handles.ShouldRenderGizmos();
-        var cameraType = camera.cameraType;
         bool isSceneViewOrPreviewCamera = cameraType == CameraType.SceneView || cameraType == CameraType.Preview;
         if (intermediateRenderTexture && (isSceneViewOrPreviewCamera || isGizmosEnabled))
         {
@@ -285,6 +290,7 @@ public partial class TinyRenderer
         m_TargetDepthHandle?.Release();
 
         m_DepthTexture?.Release();
+        m_OpaqueColor?.Release();
 
         CoreUtils.Destroy(m_BlitMaterial);
         CoreUtils.Destroy(m_CopyDepthMaterial);

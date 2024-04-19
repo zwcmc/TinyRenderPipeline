@@ -51,6 +51,8 @@ public struct RenderingData
     public int lutSize;
 
     public bool copyDepthTexture;
+
+    public bool copyColorTexture;
 }
 
 public struct ShadowSliceData

@@ -70,6 +70,9 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     private bool m_RequireDepthTexture = false;
 
     [SerializeField]
+    private bool m_RequireColorTexture;
+
+    [SerializeField]
     private bool m_SupportsHDR = true;
 
     [SerializeField]
@@ -92,6 +95,12 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     {
         get { return m_RequireDepthTexture; }
         set { m_RequireDepthTexture = value; }
+    }
+
+    public bool requireColorTexture
+    {
+        get { return m_RequireColorTexture; }
+        set { m_RequireColorTexture = value; }
     }
 
     public bool supportsHDR

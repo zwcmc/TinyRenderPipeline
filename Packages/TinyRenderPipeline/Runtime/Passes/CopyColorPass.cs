@@ -1,0 +1,41 @@
+using UnityEngine;
+using UnityEngine.Rendering;
+
+public class CopyColorPass
+{
+    private static readonly ProfilingSampler m_ProfilingSampler = new ProfilingSampler("CopyColor");
+
+    private RTHandle m_Source;
+    private RTHandle m_Destination;
+
+    private Material m_CopyColorMaterial;
+
+    public CopyColorPass(Material copyColorMaterial)
+    {
+        m_CopyColorMaterial = copyColorMaterial;
+    }
+
+    public void Setup(RTHandle source, RTHandle destination)
+    {
+        m_Source = source;
+        m_Destination = destination;
+    }
+
+    public void ExecutePass(ScriptableRenderContext context, ref RenderingData renderingData)
+    {
+        if (m_CopyColorMaterial == null)
+        {
+            Debug.LogError("Copy Color Pass: Copy Color Material is null.");
+            return;
+        }
+
+        var cmd = renderingData.commandBuffer;
+        using (new ProfilingScope(cmd, m_ProfilingSampler))
+        {
+            context.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
+
+
+        }
+    }
+}

@@ -7,7 +7,7 @@ public class PostProcessingPass
 {
     private static class Profiling
     {
-        public static readonly ProfilingSampler renderPostProcessing = new ProfilingSampler("Render PostProcessing Effects");
+        public static readonly ProfilingSampler renderPostProcessing = new ProfilingSampler("RenderPostProcessingEffects");
         public static readonly ProfilingSampler uberPostProcessing = new ProfilingSampler("UberPostProcess");
         public static readonly ProfilingSampler bloom = new ProfilingSampler("Bloom");
     }

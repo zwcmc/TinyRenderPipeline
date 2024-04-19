@@ -13,6 +13,9 @@ public class AdditionalCameraData : MonoBehaviour
     [SerializeField]
     private bool m_RequireDepthTexture = false;
 
+    [SerializeField]
+    private bool m_RequireColorTexture = false;
+
     public bool isOverridePostProcessingData
     {
         get { return m_OverridePostProcessingData; }
@@ -28,5 +31,11 @@ public class AdditionalCameraData : MonoBehaviour
     {
         get { return m_RequireDepthTexture; }
         set { m_RequireDepthTexture = value; }
+    }
+
+    public bool requireColorTexture
+    {
+        get { return m_RequireColorTexture; }
+        set { m_RequireColorTexture = value; }
     }
 }
