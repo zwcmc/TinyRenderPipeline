@@ -192,8 +192,14 @@ public partial class TinyRenderer
             if (clearFlags > CameraClearFlags.Color)
                 clearFlags = CameraClearFlags.Color;
         }
+
+        var cameraBackgroundColorSRGB = camera.backgroundColor;
+#if UNITY_EDITOR
+        if (camera.cameraType == CameraType.Preview)
+            cameraBackgroundColorSRGB = new Color(82f / 255.0f, 82f / 255.0f, 82.0f / 255.0f, 0.0f);
+#endif
         cmd.ClearRenderTarget(clearFlags <= CameraClearFlags.Depth, clearFlags <= CameraClearFlags.Color,
-            clearFlags == CameraClearFlags.Color ? camera.backgroundColor.linear : Color.clear);
+            clearFlags == CameraClearFlags.Color ? cameraBackgroundColorSRGB.linear : Color.clear);
 
         context.ExecuteCommandBuffer(cmd);
         cmd.Clear();
@@ -240,8 +246,12 @@ public partial class TinyRenderer
         }
 
         // Blit depth buffer to camera target for Gizmos rendering in scene view and game view while using intermediate rendering
+        bool isGizmosEnabled = false;
 #if UNITY_EDITOR
-        if (intermediateRenderTexture)
+        isGizmosEnabled = Handles.ShouldRenderGizmos();
+        var cameraType = camera.cameraType;
+        bool isSceneViewOrPreviewCamera = cameraType == CameraType.SceneView || cameraType == CameraType.Preview;
+        if (intermediateRenderTexture && (isSceneViewOrPreviewCamera || isGizmosEnabled))
         {
             m_FinalDepthCopyPass.Setup(m_ActiveCameraDepthAttachment, k_CameraTarget, copyToDepthTexture: true);
             m_FinalDepthCopyPass.ExecutePass(context, ref renderingData);

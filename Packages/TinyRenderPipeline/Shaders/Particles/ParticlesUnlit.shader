@@ -30,6 +30,7 @@ Shader "Tiny Render Pipeline/Particles/Unlit"
         Tags
         {
             "RenderType" = "Opaque"
+            "PreviewType" = "Plane"
             "IgnoreProjector" = "True"
         }
 

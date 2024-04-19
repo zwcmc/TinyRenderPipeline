@@ -12,7 +12,7 @@ public class PostProcessingPass
         public static readonly ProfilingSampler bloom = new ProfilingSampler("Bloom");
     }
 
-    public static RTHandle k_CameraTarget = RTHandles.Alloc(BuiltinRenderTextureType.CameraTarget);
+    private static RTHandle k_CameraTarget = RTHandles.Alloc(BuiltinRenderTextureType.CameraTarget);
 
     private Material m_PostProcessingMaterial;
 
