@@ -121,7 +121,7 @@ uint GetMeshRenderingLayer()
 
 float LinearDepthToEyeDepth(float rawDepth)
 {
-#if UNITY_REVERSED_Z
+#if defined(UNITY_REVERSED_Z)
     return _ProjectionParams.z - (_ProjectionParams.z - _ProjectionParams.y) * rawDepth;
 #else
     return _ProjectionParams.y + (_ProjectionParams.z - _ProjectionParams.y) * rawDepth;
