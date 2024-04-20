@@ -25,6 +25,8 @@ public struct RenderingData
 
     public Camera camera;
 
+    public float renderScale;
+
     /// <summary>
     /// True if this camera should render to high dynamic range color targets.
     /// </summary>

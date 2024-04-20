@@ -12,6 +12,7 @@ public class TinyRenderPipelineAssetEditor : Editor
     private SerializedProperty m_ColorGradingLutSize;
     private SerializedProperty m_RequireDepthTexture;
     private SerializedProperty m_RequireColorTexture;
+    private SerializedProperty m_RenderScale;
 
     private void OnEnable()
     {
@@ -24,6 +25,7 @@ public class TinyRenderPipelineAssetEditor : Editor
         m_ColorGradingLutSize = serializedObject.FindProperty("m_ColorGradingLutSize");
         m_RequireDepthTexture = serializedObject.FindProperty("m_RequireDepthTexture");
         m_RequireColorTexture = serializedObject.FindProperty("m_RequireColorTexture");
+        m_RenderScale = serializedObject.FindProperty("m_RenderScale");
     }
 
     public override void OnInspectorGUI()
@@ -42,6 +44,7 @@ public class TinyRenderPipelineAssetEditor : Editor
         EditorGUILayout.PropertyField(m_Shadows);
         EditorGUILayout.PropertyField(m_PostProcessingData);
         EditorGUILayout.PropertyField(m_ColorGradingLutSize);
+        EditorGUILayout.PropertyField(m_RenderScale);
 
         serializedObject.ApplyModifiedProperties();
     }

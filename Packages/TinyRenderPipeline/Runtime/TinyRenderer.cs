@@ -164,7 +164,9 @@ public partial class TinyRenderer
         // Use intermediate rendering textures while:
         // 1. need create color texture
         // 2. need copy depth texture
-        bool intermediateRenderTexture = createColorTexture || needCopyDepth;
+        // 3. render scale is not 1.0
+        bool useRenderScale = renderingData.renderScale < 1.0f || renderingData.renderScale > 1.0f;
+        bool intermediateRenderTexture = createColorTexture || needCopyDepth || useRenderScale;
 
         // Create color buffer and depth buffer for intermediate rendering
         if (intermediateRenderTexture)

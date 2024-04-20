@@ -85,6 +85,10 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     [Range(32, 64)]
     private int m_ColorGradingLutSize = 32;
 
+    [SerializeField]
+    [Range(0.1f, 2f)]
+    private float m_RenderScale = 1f;
+
     public bool useSRPBatcher
     {
         get { return m_UseSRPBatcher; }
@@ -153,6 +157,12 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     {
         get { return (int)m_ColorGradingLutSize; }
         set { m_ColorGradingLutSize = Mathf.Clamp(value, 32, 64); }
+    }
+
+    public float renderScale
+    {
+        get { return m_RenderScale; }
+        set { m_RenderScale = Mathf.Clamp(value, 0.1f, 2f); }
     }
 
     public ShaderResources shaders
