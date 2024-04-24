@@ -1,7 +1,6 @@
 using UnityEditor;
-using UnityEditor.Rendering;
 
-[CustomEditor(typeof(AdditionalCameraData), true)]
+[CustomEditor(typeof(AdditionalCameraData))]
 public class AdditionalCameraDataEditor : Editor
 {
     private SerializedProperty m_OverridePostProcessingData;

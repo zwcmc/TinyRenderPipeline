@@ -9,6 +9,7 @@ public class PostProcessingDataEditor : Editor
     private SerializedProperty m_Tonemapping;
     private SerializedProperty m_ColorAdjustments;
     private SerializedProperty m_WhiteBalance;
+    private SerializedProperty m_AntialiasingMode;
 
     private void OnEnable()
     {
@@ -18,6 +19,7 @@ public class PostProcessingDataEditor : Editor
         m_Tonemapping = serializedObject.FindProperty("tonemapping");
         m_ColorAdjustments = serializedObject.FindProperty("colorAdjustments");
         m_WhiteBalance = serializedObject.FindProperty("whiteBalance");
+        m_AntialiasingMode = serializedObject.FindProperty("antialiasingMode");
     }
 
     public override void OnInspectorGUI()
@@ -25,14 +27,13 @@ public class PostProcessingDataEditor : Editor
         serializedObject.Update();
 
         if (EditorPrefs.GetBool("DeveloperMode"))
-        {
-            EditorGUILayout.PropertyField(m_Shaders, true);
-        }
+            EditorGUILayout.PropertyField(m_Shaders);
 
-        EditorGUILayout.PropertyField(m_Bloom, true);
-        EditorGUILayout.PropertyField(m_Tonemapping, true);
-        EditorGUILayout.PropertyField(m_ColorAdjustments, true);
-        EditorGUILayout.PropertyField(m_WhiteBalance, true);
+        EditorGUILayout.PropertyField(m_Bloom);
+        EditorGUILayout.PropertyField(m_Tonemapping);
+        EditorGUILayout.PropertyField(m_ColorAdjustments);
+        EditorGUILayout.PropertyField(m_WhiteBalance);
+        EditorGUILayout.PropertyField(m_AntialiasingMode, EditorGUIUtility.TrTempContent("Anti-aliasing"));
 
         serializedObject.ApplyModifiedProperties();
     }

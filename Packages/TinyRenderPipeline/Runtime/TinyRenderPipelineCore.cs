@@ -20,8 +20,10 @@ public struct ShadowData
 
 public struct RenderingData
 {
-    internal ScriptableRenderContext renderContext;
-    internal CommandBuffer commandBuffer;
+    public ScriptableRenderContext renderContext;
+    public CommandBuffer commandBuffer;
+
+    public TinyRenderer renderer;
 
     public Camera camera;
 

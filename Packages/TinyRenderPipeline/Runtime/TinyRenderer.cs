@@ -24,6 +24,7 @@ public partial class TinyRenderer
     private PostProcessingPass m_PostProcessingPass;
     private ColorGradingLutPass m_ColorGradingLutPass;
     private FinalBlitPass m_FinalBlitPass;
+    private FXAAPass m_FXAAPass;
 
     private CopyDepthPass m_CopyDepthPass;
     private CopyColorPass m_CopyColorPass;
@@ -62,6 +63,7 @@ public partial class TinyRenderer
         m_FinalBlitPass = new FinalBlitPass(m_BlitMaterial);
         m_CopyDepthPass = new CopyDepthPass(m_CopyDepthMaterial);
         m_CopyColorPass = new CopyColorPass(m_BlitMaterial);
+        m_FXAAPass = new FXAAPass();
 
 #if UNITY_EDITOR
         m_FinalDepthCopyPass = new CopyDepthPass(m_CopyDepthMaterial);
@@ -125,7 +127,9 @@ public partial class TinyRenderer
         // Post processing
         // Check post processing data setup
         var additionalCameraData = camera.GetComponent<AdditionalCameraData>();
-        var postProcessingData = additionalCameraData ? (additionalCameraData.isOverridePostProcessingData ? additionalCameraData.overridePostProcessingData : renderingData.postProcessingData) : renderingData.postProcessingData;
+        var postProcessingData = additionalCameraData ?
+            (additionalCameraData.isOverridePostProcessingData ? additionalCameraData.overridePostProcessingData : renderingData.postProcessingData) :
+                renderingData.postProcessingData;
         bool applyPostProcessing = postProcessingData != null;
         // Only game camera and scene camera have post processing effects
         applyPostProcessing &= cameraType <= CameraType.SceneView;
@@ -152,9 +156,9 @@ public partial class TinyRenderer
         if (additionalCameraData)
             needCopyColor &= additionalCameraData.requireColorTexture;
 
-        bool createColorTexture = applyPostProcessing;  // post-processing is active
-        createColorTexture |= !renderingData.isDefaultCameraViewport;  // camera's viewport rect is not default(0, 0, 1, 1)
-        createColorTexture |= needCopyColor;  // copy color texture is enabled
+        bool createColorTexture = applyPostProcessing; // post-processing is active
+        createColorTexture |= !renderingData.isDefaultCameraViewport; // camera's viewport rect is not default(0, 0, 1, 1)
+        createColorTexture |= needCopyColor; // copy color texture is enabled
 
         // Check if need copy depth texture
         bool needCopyDepth = renderingData.copyDepthTexture;
@@ -260,15 +264,31 @@ public partial class TinyRenderer
 
         DrawGizmos(context, cmd, camera, GizmoSubset.PreImageEffects);
 
-        // If post-processing effect is enabled: first applying post-processing effects, and then blit to final camera target
+        // FXAA is enabled only if post-processing is enabled
+        bool hasFXAAPass = applyPostProcessing && (postProcessingData.antialiasingMode == PostProcessingData.AntialiasingMode.FastApproximateAntialiasing);
+        // Check post-processing pass need to resolve to final camera target
+        bool resolvePostProcessingToCameraTarget = !hasFXAAPass;
+
         if (applyPostProcessing)
         {
-            m_PostProcessingPass.Setup(cameraTargetDescriptor, m_ActiveCameraColorAttachment, true, m_ColorGradingLutPass.m_ColorGradingLut, postProcessingData);
+            m_PostProcessingPass.Setup(cameraTargetDescriptor, m_ActiveCameraColorAttachment, resolvePostProcessingToCameraTarget, m_ColorGradingLutPass.m_ColorGradingLut, postProcessingData);
             m_PostProcessingPass.ExecutePass(context, ref renderingData);
         }
 
-        // Blit to final camera target if active color attachment is not final camera target
-        bool cameraTargetResolved = applyPostProcessing || m_ActiveCameraColorAttachment.nameID == m_TargetColorHandle.nameID;
+        // FXAA pass always blit to final camera target
+        if (hasFXAAPass)
+        {
+            m_FXAAPass.Setup(m_ActiveCameraColorAttachment, postProcessingData);
+            m_FXAAPass.ExecutePass(context, ref renderingData);
+        }
+
+        // Check active color attachment is resolved to final target:
+        // 1. FXAA pass is enabled, it always blit active color attachment to final camera target
+        // 2. Post-processing is enabled and FXAA pass is disabled, active color attachment apply post-processing effects and then blit it to final camera target
+        // 3. Active color attachment is the final camera target
+        bool cameraTargetResolved = hasFXAAPass || (applyPostProcessing && resolvePostProcessingToCameraTarget) || m_ActiveCameraColorAttachment.nameID == m_TargetColorHandle.nameID;
+
+        // If is not resolved to final camera target, need final blit pass to do this
         if (!cameraTargetResolved)
         {
             m_FinalBlitPass.Setup(m_ActiveCameraColorAttachment);
@@ -307,6 +327,8 @@ public partial class TinyRenderer
         m_AdditionalLightsShadowPass?.Dispose();
 
         m_FinalBlitPass?.Dispose();
+
+        m_FXAAPass?.Dispose();
 
         m_CameraDepthAttachment?.Release();
 
@@ -362,5 +384,17 @@ public partial class TinyRenderer
 
         context.ExecuteCommandBuffer(cmd);
         cmd.Clear();
+    }
+
+    public RTHandle GetCameraColorFrontBuffer(CommandBuffer cmd)
+    {
+        return m_ColorBufferSystem.GetFrontBuffer(cmd);
+    }
+
+    public void SwapColorBuffer(CommandBuffer cmd)
+    {
+        m_ColorBufferSystem.Swap();
+
+        m_ActiveCameraColorAttachment = m_ColorBufferSystem.GetBackBuffer(cmd);
     }
 }

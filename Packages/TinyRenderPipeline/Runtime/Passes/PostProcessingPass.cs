@@ -16,7 +16,6 @@ public class PostProcessingPass
 
     private RenderTextureDescriptor m_Descriptor;
     private RTHandle m_Source;
-    private RTHandle m_Destination;
 
     private bool m_ResolveToScreen;
 
@@ -88,9 +87,7 @@ public class PostProcessingPass
         m_Descriptor.useMipMap = false;
         m_Descriptor.autoGenerateMips = false;
         m_Source = source;
-        m_Destination = TinyRenderPipeline.k_CameraTarget;
         m_ResolveToScreen = resolveToScreen;
-
         m_InternalLut = internalLut;
     }
 
@@ -151,8 +148,18 @@ public class PostProcessingPass
             // Color grading
             SetupColorGrading(ref renderingData, m_Materials.uberPost);
 
+            ref TinyRenderer renderer = ref renderingData.renderer;
+            RTHandle destination = m_ResolveToScreen ? TinyRenderPipeline.k_CameraTarget : renderer.GetCameraColorFrontBuffer(cmd);
+
             if (m_ResolveToScreen)
-                RenderingUtils.FinalBlit(cmd, renderingData.camera, source, m_Destination, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, m_Materials.uberPost, 0);
+            {
+                RenderingUtils.FinalBlit(cmd, renderingData.camera, source, destination, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, m_Materials.uberPost, 0);
+            }
+            else
+            {
+                Blitter.BlitCameraTexture(cmd, source, destination, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, m_Materials.uberPost, 0);
+                renderer.SwapColorBuffer(cmd);
+            }
         }
     }
 

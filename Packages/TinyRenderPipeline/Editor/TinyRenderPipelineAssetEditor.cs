@@ -1,6 +1,6 @@
 using UnityEditor;
 
-[CustomEditor(typeof(TinyRenderPipelineAsset), true)]
+[CustomEditor(typeof(TinyRenderPipelineAsset))]
 public class TinyRenderPipelineAssetEditor : Editor
 {
     private SerializedProperty m_Shaders;

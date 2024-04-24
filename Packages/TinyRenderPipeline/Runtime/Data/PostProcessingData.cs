@@ -46,6 +46,14 @@ public class PostProcessingData : ScriptableObject
         ACES
     }
 
+    public enum AntialiasingMode
+    {
+        [InspectorName("No Anti-aliasing")]
+        None,
+        [InspectorName("Fast Approximate Anti-aliasing (FXAA)")]
+        FastApproximateAntialiasing
+    }
+
 #if UNITY_EDITOR
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1812")]
     private class CreatePostProcessingDataAsset : EndNameEditAction
@@ -77,6 +85,9 @@ public class PostProcessingData : ScriptableObject
 
         [Reload("Shaders/PostProcessing/LutBuilder.shader")]
         public Shader lutBuilderShader;
+
+        [Reload("Shaders/PostProcessing/FXAA.shader")]
+        public Shader fxaaShader;
     }
 
     [Serializable]
@@ -147,4 +158,6 @@ public class PostProcessingData : ScriptableObject
     public ColorAdjustments colorAdjustments = default;
 
     public WhiteBalance whiteBalance = default;
+
+    public AntialiasingMode antialiasingMode = AntialiasingMode.None;
 }

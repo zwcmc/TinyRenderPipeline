@@ -10,8 +10,8 @@ public class TinyRenderPipeline : RenderPipeline
     private const int k_MaxVisibleAdditionalLights = 8;
 
     private readonly TinyRenderPipelineAsset pipelineAsset;
-    private TinyRenderer m_TinyRenderer;
 
+    private static TinyRenderer m_TinyRenderer;
     public static RTHandleResourcePool s_RTHandlePool;
 
     private static class Profiling
@@ -152,6 +152,8 @@ public class TinyRenderPipeline : RenderPipeline
     {
         renderingData.renderContext = context;
         renderingData.commandBuffer = cmd;
+
+        renderingData.renderer = m_TinyRenderer;
 
         renderingData.camera = camera;
 
