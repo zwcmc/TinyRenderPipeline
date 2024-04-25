@@ -71,7 +71,6 @@ half4 FragFXAA(Varyings input) : SV_Target
 
     // Luma of pixels around current pixel
     float lumaM = FXAALuma(rgbyM);
-
     float lumaS = FXAALuma(FXAATexOff(posM, int2(0, -1)));
     float lumaE = FXAALuma(FXAATexOff(posM, int2(1, 0)));
     float lumaN = FXAALuma(FXAATexOff(posM, int2(0, 1)));
@@ -135,6 +134,7 @@ half4 FragFXAA(Varyings input) : SV_Target
     float edgeVert = abs(edgeVert3) + edgeVert4;
 
     bool horzSpan = edgeHorz >= edgeVert;
+
     /*----------------*/
 
     // 3. Calculate subpixel blend factor
@@ -156,7 +156,6 @@ half4 FragFXAA(Varyings input) : SV_Target
     float subpixC = saturate(abs(subpixB) * subpixRcpRange);
 
     // Make factor more smoother
-
     // two different ways below:
     // [1] used in URP FXAA3_11.hlsl (FXAA_PC == 1)
     // float subpixD = ((-2.0) * subpixC) + 3.0;
@@ -276,7 +275,6 @@ half4 FragFXAA(Varyings input) : SV_Target
 
     // Choose the closer direction of the end edge
     bool directionN = dstN < dstP;
-    float dst = min(dstN, dstP);
     bool goodSpan = directionN ? goodSpanN : goodSpanP;
 
     // Edge length
@@ -284,6 +282,7 @@ half4 FragFXAA(Varyings input) : SV_Target
     float spanLengthRcp = 1.0 / spanLength;
 
     // Calculate edge blend factor
+    float dst = min(dstN, dstP);
     float pixelOffset = (dst * (-spanLengthRcp)) + 0.5;
     float pixelOffsetGood = goodSpan ? pixelOffset : 0.0;
 
