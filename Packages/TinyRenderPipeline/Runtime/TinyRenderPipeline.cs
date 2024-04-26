@@ -24,7 +24,7 @@ public class TinyRenderPipeline : RenderPipeline
             bool exists = s_HashSamplerCache.TryGetValue(cameraId, out ps);
             if (!exists)
             {
-                ps = new ProfilingSampler($"{nameof(TinyRenderPipeline)}: {camera.name}");
+                ps = new ($"{nameof(TinyRenderPipeline)}: {camera.name}");
                 s_HashSamplerCache.Add(cameraId, ps);
             }
 

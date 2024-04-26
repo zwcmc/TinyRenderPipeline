@@ -7,9 +7,9 @@ public class PostProcessingPass
 {
     private static class Profiling
     {
-        public static readonly ProfilingSampler renderPostProcessing = new ProfilingSampler("RenderPostProcessingEffects");
-        public static readonly ProfilingSampler uberPostProcessing = new ProfilingSampler("UberPostProcess");
-        public static readonly ProfilingSampler bloom = new ProfilingSampler("Bloom");
+        public static readonly ProfilingSampler renderPostProcessing = new ("RenderPostProcessingEffects");
+        public static readonly ProfilingSampler uberPostProcessing = new ("UberPostProcess");
+        public static readonly ProfilingSampler bloom = new ("Bloom");
     }
 
     private Material m_PostProcessingMaterial;

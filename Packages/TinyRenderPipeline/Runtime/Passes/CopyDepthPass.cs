@@ -11,7 +11,7 @@ public class CopyDepthPass
 
     private bool m_CopyToDepthTexture;
 
-    private static readonly ProfilingSampler m_ProfilingSampler = new ProfilingSampler("CopyDepth");
+    private static readonly ProfilingSampler m_ProfilingSampler = new ("CopyDepth");
 
     public CopyDepthPass(Material copyDepthMaterial)
     {

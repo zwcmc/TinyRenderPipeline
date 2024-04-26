@@ -22,7 +22,7 @@ public class MainLightShadowPass
     private int m_RenderTargetWidth;
     private int m_RenderTargetHeight;
 
-    private static readonly ProfilingSampler m_ProfilingSampler = new ProfilingSampler("MainLightShadow");
+    private static readonly ProfilingSampler m_ProfilingSampler = new ("MainLightShadow");
 
     private static class MainLightShadowConstantBuffer
     {

@@ -8,7 +8,7 @@ public class FXAAPass
 
     private RTHandle m_Source;
 
-    private static readonly ProfilingSampler m_ProfilingSampler = new ProfilingSampler("ApplyFXAA");
+    private static readonly ProfilingSampler m_ProfilingSampler = new ("ApplyFXAA");
 
     private static class ShaderConstants
     {

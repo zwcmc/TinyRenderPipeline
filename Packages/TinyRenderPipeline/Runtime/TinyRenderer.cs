@@ -13,9 +13,9 @@ public partial class TinyRenderer
 
     private static class Profiling
     {
-        public static readonly ProfilingSampler drawOpaque = new ProfilingSampler($"{nameof(DrawOpaque)}");
-        public static readonly ProfilingSampler drawTransparent = new ProfilingSampler($"{nameof(DrawTransparent)}");
-        public static readonly ProfilingSampler drawGizmos = new ProfilingSampler($"{nameof(DrawGizmos)}");
+        public static readonly ProfilingSampler drawOpaque = new ($"{nameof(DrawOpaque)}");
+        public static readonly ProfilingSampler drawTransparent = new ($"{nameof(DrawTransparent)}");
+        public static readonly ProfilingSampler drawGizmos = new ($"{nameof(DrawGizmos)}");
     }
 
     private ForwardLights m_ForwardLights;

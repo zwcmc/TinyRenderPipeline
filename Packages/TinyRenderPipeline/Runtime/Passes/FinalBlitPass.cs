@@ -6,7 +6,7 @@ public class FinalBlitPass
     private RTHandle m_Source;
     private Material m_BlitMaterial;
 
-    private static readonly ProfilingSampler m_ProfilingSampler = new ProfilingSampler("Final Blit");
+    private static readonly ProfilingSampler m_ProfilingSampler = new ("Final Blit");
 
     public FinalBlitPass(Material blitMaterial)
     {
