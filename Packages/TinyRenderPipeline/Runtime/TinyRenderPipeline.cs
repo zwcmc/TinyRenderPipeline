@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Experimental.Rendering.RenderGraphModule;
 
 public class TinyRenderPipeline : RenderPipeline
 {
@@ -11,10 +12,14 @@ public class TinyRenderPipeline : RenderPipeline
 
     private readonly TinyRenderPipelineAsset pipelineAsset;
 
-    private static TinyRenderer m_TinyRenderer;
+    private static TinyRenderer s_TinyRenderer;
     public static RTHandleResourcePool s_RTHandlePool;
 
-    private static class Profiling
+    private static TinyRenderGraphRenderer s_TinyRenderGraphRenderer;
+    private static RenderGraph s_RenderGraph;
+    private static bool useRenderGraph;
+
+    public static class Profiling
     {
         private static Dictionary<int, ProfilingSampler> s_HashSamplerCache = new Dictionary<int, ProfilingSampler>();
         public static ProfilingSampler TryGetOrAddCameraSampler(Camera camera)
@@ -45,9 +50,14 @@ public class TinyRenderPipeline : RenderPipeline
         // Light intensity in linear space
         GraphicsSettings.lightsUseLinearIntensity = true;
 
-        m_TinyRenderer = new TinyRenderer(pipelineAsset);
+        s_TinyRenderer = new TinyRenderer(pipelineAsset);
 
         s_RTHandlePool = new RTHandleResourcePool();
+
+        s_RenderGraph = new RenderGraph("TRRenderGraph");
+        useRenderGraph = true;
+        if (useRenderGraph)
+            s_TinyRenderGraphRenderer = new TinyRenderGraphRenderer();
     }
 
     protected override void Render(ScriptableRenderContext context, Camera[] cameras)
@@ -62,6 +72,7 @@ public class TinyRenderPipeline : RenderPipeline
             var camera = cameras[i];
             RenderSingleCamera(context, camera);
         }
+        s_RenderGraph.EndFrame();
 
         s_RTHandlePool.PurgeUnusedResources(Time.frameCount);
     }
@@ -70,15 +81,22 @@ public class TinyRenderPipeline : RenderPipeline
     {
         base.Dispose(disposing);
 
-        m_TinyRenderer?.Dispose(disposing);
+        s_TinyRenderer?.Dispose(disposing);
+        s_TinyRenderer = null;
 
         s_RTHandlePool.Cleanup();
         s_RTHandlePool = null;
+
+        s_RenderGraph.Cleanup();
+        s_RenderGraph = null;
+
+        s_TinyRenderGraphRenderer?.Dispose(disposing);
+        s_TinyRenderGraphRenderer = null;
     }
 
     private void RenderSingleCamera(ScriptableRenderContext context, Camera camera)
     {
-        if (m_TinyRenderer == null)
+        if (s_TinyRenderer == null || (useRenderGraph && (s_TinyRenderGraphRenderer == null)))
             return;
 
         if (!TryGetCullingParameters(camera, out var cullingParameters))
@@ -110,7 +128,10 @@ public class TinyRenderPipeline : RenderPipeline
             InitializeRenderingData(pipelineAsset, ref cullResults, context, cmd, camera, out var renderingData);
 
             // Rendering
-            m_TinyRenderer.Execute(ref renderingData);
+            if (useRenderGraph)
+                s_TinyRenderGraphRenderer.RecordAndExecuteRenderGraph(s_RenderGraph, ref renderingData);
+            else
+                s_TinyRenderer.Execute(ref renderingData);
         }
 
         // Execute command buffer
@@ -153,7 +174,7 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.renderContext = context;
         renderingData.commandBuffer = cmd;
 
-        renderingData.renderer = m_TinyRenderer;
+        renderingData.renderer = s_TinyRenderer;
 
         renderingData.camera = camera;
 
