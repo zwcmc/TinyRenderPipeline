@@ -21,7 +21,7 @@ public class CopyColorPass
         m_Destination = destination;
     }
 
-    public void ExecutePass(ScriptableRenderContext context, ref RenderingData renderingData)
+    public void Render(ScriptableRenderContext context, ref RenderingData renderingData)
     {
         if (m_CopyColorMaterial == null)
         {

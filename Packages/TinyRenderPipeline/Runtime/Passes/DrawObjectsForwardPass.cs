@@ -12,7 +12,7 @@ public class DrawObjectsForwardPass
         m_IsOpaque = isOpaque;
     }
 
-    public void ExecutePass(ScriptableRenderContext context, ref RenderingData renderingData)
+    public void Render(ScriptableRenderContext context, ref RenderingData renderingData)
     {
         var cmd = renderingData.commandBuffer;
         var sampler = m_IsOpaque ? m_DrawOpaqueObjectsSampler : m_DrawTransparentObjectsSampler;

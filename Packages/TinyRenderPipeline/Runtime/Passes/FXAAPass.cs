@@ -26,7 +26,7 @@ public class FXAAPass
         m_Source = source;
     }
 
-    public void ExecutePass(ScriptableRenderContext context, ref RenderingData renderingData)
+    public void Render(ScriptableRenderContext context, ref RenderingData renderingData)
     {
         if (m_FXAAMaterial == null)
         {
