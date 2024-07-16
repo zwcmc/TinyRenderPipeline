@@ -1,10 +1,18 @@
-using UnityEngine;
 using UnityEngine.Rendering;
 
-public partial class TinyRenderer
+public class DrawSkyboxPass
 {
-    private void DrawSkybox(ScriptableRenderContext context, Camera camera)
+    private static readonly ProfilingSampler m_ProfilingSampler = new ProfilingSampler("DrawSkyboxPass");
+
+    public void ExecutePass(ScriptableRenderContext context, ref RenderingData renderingData)
     {
-        context.DrawSkybox(camera);
+        var cmd = renderingData.commandBuffer;
+        using (new ProfilingScope(cmd, m_ProfilingSampler))
+        {
+            context.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
+
+            context.DrawSkybox(renderingData.camera);
+        }
     }
 }

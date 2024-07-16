@@ -2,19 +2,18 @@
 using UnityEditor;
 #endif
 
+using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Experimental.Rendering;
 
-public partial class TinyRenderer
+public class TinyRenderer
 {
     private const GraphicsFormat k_DepthStencilFormat = GraphicsFormat.D32_SFloat_S8_UInt;
     private const int k_DepthBufferBits = 32;
 
     private static class Profiling
     {
-        public static readonly ProfilingSampler drawOpaque = new ($"{nameof(DrawOpaque)}");
-        public static readonly ProfilingSampler drawTransparent = new ($"{nameof(DrawTransparent)}");
         public static readonly ProfilingSampler drawGizmos = new ($"{nameof(DrawGizmos)}");
     }
 
@@ -28,6 +27,10 @@ public partial class TinyRenderer
 
     private CopyDepthPass m_CopyDepthPass;
     private CopyColorPass m_CopyColorPass;
+
+    private DrawObjectsForwardPass m_RenderOpaqueForwardPass;
+    private DrawSkyboxPass m_DrawSkyboxPass;
+    private DrawObjectsForwardPass m_RenderTransparentForwardPass;
 
 #if UNITY_EDITOR
     private CopyDepthPass m_FinalDepthCopyPass;
@@ -68,6 +71,10 @@ public partial class TinyRenderer
 #if UNITY_EDITOR
         m_FinalDepthCopyPass = new CopyDepthPass(m_CopyDepthMaterial);
 #endif
+
+        m_RenderOpaqueForwardPass = new DrawObjectsForwardPass(true);
+        m_DrawSkyboxPass = new DrawSkyboxPass();
+        m_RenderTransparentForwardPass = new DrawObjectsForwardPass(false);
 
         m_ColorBufferSystem = new RenderTargetBufferSystem("_CameraColorAttachment");
     }
@@ -203,7 +210,7 @@ public partial class TinyRenderer
         cmd.Clear();
 
         // Opaque objects
-        DrawOpaque(context, ref renderingData);
+        m_RenderOpaqueForwardPass.ExecutePass(context, ref renderingData);
 
         // Copy depth texture if needed after rendering opaque objects
         if (needCopyDepth)
@@ -233,7 +240,7 @@ public partial class TinyRenderer
         }
 
         // Skybox
-        DrawSkybox(context, camera);
+        m_DrawSkyboxPass.ExecutePass(context, ref renderingData);
 
         // Copy color texture if needed after rendering skybox
         if (needCopyColor)
@@ -260,7 +267,7 @@ public partial class TinyRenderer
         }
 
         // Transparent objects
-        DrawTransparent(context, ref renderingData);
+        m_RenderTransparentForwardPass.ExecutePass(context, ref renderingData);
 
         DrawGizmos(context, cmd, camera, GizmoSubset.PreImageEffects);
 
@@ -342,6 +349,7 @@ public partial class TinyRenderer
         CoreUtils.Destroy(m_CopyDepthMaterial);
     }
 
+    [Conditional("UNITY_EDITOR")]
     private void DrawGizmos(ScriptableRenderContext context, CommandBuffer cmd, Camera camera, GizmoSubset gizmoSubset)
     {
 #if UNITY_EDITOR
