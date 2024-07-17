@@ -202,4 +202,25 @@ public static class RenderingUtils
 
         return !isBackbuffer;
     }
+
+    public static TextureHandle CreateRenderGraphTexture(RenderGraph renderGraph, RenderTextureDescriptor desc, string name, bool clear,
+        FilterMode filterMode = FilterMode.Point, TextureWrapMode wrapMode = TextureWrapMode.Clamp)
+    {
+        TextureDesc rgDesc = new TextureDesc(desc.width, desc.height);
+        rgDesc.dimension = desc.dimension;
+        rgDesc.clearBuffer = clear;
+        rgDesc.bindTextureMS = desc.bindMS;
+        rgDesc.colorFormat = desc.graphicsFormat;
+        rgDesc.depthBufferBits = (DepthBits)desc.depthBufferBits;
+        rgDesc.slices = desc.volumeDepth;
+        rgDesc.msaaSamples = (MSAASamples)desc.msaaSamples;
+        rgDesc.name = name;
+        rgDesc.enableRandomWrite = desc.enableRandomWrite;
+        rgDesc.filterMode = filterMode;
+        rgDesc.wrapMode = wrapMode;
+        rgDesc.isShadowMap = desc.shadowSamplingMode != ShadowSamplingMode.None && desc.depthStencilFormat != GraphicsFormat.None;
+        // TODO RENDERGRAPH: depthStencilFormat handling?
+
+        return renderGraph.CreateTexture(rgDesc);
+    }
 }

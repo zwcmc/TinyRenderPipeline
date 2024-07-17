@@ -274,9 +274,9 @@ public class TinyRenderer : TinyBaseRenderer
         DrawGizmos(context, cmd, camera, GizmoSubset.PreImageEffects);
 
         // FXAA is enabled only if post-processing is enabled
-        bool hasFXAAPass = applyPostProcessing && (postProcessingData.antialiasingMode == PostProcessingData.AntialiasingMode.FastApproximateAntialiasing);
+        bool hasFxaaPass = applyPostProcessing && (postProcessingData.antialiasingMode == PostProcessingData.AntialiasingMode.FastApproximateAntialiasing);
         // Check post-processing pass need to resolve to final camera target
-        bool resolvePostProcessingToCameraTarget = !hasFXAAPass;
+        bool resolvePostProcessingToCameraTarget = !hasFxaaPass;
 
         if (applyPostProcessing)
         {
@@ -285,7 +285,7 @@ public class TinyRenderer : TinyBaseRenderer
         }
 
         // FXAA pass always blit to final camera target
-        if (hasFXAAPass)
+        if (hasFxaaPass)
         {
             m_FXAAPass.Setup(m_ActiveCameraColorAttachment, postProcessingData);
             m_FXAAPass.Render(context, ref renderingData);
@@ -295,7 +295,7 @@ public class TinyRenderer : TinyBaseRenderer
         // 1. FXAA pass is enabled, it always blit active color attachment to final camera target
         // 2. Post-processing is enabled and FXAA pass is disabled, active color attachment apply post-processing effects and then blit it to final camera target
         // 3. Active color attachment is the final camera target
-        bool cameraTargetResolved = hasFXAAPass || (applyPostProcessing && resolvePostProcessingToCameraTarget) || m_ActiveCameraColorAttachment.nameID == m_TargetColorHandle.nameID;
+        bool cameraTargetResolved = hasFxaaPass || (applyPostProcessing && resolvePostProcessingToCameraTarget) || m_ActiveCameraColorAttachment.nameID == m_TargetColorHandle.nameID;
 
         // If is not resolved to final camera target, need final blit pass to do this
         if (!cameraTargetResolved)

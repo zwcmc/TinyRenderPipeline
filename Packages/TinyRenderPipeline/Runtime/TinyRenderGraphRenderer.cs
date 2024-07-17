@@ -16,13 +16,18 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
     private TextureHandle m_BackBufferColor;
     private TextureHandle m_BackBufferDepth;
 
-    private static RTHandle[] m_RenderGraphCameraColorHandles = new RTHandle[] { null, null };
-    private static RTHandle m_RenderGraphCameraDepthHandle;
+    private TextureHandle m_ActiveRenderGraphCameraColorHandle;
+    private TextureHandle m_ActiveRenderGraphCameraDepthHandle;
+
+    private static RTHandle[] m_CameraColorHandles = new RTHandle[] { null, null };
+    private static RTHandle m_CameraDepthHandle;
+    private static TextureHandle[] m_RenderGraphCameraColorHandles = new TextureHandle[] { new TextureHandle(), new TextureHandle() };
+    private static TextureHandle m_RenderGraphCameraDepthHandle;
+
     private static int m_CurrentColorHandle = 0;
+    private TextureHandle currentRenderGraphCameraColorHandle => (m_RenderGraphCameraColorHandles[m_CurrentColorHandle]);
 
-    private RTHandle currentRenderGraphCameraColorHandle => (m_RenderGraphCameraColorHandles[m_CurrentColorHandle]);
-
-    private RTHandle nextRenderGraphCameraColorHandle
+    private TextureHandle nextRenderGraphCameraColorHandle
     {
         get
         {
@@ -31,6 +36,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         }
     }
 
+    // Passes
     private DrawSkyboxPass m_DrawSkyboxPass;
 
     public TinyRenderGraphRenderer()
@@ -43,8 +49,6 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         var camera = renderingData.camera;
         var cameraType = camera.cameraType;
 
-        #region UseIntermediateRenderTexture
-
         var additionalCameraData = camera.GetComponent<AdditionalCameraData>();
         var postProcessingData = additionalCameraData ?
             (additionalCameraData.isOverridePostProcessingData ? additionalCameraData.overridePostProcessingData : renderingData.postProcessingData) :
@@ -54,6 +58,13 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         applyPostProcessing &= cameraType <= CameraType.SceneView;
         // Check if disable post processing effects in scene view
         applyPostProcessing &= CoreUtils.ArePostProcessesEnabled(camera);
+
+        // Color grading generating LUT pass
+        bool generateColorGradingLut = applyPostProcessing && renderingData.isHdrEnabled;
+        if (generateColorGradingLut)
+        {
+            // to-do: m_ColorGradingLutPass
+        }
 
         bool needCopyColor = renderingData.copyColorTexture;
         if (additionalCameraData)
@@ -70,10 +81,68 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         bool useRenderScale = renderingData.renderScale < 1.0f || renderingData.renderScale > 1.0f;
         bool intermediateRenderTexture = createColorTexture || needCopyDepth || useRenderScale;
 
-        #endregion
+        CreateRenderGraphCameraRenderTargets(renderGraph, ref renderingData, intermediateRenderTexture);
+
+        // Setup camera properties
+        SetupRenderGraphCameraProperties(renderGraph, ref renderingData, m_BackBufferColor);
+
+        // to-do: m_RenderOpaqueForwardPass
+
+        // to-do: m_CopyDepthPass if needed
+
+        m_DrawSkyboxPass.DrawRenderGraphSkybox(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle, ref renderingData);
+
+        // to-do: m_CopyColorPass if needed
+
+        // to-do: m_RenderTransparentForwardPass
+
+        DrawRenderGraphGizmos(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle, GizmoSubset.PreImageEffects, ref renderingData);
+
+        // FXAA is enabled only if post-processing is enabled
+        bool hasFxaaPass = applyPostProcessing && (postProcessingData.antialiasingMode == PostProcessingData.AntialiasingMode.FastApproximateAntialiasing);
+        // Check post-processing pass need to resolve to final camera target
+        bool resolvePostProcessingToCameraTarget = !hasFxaaPass;
+
+        if (applyPostProcessing)
+        {
+            // to-do: m_PostProcessingPass
+        }
+
+        // FXAA pass always blit to final camera target
+        if (hasFxaaPass)
+        {
+            // to-do: m_FXAAPass
+        }
+
+        // Check active color attachment is resolved to final target:
+        // 1. FXAA pass is enabled, it always blit active color attachment to final camera target
+        // 2. Post-processing is enabled and FXAA pass is disabled, active color attachment apply post-processing effects and then blit it to final camera target
+
+
+        // 3. Active color attachment is the final camera target
+        // RTHandle handle0 = m_ActiveRenderGraphCameraColorHandle;
+        // RTHandle handle1 = m_BackBufferColor;
+        //  || (handle0.nameID == handle1.nameID)
+        bool cameraTargetResolved = hasFxaaPass || (applyPostProcessing && resolvePostProcessingToCameraTarget);
+
+        // If is not resolved to final camera target, need final blit pass to do this
+        if (!cameraTargetResolved)
+        {
+            // to-do: m_FinalBlitPass
+        }
+
+#if UNITY_EDITOR
+        // to-do: m_FinalDepthCopyPass
+#endif
+
+        DrawRenderGraphGizmos(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle, GizmoSubset.PostImageEffects, ref renderingData);
+    }
+
+    private void CreateRenderGraphCameraRenderTargets(RenderGraph renderGraph, ref RenderingData renderingData, bool intermediateRenderTexture)
+    {
+        var camera = renderingData.camera;
 
         bool isBuiltInTexture = (camera.targetTexture == null);
-
         RenderTargetIdentifier targetColorId = isBuiltInTexture ? BuiltinRenderTextureType.CameraTarget : new RenderTargetIdentifier(camera.targetTexture);
         RenderTargetIdentifier targetDepthId = isBuiltInTexture ? BuiltinRenderTextureType.Depth : new RenderTargetIdentifier(camera.targetTexture);
 
@@ -96,8 +165,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         }
 
         RenderTargetInfo importInfo = new RenderTargetInfo();
-        RenderTargetInfo importInfoDepth;
-
+        RenderTargetInfo importInfoDepth = new RenderTargetInfo();
         if (isBuiltInTexture)
         {
             importInfo.width = Screen.width;
@@ -149,17 +217,44 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
 
         if (intermediateRenderTexture)
         {
+            var cameraTargetDescriptor = renderingData.cameraTargetDescriptor;
+            cameraTargetDescriptor.useMipMap = false;
+            cameraTargetDescriptor.autoGenerateMips = false;
+            cameraTargetDescriptor.depthBufferBits = (int)DepthBits.None;
 
+            RenderingUtils.ReAllocateIfNeeded(ref m_CameraColorHandles[0], cameraTargetDescriptor, FilterMode.Bilinear, TextureWrapMode.Clamp, name: "_CameraTargetAttachmentA");
+            RenderingUtils.ReAllocateIfNeeded(ref m_CameraColorHandles[1], cameraTargetDescriptor, FilterMode.Bilinear, TextureWrapMode.Clamp, name: "_CameraTargetAttachmentB");
+
+            ImportResourceParams importColorParams = new ImportResourceParams();
+            importColorParams.clearOnFirstUse = clearColor;
+            importColorParams.clearColor = backgroundColor.linear;
+            importColorParams.discardOnLastUse = true;
+
+            m_CurrentColorHandle = 0;
+
+            m_RenderGraphCameraColorHandles[0] = renderGraph.ImportTexture(m_CameraColorHandles[0], importColorParams);
+            m_RenderGraphCameraColorHandles[1] = renderGraph.ImportTexture(m_CameraColorHandles[1], importColorParams);
+
+            var depthDescriptor = renderingData.cameraTargetDescriptor;
+            depthDescriptor.useMipMap = false;
+            depthDescriptor.autoGenerateMips = false;
+            depthDescriptor.bindMS = false;
+
+            depthDescriptor.graphicsFormat = GraphicsFormat.None;
+            depthDescriptor.depthStencilFormat = GraphicsFormat.D32_SFloat_S8_UInt;
+            depthDescriptor.depthBufferBits = 32;
+
+            RenderingUtils.ReAllocateIfNeeded(ref m_CameraDepthHandle, depthDescriptor, FilterMode.Point, TextureWrapMode.Clamp, name: "_CameraDepthAttachment");
+
+            ImportResourceParams importDepthParams = new ImportResourceParams();
+            importDepthParams.clearOnFirstUse = clearDepth;
+            importDepthParams.clearColor = backgroundColor.linear;
+            importDepthParams.discardOnLastUse = true;
+            m_RenderGraphCameraDepthHandle = renderGraph.ImportTexture(m_CameraDepthHandle, importDepthParams);
         }
 
-        // Setup camera properties
-        SetupRenderGraphCameraProperties(renderGraph, ref renderingData, m_BackBufferColor);
-
-        DrawRenderGraphGizmos(renderGraph, m_BackBufferColor, m_BackBufferDepth, GizmoSubset.PreImageEffects, ref renderingData);
-
-        m_DrawSkyboxPass.DrawRenderGraphSkybox(renderGraph, m_BackBufferColor, m_BackBufferDepth, ref renderingData);
-
-        DrawRenderGraphGizmos(renderGraph, m_BackBufferColor, m_BackBufferDepth, GizmoSubset.PostImageEffects, ref renderingData);
+        m_ActiveRenderGraphCameraColorHandle = intermediateRenderTexture ? currentRenderGraphCameraColorHandle : m_BackBufferColor;
+        m_ActiveRenderGraphCameraDepthHandle = intermediateRenderTexture ? m_RenderGraphCameraDepthHandle : m_BackBufferDepth;
     }
 
     private class DrawGizmosPassData
@@ -240,29 +335,8 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
     {
         base.Dispose(disposing);
 
-        m_RenderGraphCameraColorHandles[0]?.Release();
-        m_RenderGraphCameraColorHandles[1]?.Release();
-        m_RenderGraphCameraDepthHandle?.Release();
-    }
-
-    public static TextureHandle CreateRenderGraphTexture(RenderGraph renderGraph, RenderTextureDescriptor desc, string name, bool clear,
-        FilterMode filterMode = FilterMode.Point, TextureWrapMode wrapMode = TextureWrapMode.Clamp)
-    {
-        TextureDesc rgDesc = new TextureDesc(desc.width, desc.height);
-        rgDesc.dimension = desc.dimension;
-        rgDesc.clearBuffer = clear;
-        rgDesc.bindTextureMS = desc.bindMS;
-        rgDesc.colorFormat = desc.graphicsFormat;
-        rgDesc.depthBufferBits = (DepthBits)desc.depthBufferBits;
-        rgDesc.slices = desc.volumeDepth;
-        rgDesc.msaaSamples = (MSAASamples)desc.msaaSamples;
-        rgDesc.name = name;
-        rgDesc.enableRandomWrite = desc.enableRandomWrite;
-        rgDesc.filterMode = filterMode;
-        rgDesc.wrapMode = wrapMode;
-        rgDesc.isShadowMap = desc.shadowSamplingMode != ShadowSamplingMode.None && desc.depthStencilFormat != GraphicsFormat.None;
-        // TODO RENDERGRAPH: depthStencilFormat handling?
-
-        return renderGraph.CreateTexture(rgDesc);
+        m_CameraColorHandles[0]?.Release();
+        m_CameraColorHandles[1]?.Release();
+        m_CameraDepthHandle?.Release();
     }
 }
