@@ -6,7 +6,7 @@ using UnityEngine.Rendering;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 
-public class TinyRenderGraphRenderer
+public class TinyRenderGraphRenderer : TinyBaseRenderer
 {
     private RTHandle m_TargetColorHandle;
     private RTHandle m_TargetDepthHandle;
@@ -26,6 +26,13 @@ public class TinyRenderGraphRenderer
             m_CurrentColorHandle = (m_CurrentColorHandle + 1) % 2;
             return m_RenderGraphCameraColorHandles[m_CurrentColorHandle];
         }
+    }
+
+    private DrawSkyboxPass m_DrawSkyboxPass;
+
+    public TinyRenderGraphRenderer()
+    {
+        m_DrawSkyboxPass = new DrawSkyboxPass();
     }
 
     private void RecordRenderGraph(RenderGraph renderGraph, ScriptableRenderContext context, ref RenderingData renderingData)
@@ -62,28 +69,32 @@ public class TinyRenderGraphRenderer
 
         #endregion
 
-        RenderTargetIdentifier targetId = BuiltinRenderTextureType.CameraTarget;
+        bool isBuiltInTexture = (camera.targetTexture == null);
+
+        RenderTargetIdentifier targetColorId = isBuiltInTexture ? BuiltinRenderTextureType.CameraTarget : new RenderTargetIdentifier(camera.targetTexture);
+        RenderTargetIdentifier targetDepthId = isBuiltInTexture ? BuiltinRenderTextureType.Depth : new RenderTargetIdentifier(camera.targetTexture);
+
         if (m_TargetColorHandle == null)
         {
-            m_TargetColorHandle = RTHandles.Alloc(targetId, "Backbuffer color");
+            m_TargetColorHandle = RTHandles.Alloc(targetColorId, "Backbuffer color");
         }
-        else if (m_TargetColorHandle.nameID != targetId)
+        else if (m_TargetColorHandle.nameID != targetColorId)
         {
-            RTHandleStaticHelpers.SetRTHandleUserManagedWrapper(ref m_TargetColorHandle, targetId);
+            RTHandleStaticHelpers.SetRTHandleUserManagedWrapper(ref m_TargetColorHandle, targetColorId);
         }
 
         if (m_TargetDepthHandle == null)
         {
-            m_TargetDepthHandle = RTHandles.Alloc(targetId, "Backbuffer depth");
+            m_TargetDepthHandle = RTHandles.Alloc(targetDepthId, "Backbuffer depth");
         }
-        else if (m_TargetDepthHandle.nameID != targetId)
+        else if (m_TargetDepthHandle.nameID != targetDepthId)
         {
-            RTHandleStaticHelpers.SetRTHandleUserManagedWrapper(ref m_TargetDepthHandle, targetId);
+            RTHandleStaticHelpers.SetRTHandleUserManagedWrapper(ref m_TargetDepthHandle, targetDepthId);
         }
 
         RenderTargetInfo importInfo = new RenderTargetInfo();
         RenderTargetInfo importInfoDepth;
-        bool isBuiltInTexture = (camera.targetTexture == null);
+
         if (isBuiltInTexture)
         {
             importInfo.width = Screen.width;
@@ -138,25 +149,13 @@ public class TinyRenderGraphRenderer
 
         }
 
-        DrawRenderGraphGizmos(renderGraph, m_BackBufferColor, m_BackBufferDepth, GizmoSubset.PreImageEffects, ref renderingData);
-        DrawRenderGraphSkybox(renderGraph, m_BackBufferColor, m_BackBufferDepth, ref renderingData);
-        DrawRenderGraphGizmos(renderGraph, m_BackBufferColor, m_BackBufferDepth, GizmoSubset.PostImageEffects, ref renderingData);
-    }
+        SetupRenderGraphCameraProperties(renderGraph, ref renderingData, m_BackBufferColor);
 
-    private void DrawRenderGraphSkybox(RenderGraph renderGraph, TextureHandle color, TextureHandle depth, ref RenderingData renderingData)
-    {
-        using (var builder = renderGraph.AddRenderPass("Draw Skybox Pass", out TinyRenderGraphRenderer passData))
-        {
-            var context = renderingData.renderContext;
-            RendererList rendererList = context.CreateSkyboxRendererList(renderingData.camera);
-            builder.WriteTexture(color);
-            builder.UseDepthBuffer(depth, DepthAccess.ReadWrite);
-            builder.AllowPassCulling(false);
-            builder.SetRenderFunc((TinyRenderGraphRenderer data, RenderGraphContext context) =>
-            {
-                context.cmd.DrawRendererList(rendererList);
-            });
-        }
+        DrawRenderGraphGizmos(renderGraph, m_BackBufferColor, m_BackBufferDepth, GizmoSubset.PreImageEffects, ref renderingData);
+
+        m_DrawSkyboxPass.DrawRenderGraphSkybox(renderGraph, m_BackBufferColor, m_BackBufferDepth, ref renderingData);
+
+        DrawRenderGraphGizmos(renderGraph, m_BackBufferColor, m_BackBufferDepth, GizmoSubset.PostImageEffects, ref renderingData);
     }
 
     private void DrawRenderGraphGizmos(RenderGraph renderGraph, TextureHandle color, TextureHandle depth, GizmoSubset gizmoSubset, ref RenderingData renderingData)
@@ -181,6 +180,34 @@ public class TinyRenderGraphRenderer
 #endif
     }
 
+    private class PassData
+    {
+        public TinyBaseRenderer renderer;
+        public TextureHandle colorTarget;
+        public RenderingData renderingData;
+    }
+
+    private void SetupRenderGraphCameraProperties(RenderGraph renderGraph, ref RenderingData renderingData, TextureHandle colorTarget)
+    {
+        using (var builder = renderGraph.AddRasterRenderPass<PassData>("Setup Camera Properties", out var passData))
+        {
+            passData.renderer = this;
+            passData.colorTarget = colorTarget;
+            passData.renderingData = renderingData;
+
+            // Not allow pass culling
+            builder.AllowPassCulling(false);
+            // Enable this to set global state
+            builder.AllowGlobalStateModification(true);
+
+            builder.SetRenderFunc((PassData data, RasterGraphContext rasterGraphContext) =>
+            {
+                rasterGraphContext.cmd.SetupCameraProperties(data.renderingData.camera);
+                data.renderer.SetPerCameraShaderVariables(rasterGraphContext.cmd, data.renderingData.camera, RenderingUtils.IsHandleYFlipped(data.colorTarget, data.renderingData.camera));
+            });
+        }
+    }
+
     public void RecordAndExecuteRenderGraph(RenderGraph renderGraph, ref RenderingData renderingData)
     {
         var context = renderingData.renderContext;
@@ -191,15 +218,17 @@ public class TinyRenderGraphRenderer
             scriptableRenderContext = context,
             currentFrameIndex = Time.frameCount
         };
-        var executor = renderGraph.RecordAndExecute(renderGraphParameters);
 
-        RecordRenderGraph(renderGraph, context, ref renderingData);
-
-        executor.Dispose();
+        using (renderGraph.RecordAndExecute(renderGraphParameters))
+        {
+            RecordRenderGraph(renderGraph, context, ref renderingData);
+        }
     }
 
-    public void Dispose(bool disposing)
+    protected override void Dispose(bool disposing)
     {
+        base.Dispose(disposing);
+
         m_RenderGraphCameraColorHandles[0]?.Release();
         m_RenderGraphCameraColorHandles[1]?.Release();
         m_RenderGraphCameraDepthHandle?.Release();

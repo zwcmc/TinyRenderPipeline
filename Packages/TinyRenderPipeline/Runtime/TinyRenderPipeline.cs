@@ -81,7 +81,7 @@ public class TinyRenderPipeline : RenderPipeline
     {
         base.Dispose(disposing);
 
-        s_TinyRenderer?.Dispose(disposing);
+        s_TinyRenderer?.Dispose();
         s_TinyRenderer = null;
 
         s_RTHandlePool.Cleanup();
@@ -90,7 +90,7 @@ public class TinyRenderPipeline : RenderPipeline
         s_RenderGraph.Cleanup();
         s_RenderGraph = null;
 
-        s_TinyRenderGraphRenderer?.Dispose(disposing);
+        s_TinyRenderGraphRenderer?.Dispose();
         s_TinyRenderGraphRenderer = null;
     }
 
@@ -111,7 +111,6 @@ public class TinyRenderPipeline : RenderPipeline
 
             // Setup culling parameters
             SetupCullingParameters(ref cullingParameters, ref camera);
-
 
             // Emit scene/game view UI. The main game camera UI is always rendered, so this needs to be handled only for different camera types
             if (camera.cameraType == CameraType.Reflection || camera.cameraType == CameraType.Preview)
