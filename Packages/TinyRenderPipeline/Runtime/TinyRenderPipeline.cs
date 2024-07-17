@@ -57,6 +57,8 @@ public class TinyRenderPipeline : RenderPipeline
         s_RTHandlePool = new RTHandleResourcePool();
 
         s_RenderGraph = new RenderGraph("TRRenderGraph");
+        s_RenderGraph.NativeRenderPassesEnabled = true;
+
         if (s_UseRenderGraph)
             s_TinyRenderGraphRenderer = new TinyRenderGraphRenderer();
     }
