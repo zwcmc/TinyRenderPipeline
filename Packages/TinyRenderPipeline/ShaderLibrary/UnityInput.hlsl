@@ -39,6 +39,9 @@ float4x4 unity_prev_MatrixM;
 float4x4 unity_prev_MatrixIM;
 float4x4 glstate_matrix_projection;
 
+
+// Set these variables in C#
+// ------------------------------------------------
 float3 _WorldSpaceCameraPos;
 
 // Values used to linearize the Z buffer (http://www.humus.name/temp/Linearize%20depth.txt)
@@ -64,6 +67,7 @@ float4 unity_OrthoParams;
 // z = far plane
 // w = 1/far plane
 float4 _ProjectionParams;
+// ------------------------------------------------
 
 // Reflection cube
 TEXTURECUBE(unity_SpecCube0);

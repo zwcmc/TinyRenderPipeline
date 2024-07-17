@@ -97,3 +97,11 @@ public static class ShaderKeywordStrings
     /// </summary>
     public const string HDRColorGrading = "_HDR_COLORGRADING";
 }
+
+public static class ShaderPropertyId
+{
+    public static readonly int worldSpaceCameraPos = Shader.PropertyToID("_WorldSpaceCameraPos");
+    public static readonly int zBufferParams = Shader.PropertyToID("_ZBufferParams");
+    public static readonly int orthoParams = Shader.PropertyToID("unity_OrthoParams");
+    public static readonly int projectionParams = Shader.PropertyToID("_ProjectionParams");
+}
