@@ -1,22 +1,17 @@
-#if UNITY_EDITOR
 using UnityEditor;
-#endif
-
 using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Experimental.Rendering;
-using Debug = UnityEngine.Debug;
 
 public class TinyRenderer : TinyBaseRenderer
 {
     private const GraphicsFormat k_DepthStencilFormat = GraphicsFormat.D32_SFloat_S8_UInt;
     private const int k_DepthBufferBits = 32;
 
-    private static class Profiling
-    {
-        public static readonly ProfilingSampler drawGizmos = new ($"{nameof(DrawGizmos)}");
-    }
+#if UNITY_EDITOR
+    private static readonly ProfilingSampler m_DrawGizmosPassSampler = new ProfilingSampler("DrawGizmosPass");
+#endif
 
     private ForwardLights m_ForwardLights;
     private MainLightShadowPass m_MainLightShadowPass;
@@ -310,9 +305,8 @@ public class TinyRenderer : TinyBaseRenderer
         }
 
         // Blit depth buffer to camera target for Gizmos rendering in scene view and game view while using intermediate rendering
-        bool isGizmosEnabled = false;
 #if UNITY_EDITOR
-        isGizmosEnabled = Handles.ShouldRenderGizmos();
+        bool isGizmosEnabled = Handles.ShouldRenderGizmos();
         bool isSceneViewOrPreviewCamera = cameraType == CameraType.SceneView || cameraType == CameraType.Preview;
         if (intermediateRenderTexture && (isSceneViewOrPreviewCamera || isGizmosEnabled))
         {
@@ -365,7 +359,7 @@ public class TinyRenderer : TinyBaseRenderer
         if (!Handles.ShouldRenderGizmos())
             return;
 
-        using (new ProfilingScope(cmd, Profiling.drawGizmos))
+        using (new ProfilingScope(cmd, m_DrawGizmosPassSampler))
         {
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();

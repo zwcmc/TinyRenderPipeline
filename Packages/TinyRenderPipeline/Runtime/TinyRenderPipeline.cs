@@ -17,7 +17,9 @@ public class TinyRenderPipeline : RenderPipeline
 
     private static TinyRenderGraphRenderer s_TinyRenderGraphRenderer;
     private static RenderGraph s_RenderGraph;
-    private static bool useRenderGraph;
+
+    // Enable or disable render graph
+    private static bool s_UseRenderGraph = true;
 
     public static class Profiling
     {
@@ -55,8 +57,7 @@ public class TinyRenderPipeline : RenderPipeline
         s_RTHandlePool = new RTHandleResourcePool();
 
         s_RenderGraph = new RenderGraph("TRRenderGraph");
-        useRenderGraph = true;
-        if (useRenderGraph)
+        if (s_UseRenderGraph)
             s_TinyRenderGraphRenderer = new TinyRenderGraphRenderer();
     }
 
@@ -96,7 +97,7 @@ public class TinyRenderPipeline : RenderPipeline
 
     private void RenderSingleCamera(ScriptableRenderContext context, Camera camera)
     {
-        if (s_TinyRenderer == null || (useRenderGraph && (s_TinyRenderGraphRenderer == null)))
+        if (s_TinyRenderer == null || (s_UseRenderGraph && (s_TinyRenderGraphRenderer == null)))
             return;
 
         if (!TryGetCullingParameters(camera, out var cullingParameters))
@@ -127,7 +128,7 @@ public class TinyRenderPipeline : RenderPipeline
             InitializeRenderingData(pipelineAsset, ref cullResults, context, cmd, camera, out var renderingData);
 
             // Rendering
-            if (useRenderGraph)
+            if (s_UseRenderGraph)
                 s_TinyRenderGraphRenderer.RecordAndExecuteRenderGraph(s_RenderGraph, ref renderingData);
             else
                 s_TinyRenderer.Execute(ref renderingData);

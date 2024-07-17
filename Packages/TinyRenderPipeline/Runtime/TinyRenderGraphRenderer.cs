@@ -1,13 +1,16 @@
-#if UNITY_EDITOR
 using UnityEditor;
-#endif
 using UnityEngine;
+using System.Diagnostics;
 using UnityEngine.Rendering;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 
 public class TinyRenderGraphRenderer : TinyBaseRenderer
 {
+#if UNITY_EDITOR
+    private static readonly ProfilingSampler m_DrawGizmosRenderGraphPassSampler = new ProfilingSampler("DrawGizmosPass");
+#endif
+
     private RTHandle m_TargetColorHandle;
     private RTHandle m_TargetDepthHandle;
     private TextureHandle m_BackBufferColor;
@@ -149,6 +152,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
 
         }
 
+        // Setup camera properties
         SetupRenderGraphCameraProperties(renderGraph, ref renderingData, m_BackBufferColor);
 
         DrawRenderGraphGizmos(renderGraph, m_BackBufferColor, m_BackBufferDepth, GizmoSubset.PreImageEffects, ref renderingData);
@@ -158,23 +162,30 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         DrawRenderGraphGizmos(renderGraph, m_BackBufferColor, m_BackBufferDepth, GizmoSubset.PostImageEffects, ref renderingData);
     }
 
+    private class DrawGizmosPassData
+    {
+        public RendererListHandle rendererList;
+    }
+
+    [Conditional("UNITY_EDITOR")]
     private void DrawRenderGraphGizmos(RenderGraph renderGraph, TextureHandle color, TextureHandle depth, GizmoSubset gizmoSubset, ref RenderingData renderingData)
     {
 #if UNITY_EDITOR
         if (!Handles.ShouldRenderGizmos())
             return;
 
-        using(var builder = renderGraph.AddRenderPass<TinyRenderGraphRenderer>("Draw Gizmos Pass", out TinyRenderGraphRenderer pass))
+        using (var builder = renderGraph.AddRasterRenderPass<DrawGizmosPassData>("Draw Gizmos Pass", out var passData, m_DrawGizmosRenderGraphPassSampler))
         {
-            builder.WriteTexture(color);
-            builder.UseDepthBuffer(depth, DepthAccess.Read);
-            RendererListHandle gizmosRenderList = renderGraph.CreateGizmoRendererList(renderingData.camera, gizmoSubset);
-            builder.UseRendererList(gizmosRenderList);
+            passData.rendererList = renderGraph.CreateGizmoRendererList(renderingData.camera, gizmoSubset);
+
+            builder.UseTextureFragment(color, 0, IBaseRenderGraphBuilder.AccessFlags.Write);
+            builder.UseTextureFragmentDepth(depth, IBaseRenderGraphBuilder.AccessFlags.Read);
+            builder.UseRendererList(passData.rendererList);
             builder.AllowPassCulling(false);
 
-            builder.SetRenderFunc((TinyRenderGraphRenderer pass, RenderGraphContext rgContexe) =>
+            builder.SetRenderFunc((DrawGizmosPassData data, RasterGraphContext rasterGraphContext) =>
             {
-                rgContexe.cmd.DrawRendererList(gizmosRenderList);
+                rasterGraphContext.cmd.DrawRendererList(data.rendererList);
             });
         }
 #endif
