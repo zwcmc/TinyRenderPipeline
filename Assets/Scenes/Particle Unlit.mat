@@ -13,10 +13,8 @@ Material:
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
   - _DISTORTION_NORMALMAP
-  - _DISTORTION_ON
   - _FADING_ON
   - _FLIPBOOKBLENDING_ON
-  - _SOFTPARTICLES_ON
   m_InvalidKeywords:
   - _CAMERAFADINGENABLED_ON
   m_LightmapFlags: 4
@@ -86,7 +84,7 @@ Material:
     - _Cutoff: 0.5
     - _DetailNormalMapScale: 1
     - _DistortionBlend: 1
-    - _DistortionEnabled: 1
+    - _DistortionEnabled: 0
     - _DistortionStrength: 6
     - _DstBlend: 10
     - _DstBlendAlpha: 10
@@ -99,7 +97,7 @@ Material:
     - _OcclusionStrength: 1
     - _Parallax: 0.02
     - _SmoothnessTextureChannel: 0
-    - _SoftParticlesEnabled: 1
+    - _SoftParticlesEnabled: 0
     - _SoftParticlesFarFadeDistance: 1
     - _SoftParticlesNearFadeDistance: 0
     - _SpecularHighlights: 1
