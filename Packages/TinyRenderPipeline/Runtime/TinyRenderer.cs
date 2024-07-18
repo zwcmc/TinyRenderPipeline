@@ -10,7 +10,7 @@ public class TinyRenderer : TinyBaseRenderer
     private const int k_DepthBufferBits = 32;
 
 #if UNITY_EDITOR
-    private static readonly ProfilingSampler m_DrawGizmosPassSampler = new ProfilingSampler("DrawGizmosPass");
+    private static readonly ProfilingSampler s_DrawGizmosPassSampler = new ProfilingSampler("DrawGizmosPass");
 #endif
 
     private ForwardLights m_ForwardLights;
@@ -362,7 +362,7 @@ public class TinyRenderer : TinyBaseRenderer
         if (!Handles.ShouldRenderGizmos())
             return;
 
-        using (new ProfilingScope(cmd, m_DrawGizmosPassSampler))
+        using (new ProfilingScope(cmd, s_DrawGizmosPassSampler))
         {
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();

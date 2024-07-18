@@ -8,7 +8,7 @@ using UnityEngine.Experimental.Rendering.RenderGraphModule;
 public class TinyRenderGraphRenderer : TinyBaseRenderer
 {
 #if UNITY_EDITOR
-    private static readonly ProfilingSampler m_DrawGizmosRenderGraphPassSampler = new ProfilingSampler("DrawGizmosPass");
+    private static readonly ProfilingSampler s_DrawGizmosRenderGraphPassSampler = new ProfilingSampler("DrawGizmosPass");
 #endif
 
     private RTHandle m_TargetColorHandle;
@@ -36,6 +36,8 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         }
     }
 
+    private ForwardLights m_ForwardLights;
+
     // Passes
     private DrawObjectsForwardPass m_RenderOpaqueForwardPass;
     private DrawSkyboxPass m_DrawSkyboxPass;
@@ -43,6 +45,8 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
 
     public TinyRenderGraphRenderer()
     {
+        m_ForwardLights = new ForwardLights();
+
         m_RenderOpaqueForwardPass = new DrawObjectsForwardPass(true);
         m_DrawSkyboxPass = new DrawSkyboxPass();
         m_RenderTransparentForwardPass = new DrawObjectsForwardPass();
@@ -54,6 +58,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         var cameraType = camera.cameraType;
 
         // to-do: Setup lighting data
+        m_ForwardLights.SetupRenderGraphLights(renderGraph, ref renderingData);
 
         // to-do: Render main light shadowmap
 
@@ -281,7 +286,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         if (!Handles.ShouldRenderGizmos())
             return;
 
-        using (var builder = renderGraph.AddRasterRenderPass<DrawGizmosPassData>(m_DrawGizmosRenderGraphPassSampler.name, out var passData, m_DrawGizmosRenderGraphPassSampler))
+        using (var builder = renderGraph.AddRasterRenderPass<DrawGizmosPassData>(s_DrawGizmosRenderGraphPassSampler.name, out var passData, s_DrawGizmosRenderGraphPassSampler))
         {
             passData.rendererList = renderGraph.CreateGizmoRendererList(renderingData.camera, gizmoSubset);
 

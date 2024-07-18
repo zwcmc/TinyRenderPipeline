@@ -5,8 +5,8 @@ using UnityEngine.Rendering.RendererUtils;
 
 public class DrawObjectsForwardPass
 {
-    private static readonly ProfilingSampler m_DrawOpaqueObjectsSampler = new ProfilingSampler("DrawOpaqueObjectsPass");
-    private static readonly ProfilingSampler m_DrawTransparentObjectsSampler = new ProfilingSampler("DrawTransparentObjectsPass");
+    private static readonly ProfilingSampler s_DrawOpaqueObjectsSampler = new ProfilingSampler("DrawOpaqueObjectsPass");
+    private static readonly ProfilingSampler s_DrawTransparentObjectsSampler = new ProfilingSampler("DrawTransparentObjectsPass");
 
     private bool m_IsOpaque;
 
@@ -32,7 +32,7 @@ public class DrawObjectsForwardPass
     public void Render(ScriptableRenderContext context, ref RenderingData renderingData)
     {
         var cmd = renderingData.commandBuffer;
-        var sampler = m_IsOpaque ? m_DrawOpaqueObjectsSampler : m_DrawTransparentObjectsSampler;
+        var sampler = m_IsOpaque ? s_DrawOpaqueObjectsSampler : s_DrawTransparentObjectsSampler;
         using (new ProfilingScope(cmd, sampler))
         {
             context.ExecuteCommandBuffer(cmd);
@@ -49,7 +49,7 @@ public class DrawObjectsForwardPass
 
     public void DrawRenderGraphObjects(RenderGraph renderGraph, TextureHandle colorTarget, TextureHandle depthTarget, TextureHandle mainLightShadowmap, TextureHandle additionalLightsShadowmap, ref RenderingData renderingData)
     {
-        var sampler = m_IsOpaque ? m_DrawOpaqueObjectsSampler : m_DrawTransparentObjectsSampler;
+        var sampler = m_IsOpaque ? s_DrawOpaqueObjectsSampler : s_DrawTransparentObjectsSampler;
         using (var builder = renderGraph.AddRasterRenderPass<PassData>(sampler.name, out var passData, sampler))
         {
             if (colorTarget.IsValid())
