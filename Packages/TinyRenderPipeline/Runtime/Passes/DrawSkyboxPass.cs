@@ -1,9 +1,20 @@
+using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
 public class DrawSkyboxPass
 {
     private static readonly ProfilingSampler m_ProfilingSampler = new ProfilingSampler("DrawSkyboxPass");
+
+    private class PassData
+    {
+        public RendererList rendererList;
+    }
+
+    private static void ExecutePass(RasterCommandBuffer cmd, RendererList rendererList)
+    {
+        cmd.DrawRendererList(rendererList);
+    }
 
     public void Render(ScriptableRenderContext context, ref RenderingData renderingData)
     {
@@ -13,13 +24,10 @@ public class DrawSkyboxPass
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
 
-            context.DrawSkybox(renderingData.camera);
-        }
-    }
+            var rendererList = context.CreateSkyboxRendererList(renderingData.camera);
 
-    private class PassData
-    {
-        public RendererList rendererList;
+            ExecutePass(CommandBufferHelpers.GetRasterCommandBuffer(cmd), rendererList);
+        }
     }
 
     public void DrawRenderGraphSkybox(RenderGraph renderGraph, TextureHandle colorTarget, TextureHandle depthTarget, ref RenderingData renderingData)
@@ -35,7 +43,7 @@ public class DrawSkyboxPass
 
             builder.SetRenderFunc((PassData data, RasterGraphContext rasterGraphContext) =>
             {
-                rasterGraphContext.cmd.DrawRendererList(data.rendererList);
+                ExecutePass(rasterGraphContext.cmd, data.rendererList);
             });
         }
     }
