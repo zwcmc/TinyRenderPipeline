@@ -70,7 +70,7 @@ public class TinyRenderer : TinyBaseRenderer
 
         m_RenderOpaqueForwardPass = new DrawObjectsForwardPass(true);
         m_DrawSkyboxPass = new DrawSkyboxPass();
-        m_RenderTransparentForwardPass = new DrawObjectsForwardPass(false);
+        m_RenderTransparentForwardPass = new DrawObjectsForwardPass();
 
         m_ColorBufferSystem = new RenderTargetBufferSystem("_CameraColorAttachment");
     }

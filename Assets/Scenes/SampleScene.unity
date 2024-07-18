@@ -5351,7 +5351,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_OverridePostProcessingData: 1
   m_PostProcessingData: {fileID: 0}
-  m_RequireDepthTexture: 1
+  m_RequireDepthTexture: 0
   m_RequireColorTexture: 0
 --- !u!1 &1099130133
 GameObject:

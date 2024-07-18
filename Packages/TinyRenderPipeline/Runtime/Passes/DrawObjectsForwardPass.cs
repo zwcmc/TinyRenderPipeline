@@ -1,3 +1,4 @@
+using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
 public class DrawObjectsForwardPass
@@ -7,7 +8,7 @@ public class DrawObjectsForwardPass
 
     private bool m_IsOpaque;
 
-    public DrawObjectsForwardPass(bool isOpaque)
+    public DrawObjectsForwardPass(bool isOpaque = false)
     {
         m_IsOpaque = isOpaque;
     }
@@ -25,6 +26,20 @@ public class DrawObjectsForwardPass
             var drawingSettings = RenderingUtils.CreateDrawingSettings(ref renderingData, sortFlags);
             var filteringSettings = m_IsOpaque ? new FilteringSettings(RenderQueueRange.opaque) : new FilteringSettings(RenderQueueRange.transparent);
             context.DrawRenderers(renderingData.cullResults, ref drawingSettings, ref filteringSettings);
+        }
+    }
+
+    private class PassData
+    {
+
+    }
+
+    public void DrawRenderGraphObjects(RenderGraph renderGraph, TextureHandle colorTarget, TextureHandle depthTarget, TextureHandle mainLightShadowmap, TextureHandle additionalLightsShadowmap, ref RenderingData renderingData)
+    {
+        var sampler = m_IsOpaque ? m_DrawOpaqueObjectsSampler : m_DrawTransparentObjectsSampler;
+        using (var builder = renderGraph.AddRasterRenderPass<PassData>(sampler.name, out var passData, sampler))
+        {
+            
         }
     }
 }

@@ -37,17 +37,27 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
     }
 
     // Passes
+    private DrawObjectsForwardPass m_RenderOpaqueForwardPass;
     private DrawSkyboxPass m_DrawSkyboxPass;
+    private DrawObjectsForwardPass m_RenderTransparentForwardPass;
 
     public TinyRenderGraphRenderer()
     {
+        m_RenderOpaqueForwardPass = new DrawObjectsForwardPass(true);
         m_DrawSkyboxPass = new DrawSkyboxPass();
+        m_RenderTransparentForwardPass = new DrawObjectsForwardPass();
     }
 
     private void RecordRenderGraph(RenderGraph renderGraph, ScriptableRenderContext context, ref RenderingData renderingData)
     {
         var camera = renderingData.camera;
         var cameraType = camera.cameraType;
+
+        // to-do: Setup lighting data
+
+        // to-do: Render main light shadowmap
+
+        // to-do: Render additional lights shadowmap
 
         var additionalCameraData = camera.GetComponent<AdditionalCameraData>();
         var postProcessingData = additionalCameraData ?
@@ -87,6 +97,8 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         SetupRenderGraphCameraProperties(renderGraph, ref renderingData, m_BackBufferColor);
 
         // to-do: m_RenderOpaqueForwardPass
+        m_RenderOpaqueForwardPass.DrawRenderGraphObjects(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle,
+            new TextureHandle(), new TextureHandle(), ref renderingData);
 
         // to-do: m_CopyDepthPass if needed
 
@@ -269,7 +281,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         if (!Handles.ShouldRenderGizmos())
             return;
 
-        using (var builder = renderGraph.AddRasterRenderPass<DrawGizmosPassData>("Draw Gizmos Pass", out var passData, m_DrawGizmosRenderGraphPassSampler))
+        using (var builder = renderGraph.AddRasterRenderPass<DrawGizmosPassData>(m_DrawGizmosRenderGraphPassSampler.name, out var passData, m_DrawGizmosRenderGraphPassSampler))
         {
             passData.rendererList = renderGraph.CreateGizmoRendererList(renderingData.camera, gizmoSubset);
 

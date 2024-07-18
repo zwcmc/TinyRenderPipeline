@@ -32,7 +32,7 @@ public class DrawSkyboxPass
 
     public void DrawRenderGraphSkybox(RenderGraph renderGraph, TextureHandle colorTarget, TextureHandle depthTarget, ref RenderingData renderingData)
     {
-        using (var builder = renderGraph.AddRasterRenderPass<PassData>("Draw Skybox Pass", out var passData, m_ProfilingSampler))
+        using (var builder = renderGraph.AddRasterRenderPass<PassData>(m_ProfilingSampler.name, out var passData, m_ProfilingSampler))
         {
             passData.rendererList = renderingData.renderContext.CreateSkyboxRendererList(renderingData.camera);
 
