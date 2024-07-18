@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using Unity.Collections;
 using UnityEngine;
+using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
 public class ForwardLights
@@ -33,6 +34,8 @@ public class ForwardLights
     private Vector4[] m_AdditionalLightSpotDirections;
     private float[] m_AdditionalLightsLayerMasks;  // Unity has no support for binding uint arrays. We will use asuint() in the shader instead.
 
+    private static readonly ProfilingSampler s_SetupLightsSampler = new ProfilingSampler("SetupForwardLights");
+
     public ForwardLights()
     {
         LightConstantBuffer._MainLightPosition = Shader.PropertyToID("_MainLightPosition");
@@ -56,7 +59,32 @@ public class ForwardLights
 
     public void SetupLights(CommandBuffer cmd, ref RenderingData renderingData)
     {
-        SetupShaderLightConstants(cmd, ref renderingData);
+        using (new ProfilingScope(s_SetupLightsSampler))
+        {
+            SetupShaderLightConstants(cmd, ref renderingData);
+        }
+    }
+
+    private class SetupLightsPassData
+    {
+        public RenderingData renderingData;
+        public ForwardLights forwardLights;
+    }
+
+    public void SetupRenderGraphLights(RenderGraph renderGraph, ref RenderingData renderingData)
+    {
+        using (var builder = renderGraph.AddLowLevelPass<SetupLightsPassData>(s_SetupLightsSampler.name, out var passData, s_SetupLightsSampler))
+        {
+            passData.renderingData = renderingData;
+            passData.forwardLights = this;
+
+            builder.AllowPassCulling(false);
+
+            builder.SetRenderFunc((SetupLightsPassData data, LowLevelGraphContext lowLevelGraphContext) =>
+            {
+                data.forwardLights.SetupLights(lowLevelGraphContext.legacyCmd, ref data.renderingData);
+            });
+        }
     }
 
     private void SetupShaderLightConstants(CommandBuffer cmd, ref RenderingData renderingData)
