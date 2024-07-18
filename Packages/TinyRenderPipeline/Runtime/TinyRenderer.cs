@@ -84,7 +84,10 @@ public class TinyRenderer : TinyBaseRenderer
         var cmd = renderingData.commandBuffer;
 
         // Setup lighting data
-        m_ForwardLights.Setup(context, ref renderingData);
+        m_ForwardLights.SetupLights(cmd, ref renderingData);
+
+        context.ExecuteCommandBuffer(cmd);
+        cmd.Clear();
 
         // Render main light shadowmap
         if (m_MainLightShadowPass.Setup(ref renderingData))

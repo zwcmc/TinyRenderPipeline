@@ -54,17 +54,7 @@ public class ForwardLights
         m_AdditionalLightsLayerMasks = new float[maxAdditionalLights];
     }
 
-    public void Setup(ScriptableRenderContext context, ref RenderingData renderingData)
-    {
-        var cmd = renderingData.commandBuffer;
-
-        SetupLights(cmd, ref renderingData);
-
-        context.ExecuteCommandBuffer(cmd);
-        cmd.Clear();
-    }
-
-    private void SetupLights(CommandBuffer cmd, ref RenderingData renderingData)
+    public void SetupLights(CommandBuffer cmd, ref RenderingData renderingData)
     {
         SetupShaderLightConstants(cmd, ref renderingData);
     }
