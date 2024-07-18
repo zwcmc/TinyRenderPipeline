@@ -52,8 +52,6 @@ public class TinyRenderPipeline : RenderPipeline
         // Light intensity in linear space
         GraphicsSettings.lightsUseLinearIntensity = true;
 
-        s_TinyRenderer = new TinyRenderer(pipelineAsset);
-
         s_RTHandlePool = new RTHandleResourcePool();
 
         s_RenderGraph = new RenderGraph("TRRenderGraph");
@@ -61,6 +59,8 @@ public class TinyRenderPipeline : RenderPipeline
 
         if (s_UseRenderGraph)
             s_TinyRenderGraphRenderer = new TinyRenderGraphRenderer();
+        else
+            s_TinyRenderer = new TinyRenderer(pipelineAsset);
     }
 
     protected override void Render(ScriptableRenderContext context, Camera[] cameras)
@@ -99,7 +99,7 @@ public class TinyRenderPipeline : RenderPipeline
 
     private void RenderSingleCamera(ScriptableRenderContext context, Camera camera)
     {
-        if (s_TinyRenderer == null || (s_UseRenderGraph && (s_TinyRenderGraphRenderer == null)))
+        if ((!s_UseRenderGraph && s_TinyRenderer == null) || (s_UseRenderGraph && (s_TinyRenderGraphRenderer == null)))
             return;
 
         if (!TryGetCullingParameters(camera, out var cullingParameters))
