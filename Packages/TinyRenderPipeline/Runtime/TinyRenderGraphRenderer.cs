@@ -10,6 +10,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
 #if UNITY_EDITOR
     private static readonly ProfilingSampler s_DrawGizmosRenderGraphPassSampler = new ProfilingSampler("DrawGizmosPass");
 #endif
+    private static readonly ProfilingSampler s_SetupCameraPropertiesSampler = new ProfilingSampler("SetupCameraProperties");
 
     private RTHandle m_TargetColorHandle;
     private RTHandle m_TargetDepthHandle;
@@ -95,6 +96,8 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
 
         bool useRenderScale = renderingData.renderScale < 1.0f || renderingData.renderScale > 1.0f;
         bool intermediateRenderTexture = createColorTexture || needCopyDepth || useRenderScale;
+
+        intermediateRenderTexture = false;
 
         CreateRenderGraphCameraRenderTargets(renderGraph, ref renderingData, intermediateRenderTexture);
 
@@ -312,7 +315,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
 
     private void SetupRenderGraphCameraProperties(RenderGraph renderGraph, ref RenderingData renderingData, TextureHandle colorTarget)
     {
-        using (var builder = renderGraph.AddRasterRenderPass<PassData>("Setup Camera Properties", out var passData))
+        using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_SetupCameraPropertiesSampler.name, out var passData, s_SetupCameraPropertiesSampler))
         {
             passData.renderer = this;
             passData.colorTarget = colorTarget;
