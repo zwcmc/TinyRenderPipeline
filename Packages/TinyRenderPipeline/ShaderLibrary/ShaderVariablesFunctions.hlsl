@@ -95,14 +95,7 @@ real AlphaDiscard(real alpha, real cutoff)
 
 half OutputAlpha(half alpha, bool isTransparent)
 {
-    if (isTransparent)
-    {
-        return alpha;
-    }
-    else
-    {
-        return 1.0;
-    }
+    return isTransparent ? alpha : 1.0;
 }
 
 float3 NormalizeNormalPerPixel(float3 normalWS)
