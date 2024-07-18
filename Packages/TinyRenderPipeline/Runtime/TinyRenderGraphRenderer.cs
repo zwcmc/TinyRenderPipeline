@@ -91,15 +91,11 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         bool useRenderScale = renderingData.renderScale < 1.0f || renderingData.renderScale > 1.0f;
         bool intermediateRenderTexture = createColorTexture || needCopyDepth || useRenderScale;
 
-        // [Disable intermediate rendering temporary]
-        intermediateRenderTexture = false;
-
         CreateRenderGraphCameraRenderTargets(renderGraph, ref renderingData, intermediateRenderTexture);
 
         // Setup camera properties
         SetupRenderGraphCameraProperties(renderGraph, ref renderingData, m_BackBufferColor);
 
-        // to-do: m_RenderOpaqueForwardPass
         m_RenderOpaqueForwardPass.DrawRenderGraphObjects(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle,
             TextureHandle.nullHandle, TextureHandle.nullHandle, ref renderingData);
 
@@ -109,7 +105,6 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
 
         // to-do: m_CopyColorPass if needed
 
-        // to-do: m_RenderTransparentForwardPass
         m_RenderTransparentForwardPass.DrawRenderGraphObjects(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle,
             TextureHandle.nullHandle, TextureHandle.nullHandle, ref renderingData);
 
