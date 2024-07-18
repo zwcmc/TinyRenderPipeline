@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
 public class MainLightShadowPass
@@ -22,7 +23,7 @@ public class MainLightShadowPass
     private int m_RenderTargetWidth;
     private int m_RenderTargetHeight;
 
-    private static readonly ProfilingSampler m_ProfilingSampler = new ("MainLightShadow");
+    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("MainLightShadow");
 
     private static class MainLightShadowConstantBuffer
     {
@@ -111,7 +112,7 @@ public class MainLightShadowPass
         context.ExecuteCommandBuffer(cmd);
         cmd.Clear();
 
-        using (new ProfilingScope(cmd, m_ProfilingSampler))
+        using (new ProfilingScope(cmd, s_ProfilingSampler))
         {
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();

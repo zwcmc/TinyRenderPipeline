@@ -11,7 +11,7 @@ public class CopyDepthPass
 
     private bool m_CopyToDepthTexture;
 
-    private static readonly ProfilingSampler m_ProfilingSampler = new ("CopyDepth");
+    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("CopyDepth");
 
     public CopyDepthPass(Material copyDepthMaterial)
     {
@@ -37,7 +37,7 @@ public class CopyDepthPass
 
         cmd.SetGlobalTexture("_CameraDepthAttachment", m_Source.nameID);
 
-        using (new ProfilingScope(cmd, m_ProfilingSampler))
+        using (new ProfilingScope(cmd, s_ProfilingSampler))
         {
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();

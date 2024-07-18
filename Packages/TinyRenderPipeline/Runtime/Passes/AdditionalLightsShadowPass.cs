@@ -39,7 +39,7 @@ public class AdditionalLightsShadowPass
     private Vector4[] m_AdditionalLightIndexToShadowParams = null;  // per-additional-light shadow info (x: shadowStrength, y: 0.0, z: light type, w: perLightFirstShadowSliceIndex)
     private Matrix4x4[] m_AdditionalLightShadowSliceIndexTo_WorldShadowMatrix = null; // per-shadow-slice shadow transform matrix
 
-    private static readonly ProfilingSampler m_ProfilingSampler = new ("AdditionalLightsShadow");
+    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("AdditionalLightsShadow");
 
     private static class AdditionalShadowsConstantBuffer
     {
@@ -231,7 +231,7 @@ public class AdditionalLightsShadowPass
         context.ExecuteCommandBuffer(cmd);
         cmd.Clear();
 
-        using (new ProfilingScope(cmd, m_ProfilingSampler))
+        using (new ProfilingScope(cmd, s_ProfilingSampler))
         {
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();

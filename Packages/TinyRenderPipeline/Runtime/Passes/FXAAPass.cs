@@ -8,7 +8,7 @@ public class FXAAPass
 
     private RTHandle m_Source;
 
-    private static readonly ProfilingSampler m_ProfilingSampler = new ("ApplyFXAA");
+    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("ApplyFXAA");
 
     private static class ShaderConstants
     {
@@ -35,7 +35,7 @@ public class FXAAPass
         }
 
         var cmd = renderingData.commandBuffer;
-        using (new ProfilingScope(cmd, m_ProfilingSampler))
+        using (new ProfilingScope(cmd, s_ProfilingSampler))
         {
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();

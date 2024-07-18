@@ -6,7 +6,7 @@ public class FinalBlitPass
     private RTHandle m_Source;
     private Material m_BlitMaterial;
 
-    private static readonly ProfilingSampler m_ProfilingSampler = new ("Final Blit");
+    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("Final Blit");
 
     public FinalBlitPass(Material blitMaterial)
     {
@@ -28,7 +28,7 @@ public class FinalBlitPass
 
         var cmd = renderingData.commandBuffer;
 
-        using (new ProfilingScope(cmd, m_ProfilingSampler))
+        using (new ProfilingScope(cmd, s_ProfilingSampler))
         {
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
