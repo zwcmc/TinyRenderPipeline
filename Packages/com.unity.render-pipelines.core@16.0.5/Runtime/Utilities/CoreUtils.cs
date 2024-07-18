@@ -1310,8 +1310,7 @@ namespace UnityEngine.Rendering
 
                     // Post-processing is disabled in scene view if either showImageEffects is disabled or we are
                     // rendering in wireframe mode.
-                    if (sv.camera == camera &&
-                        (sv.sceneViewState.imageEffectsEnabled && sv.cameraMode.drawMode != UnityEditor.DrawCameraMode.Wireframe))
+                    if (sv.camera == camera && (sv.sceneViewState.imageEffectsEnabled && sv.cameraMode.drawMode != UnityEditor.DrawCameraMode.Wireframe))
                     {
                         enabled = true;
                         break;

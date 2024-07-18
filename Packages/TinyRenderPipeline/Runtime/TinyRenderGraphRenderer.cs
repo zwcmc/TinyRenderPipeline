@@ -21,7 +21,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
 
     private static RTHandle[] m_CameraColorHandles = new RTHandle[] { null, null };
     private static RTHandle m_CameraDepthHandle;
-    private static TextureHandle[] m_RenderGraphCameraColorHandles = new TextureHandle[] { new TextureHandle(), new TextureHandle() };
+    private static TextureHandle[] m_RenderGraphCameraColorHandles = new TextureHandle[] { TextureHandle.nullHandle, TextureHandle.nullHandle };
     private static TextureHandle m_RenderGraphCameraDepthHandle;
 
     private static int m_CurrentColorHandle = 0;
@@ -91,6 +91,9 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         bool useRenderScale = renderingData.renderScale < 1.0f || renderingData.renderScale > 1.0f;
         bool intermediateRenderTexture = createColorTexture || needCopyDepth || useRenderScale;
 
+        // [Disable intermediate rendering temporary]
+        intermediateRenderTexture = false;
+
         CreateRenderGraphCameraRenderTargets(renderGraph, ref renderingData, intermediateRenderTexture);
 
         // Setup camera properties
@@ -98,7 +101,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
 
         // to-do: m_RenderOpaqueForwardPass
         m_RenderOpaqueForwardPass.DrawRenderGraphObjects(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle,
-            new TextureHandle(), new TextureHandle(), ref renderingData);
+            TextureHandle.nullHandle, TextureHandle.nullHandle, ref renderingData);
 
         // to-do: m_CopyDepthPass if needed
 
@@ -107,6 +110,8 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         // to-do: m_CopyColorPass if needed
 
         // to-do: m_RenderTransparentForwardPass
+        m_RenderTransparentForwardPass.DrawRenderGraphObjects(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle,
+            TextureHandle.nullHandle, TextureHandle.nullHandle, ref renderingData);
 
         DrawRenderGraphGizmos(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle, GizmoSubset.PreImageEffects, ref renderingData);
 
@@ -337,10 +342,9 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
             currentFrameIndex = Time.frameCount
         };
 
-        using (renderGraph.RecordAndExecute(renderGraphParameters))
-        {
-            RecordRenderGraph(renderGraph, context, ref renderingData);
-        }
+        var executor = renderGraph.RecordAndExecute(renderGraphParameters);
+        RecordRenderGraph(renderGraph, context, ref renderingData);
+        executor.Dispose();
     }
 
     protected override void Dispose(bool disposing)
