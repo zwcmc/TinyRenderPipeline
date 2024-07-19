@@ -239,11 +239,11 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         ImportResourceParams importBackbufferColorParams = new ImportResourceParams();
         importBackbufferColorParams.clearOnFirstUse = clearColor;
         importBackbufferColorParams.clearColor = backgroundColor.linear;
-        importBackbufferColorParams.discardOnLastUse = false;
+        importBackbufferColorParams.discardOnLastUse = true;
         ImportResourceParams importBackbufferDepthParams = new ImportResourceParams();
         importBackbufferDepthParams.clearOnFirstUse = clearDepth;
         importBackbufferDepthParams.clearColor = backgroundColor.linear;
-        importBackbufferDepthParams.discardOnLastUse = false;
+        importBackbufferDepthParams.discardOnLastUse = true;
 
         m_BackBufferColor = renderGraph.ImportTexture(m_TargetColorHandle, importInfo, importBackbufferColorParams);
         m_BackBufferDepth = renderGraph.ImportTexture(m_TargetDepthHandle, importInfoDepth, importBackbufferDepthParams);
