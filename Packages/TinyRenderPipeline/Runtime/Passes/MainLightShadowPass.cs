@@ -15,7 +15,6 @@ public class MainLightShadowPass
     private const string k_ShadowmapTextureName = "_MainLightShadowmapTexture";
 
     private bool m_CreateEmptyShadowmap;
-    bool m_EmptyShadowmapNeedsClear = false;
 
     private Matrix4x4[] m_MainLightShadowMatrices;
     private Vector4[] m_CascadesSplitDistance;
@@ -58,7 +57,6 @@ public class MainLightShadowPass
         m_MainLightShadowmapID = Shader.PropertyToID(k_ShadowmapTextureName);
 
         m_EmptyLightShadowmapTexture = ShadowUtils.AllocShadowRT(1, 1, k_ShadowmapBufferBits, "_EmptyLightShadowmapTexture");
-        m_EmptyShadowmapNeedsClear = true;
 
         m_PassData = new PassData();
     }
@@ -120,13 +118,6 @@ public class MainLightShadowPass
         if (m_CreateEmptyShadowmap)
         {
             SetEmptyMainLightCascadeShadowmap(CommandBufferHelpers.GetRasterCommandBuffer(cmd));
-
-            cmd.SetRenderTarget(m_EmptyLightShadowmapTexture, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
-            cmd.ClearRenderTarget(true, true, Color.clear);
-
-            context.ExecuteCommandBuffer(cmd);
-            cmd.Clear();
-
             renderingData.commandBuffer.SetGlobalTexture(m_MainLightShadowmapID, m_EmptyLightShadowmapTexture.nameID);
             return;
         }
@@ -327,8 +318,7 @@ public class MainLightShadowPass
     {
         m_CreateEmptyShadowmap = true;
 
-        if (ShadowUtils.ShadowRTReAllocateIfNeeded(ref m_EmptyLightShadowmapTexture, 1, 1, k_ShadowmapBufferBits, name: "_EmptyLightShadowmapTexture"))
-            m_EmptyShadowmapNeedsClear = true;
+        ShadowUtils.ShadowRTReAllocateIfNeeded(ref m_EmptyLightShadowmapTexture, 1, 1, k_ShadowmapBufferBits, name: "_EmptyLightShadowmapTexture");
 
         return true;
     }
