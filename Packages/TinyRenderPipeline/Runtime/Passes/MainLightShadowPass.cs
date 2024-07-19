@@ -65,33 +65,33 @@ public class MainLightShadowPass
     {
         if (!renderingData.shadowData.mainLightShadowsEnabled)
         {
-            return SetupForEmptyRendering(ref renderingData);
+            return SetupForEmptyRendering();
         }
 
         int mainLightIndex = renderingData.mainLightIndex;
         if (mainLightIndex == -1)
         {
-            return SetupForEmptyRendering(ref renderingData);
+            return SetupForEmptyRendering();
         }
 
         VisibleLight shadowLight = renderingData.cullResults.visibleLights[mainLightIndex];
         // Main light is always a directional light
         if (shadowLight.lightType != LightType.Directional)
         {
-            return SetupForEmptyRendering(ref renderingData);
+            return SetupForEmptyRendering();
         }
 
         // Check light's shadow settings
         Light light = shadowLight.light;
         if (light.shadows == LightShadows.None || light.shadowStrength <= 0f)
         {
-            return SetupForEmptyRendering(ref renderingData);
+            return SetupForEmptyRendering();
         }
 
         // Check if the light affects as least one shadow casting object in scene
         if (!renderingData.cullResults.GetShadowCasterBounds(mainLightIndex, out Bounds bounds))
         {
-            return SetupForEmptyRendering(ref renderingData);
+            return SetupForEmptyRendering();
         }
 
         // Clear data
@@ -314,7 +314,7 @@ public class MainLightShadowPass
         cmd.SetGlobalVector(MainLightShadowConstantBuffer._CascadesParams, new Vector4(1, 0, 0, 0));
     }
 
-    private bool SetupForEmptyRendering(ref RenderingData renderingData)
+    private bool SetupForEmptyRendering()
     {
         m_CreateEmptyShadowmap = true;
 

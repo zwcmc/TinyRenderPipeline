@@ -40,6 +40,8 @@ public class AdditionalLightsShadowPass
     private Vector4[] m_AdditionalLightIndexToShadowParams = null;  // per-additional-light shadow info (x: shadowStrength, y: 0.0, z: light type, w: perLightFirstShadowSliceIndex)
     private Matrix4x4[] m_AdditionalLightShadowSliceIndexTo_WorldShadowMatrix = null; // per-shadow-slice shadow transform matrix
 
+    private bool m_CreateEmptyShadowmap;
+
     private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("AdditionalLightsShadow");
 
     private static class AdditionalShadowsConstantBuffer
@@ -219,12 +221,21 @@ public class AdditionalLightsShadowPass
         m_MaxShadowDistanceSq = renderingData.shadowData.maxShadowDistance * renderingData.shadowData.maxShadowDistance;
         m_CascadeBorder = renderingData.shadowData.mainLightShadowCascadeBorder;
 
+        m_CreateEmptyShadowmap = false;
+
         return true;
     }
 
     public void Render(ScriptableRenderContext context, ref RenderingData renderingData)
     {
         var cmd = renderingData.commandBuffer;
+
+        if (m_CreateEmptyShadowmap)
+        {
+            cmd.SetGlobalVectorArray(AdditionalShadowsConstantBuffer._AdditionalShadowParams, m_AdditionalLightIndexToShadowParams);
+            cmd.SetGlobalTexture(m_AdditionalLightsShadowmapID, m_EmptyAdditionalLightsShadowmapHandle.nameID);
+            return;
+        }
 
         // Setup render target and clear target
         cmd.SetRenderTarget(m_AdditionalLightsShadowmapHandle, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
@@ -296,21 +307,20 @@ public class AdditionalLightsShadowPass
 
     private bool SetupForEmptyRendering(ref RenderingData renderingData)
     {
+        m_CreateEmptyShadowmap = true;
+
         var cmd = renderingData.commandBuffer;
         var context = renderingData.renderContext;
 
         ShadowUtils.ShadowRTReAllocateIfNeeded(ref m_EmptyAdditionalLightsShadowmapHandle, 1, 1, k_ShadowmapBufferBits, name: "_EmptyAdditionalLightShadowmapTexture");
-        cmd.SetGlobalTexture(m_AdditionalLightsShadowmapID, m_EmptyAdditionalLightsShadowmapHandle.nameID);
 
-        // initialize _AdditionalShadowParams
+        // initialize default _AdditionalShadowParams
         for (int i = 0; i < m_AdditionalLightIndexToShadowParams.Length; ++i)
             m_AdditionalLightIndexToShadowParams[i] = c_DefaultShadowParams;
-
-        cmd.SetGlobalVectorArray(AdditionalShadowsConstantBuffer._AdditionalShadowParams, m_AdditionalLightIndexToShadowParams);
 
         context.ExecuteCommandBuffer(cmd);
         cmd.Clear();
 
-        return false;
+        return true;
     }
 }
