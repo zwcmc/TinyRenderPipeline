@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
+using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
 public class AdditionalLightsShadowPass
@@ -42,7 +43,10 @@ public class AdditionalLightsShadowPass
 
     private bool m_CreateEmptyShadowmap;
 
-    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("AdditionalLightsShadow");
+    private PassData m_PassData;
+
+    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("AdditionalLightsShadowPass");
+    private static readonly ProfilingSampler s_SetAdditionalLightsShadowmapSampler = new ProfilingSampler("SetAdditionalLightsShadowmapGlobal");
 
     private static class AdditionalShadowsConstantBuffer
     {
@@ -64,6 +68,8 @@ public class AdditionalLightsShadowPass
         m_AdditionalLightIndexToVisibleLightIndex = new int[maxAdditionalLightsCount];
 
         m_EmptyAdditionalLightsShadowmapHandle = ShadowUtils.AllocShadowRT(1, 1, k_ShadowmapBufferBits, name: "_EmptyAdditionalLightShadowmapTexture");
+
+        m_PassData = new PassData();
     }
 
     public bool Setup(ref RenderingData renderingData)
@@ -216,7 +222,7 @@ public class AdditionalLightsShadowPass
         if (validShadowCastingLightsCount == 0)
             return SetupForEmptyRendering(ref renderingData);
 
-        ShadowUtils.ShadowRTReAllocateIfNeeded(ref m_AdditionalLightsShadowmapHandle, m_RenderTargetWidth, m_RenderTargetHeight, k_ShadowmapBufferBits, name: "_AdditionalLightsShadowmapTexture");
+        ShadowUtils.ShadowRTReAllocateIfNeeded(ref m_AdditionalLightsShadowmapHandle, m_RenderTargetWidth, m_RenderTargetHeight, k_ShadowmapBufferBits, name: k_AdditionalLightsShadowmapTextureName);
 
         m_MaxShadowDistanceSq = renderingData.shadowData.maxShadowDistance * renderingData.shadowData.maxShadowDistance;
         m_CascadeBorder = renderingData.shadowData.mainLightShadowCascadeBorder;
@@ -234,12 +240,17 @@ public class AdditionalLightsShadowPass
         {
             cmd.SetGlobalVectorArray(AdditionalShadowsConstantBuffer._AdditionalShadowParams, m_AdditionalLightIndexToShadowParams);
             cmd.SetGlobalTexture(m_AdditionalLightsShadowmapID, m_EmptyAdditionalLightsShadowmapHandle.nameID);
+
+            context.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
+
             return;
         }
 
         // Setup render target and clear target
         cmd.SetRenderTarget(m_AdditionalLightsShadowmapHandle, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
         cmd.ClearRenderTarget(true, false, Color.clear);
+
         context.ExecuteCommandBuffer(cmd);
         cmd.Clear();
 
@@ -294,6 +305,121 @@ public class AdditionalLightsShadowPass
         }
     }
 
+    private void RenderAdditionalShadowmapAtlas(RasterCommandBuffer cmd, ref PassData data, ref RenderingData renderingData, bool useRenderGraph)
+    {
+        ref var cullResults = ref renderingData.cullResults;
+        NativeArray<VisibleLight> visibleLights = cullResults.visibleLights;
+        int shadowSlicesCount = m_ShadowSliceToAdditionalLightIndex.Count;
+        bool anyShadowSliceRenderer = false;
+
+        for (int globalShadowSliceIndex = 0; globalShadowSliceIndex < shadowSlicesCount; ++globalShadowSliceIndex)
+        {
+            int additionalLightIndex = m_ShadowSliceToAdditionalLightIndex[globalShadowSliceIndex];
+
+            if (Mathf.Approximately(m_AdditionalLightIndexToShadowParams[additionalLightIndex].x, 0.0f) || Mathf.Approximately(m_AdditionalLightIndexToShadowParams[additionalLightIndex].w, -1.0f))
+                continue;
+
+            int shadowLightIndex = m_AdditionalLightIndexToVisibleLightIndex[additionalLightIndex];
+            VisibleLight shadowLight = visibleLights[shadowLightIndex];
+            ShadowSliceData shadowSliceData = m_AdditionalLightsShadowSlices[globalShadowSliceIndex];
+
+            Vector4 shadowBias = ShadowUtils.GetShadowBias(shadowLight, shadowLightIndex, shadowSliceData.projectionMatrix, shadowSliceData.resolution);
+            ShadowUtils.SetupShadowCasterConstantBuffer(cmd, shadowLight, shadowBias);
+
+            RendererList rendererList = useRenderGraph ? data.shadowRendererListHandles[globalShadowSliceIndex] : data.shadowRendererLists[globalShadowSliceIndex];
+            cmd.SetViewport(new Rect(shadowSliceData.offsetX, shadowSliceData.offsetY, shadowSliceData.resolution, shadowSliceData.resolution));
+            cmd.SetViewProjectionMatrices(shadowSliceData.viewMatrix, shadowSliceData.projectionMatrix);
+            if(rendererList.isValid)
+                cmd.DrawRendererList(rendererList);
+
+            anyShadowSliceRenderer = true;
+        }
+
+        if (anyShadowSliceRenderer)
+        {
+            cmd.SetGlobalVectorArray(AdditionalShadowsConstantBuffer._AdditionalShadowParams, m_AdditionalLightIndexToShadowParams);                         // per-additional-light data
+            cmd.SetGlobalMatrixArray(AdditionalShadowsConstantBuffer._AdditionalLightsWorldToShadow, m_AdditionalLightShadowSliceIndexTo_WorldShadowMatrix); // per-shadow-slice data
+
+            ShadowUtils.GetScaleAndBiasForLinearDistanceFade(m_MaxShadowDistanceSq, m_CascadeBorder, out float shadowFadeScale, out float shadowFadeBias);
+            cmd.SetGlobalVector(AdditionalShadowsConstantBuffer._AdditionalShadowFadeParams, new Vector4(shadowFadeScale, shadowFadeBias, 0, 0));
+        }
+    }
+
+    private class PassData
+    {
+        public AdditionalLightsShadowPass pass;
+
+        public TextureHandle shadowmapTexture;
+        public RenderingData renderingData;
+
+        public int shadowmapID;
+        public bool emptyShadowmap;
+
+        public RendererListHandle[] shadowRendererListHandles = new RendererListHandle[TinyRenderPipeline.maxVisibleAdditionalLights];
+        public RendererList[] shadowRendererLists = new RendererList[TinyRenderPipeline.maxVisibleAdditionalLights];
+    }
+
+    public TextureHandle RenderGraphRender(RenderGraph renderGraph, ref RenderingData renderingData)
+    {
+        TextureHandle shadowTexture;
+
+        using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_ProfilingSampler.name, out var passData, s_ProfilingSampler))
+        {
+            InitPassData(default(ScriptableRenderContext), renderGraph, ref renderingData, ref passData, true);
+
+            if (!m_CreateEmptyShadowmap)
+            {
+                for (int globalShadowSliceIndex = 0; globalShadowSliceIndex < m_ShadowSliceToAdditionalLightIndex.Count; ++globalShadowSliceIndex)
+                {
+                    builder.UseRendererList(passData.shadowRendererListHandles[globalShadowSliceIndex]);
+                }
+
+                passData.shadowmapTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, m_AdditionalLightsShadowmapHandle.rt.descriptor, k_AdditionalLightsShadowmapTextureName,
+                    true, FilterMode.Bilinear);
+                builder.UseTextureFragmentDepth(passData.shadowmapTexture, IBaseRenderGraphBuilder.AccessFlags.Write);
+            }
+
+            builder.AllowPassCulling(false);
+            builder.AllowGlobalStateModification(true);
+
+            builder.SetRenderFunc((PassData data, RasterGraphContext rasterGraphContext) =>
+            {
+                if (!data.emptyShadowmap)
+                    data.pass.RenderAdditionalShadowmapAtlas(rasterGraphContext.cmd, ref data, ref data.renderingData, true);
+            });
+
+            shadowTexture = passData.shadowmapTexture;
+        }
+
+        using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_SetAdditionalLightsShadowmapSampler.name, out var passData, s_SetAdditionalLightsShadowmapSampler))
+        {
+            passData.pass = this;
+            passData.emptyShadowmap = m_CreateEmptyShadowmap;
+            passData.shadowmapID = m_AdditionalLightsShadowmapID;
+            passData.renderingData = renderingData;
+            passData.shadowmapTexture = shadowTexture;
+
+            if (shadowTexture.IsValid())
+                builder.UseTexture(shadowTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
+
+            builder.AllowPassCulling(false);
+            builder.AllowGlobalStateModification(true);
+
+            builder.SetRenderFunc((PassData data, RasterGraphContext rasterGraphContext) =>
+            {
+                if (data.emptyShadowmap)
+                {
+                    rasterGraphContext.cmd.SetGlobalVectorArray(AdditionalShadowsConstantBuffer._AdditionalShadowParams, m_AdditionalLightIndexToShadowParams);
+                    data.shadowmapTexture = rasterGraphContext.defaultResources.defaultShadowTexture;
+                }
+
+                rasterGraphContext.cmd.SetGlobalTexture(data.shadowmapID, data.shadowmapTexture);
+            });
+
+            return passData.shadowmapTexture;
+        }
+    }
+
     public void Dispose()
     {
         m_AdditionalLightsShadowmapHandle?.Release();
@@ -309,18 +435,37 @@ public class AdditionalLightsShadowPass
     {
         m_CreateEmptyShadowmap = true;
 
-        var cmd = renderingData.commandBuffer;
-        var context = renderingData.renderContext;
-
         ShadowUtils.ShadowRTReAllocateIfNeeded(ref m_EmptyAdditionalLightsShadowmapHandle, 1, 1, k_ShadowmapBufferBits, name: "_EmptyAdditionalLightShadowmapTexture");
 
         // initialize default _AdditionalShadowParams
         for (int i = 0; i < m_AdditionalLightIndexToShadowParams.Length; ++i)
             m_AdditionalLightIndexToShadowParams[i] = c_DefaultShadowParams;
 
-        context.ExecuteCommandBuffer(cmd);
-        cmd.Clear();
-
         return true;
+    }
+
+    private void InitPassData(ScriptableRenderContext context, RenderGraph renderGraph, ref RenderingData renderingData, ref PassData passData, bool useRenderGraph)
+    {
+        passData.pass = this;
+        passData.emptyShadowmap = m_CreateEmptyShadowmap;
+        passData.shadowmapID = m_AdditionalLightsShadowmapID;
+        passData.renderingData = renderingData;
+
+        if (!m_CreateEmptyShadowmap)
+        {
+            var cullResults = renderingData.cullResults;
+            for (int globalShadowSliceIndex = 0; globalShadowSliceIndex < m_ShadowSliceToAdditionalLightIndex.Count; ++globalShadowSliceIndex)
+            {
+                int additionalLightIndex = m_ShadowSliceToAdditionalLightIndex[globalShadowSliceIndex];
+                int visibleLightIndex = m_AdditionalLightIndexToVisibleLightIndex[additionalLightIndex];
+                var settings = new ShadowDrawingSettings(cullResults, visibleLightIndex);
+                settings.useRenderingLayerMaskTest = true;
+
+                if (useRenderGraph)
+                    passData.shadowRendererListHandles[globalShadowSliceIndex] = renderGraph.CreateShadowRendererList(ref settings);
+                else
+                    passData.shadowRendererLists[globalShadowSliceIndex] = context.CreateShadowRendererList(ref settings);
+            }
+        }
     }
 }

@@ -38,9 +38,11 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
     }
 
     private TextureHandle m_MainLightShadowmapTextureHdl;
+    private TextureHandle m_AdditionalLightsShadowmapTextureHdl;
 
     private ForwardLights m_ForwardLights;
     private MainLightShadowPass m_MainLightShadowPass;
+    private AdditionalLightsShadowPass m_AdditionalLightsShadowPass;
 
     // Passes
     private DrawObjectsForwardPass m_RenderOpaqueForwardPass;
@@ -51,6 +53,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
     {
         m_ForwardLights = new ForwardLights();
         m_MainLightShadowPass = new MainLightShadowPass();
+        m_AdditionalLightsShadowPass = new AdditionalLightsShadowPass();
 
         m_RenderOpaqueForwardPass = new DrawObjectsForwardPass(true);
         m_DrawSkyboxPass = new DrawSkyboxPass();
@@ -71,7 +74,11 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
             m_MainLightShadowmapTextureHdl = m_MainLightShadowPass.RenderGraphRender(renderGraph, ref renderingData);
         }
 
-        // TODO: Render additional lights shadowmap
+        // Additional lights shadowmap
+        if (m_AdditionalLightsShadowPass.Setup(ref renderingData))
+        {
+            m_AdditionalLightsShadowmapTextureHdl = m_AdditionalLightsShadowPass.RenderGraphRender(renderGraph, ref renderingData);
+        }
 
         var additionalCameraData = camera.GetComponent<AdditionalCameraData>();
         var postProcessingData = additionalCameraData ?
@@ -112,8 +119,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         // Setup camera properties
         SetupRenderGraphCameraProperties(renderGraph, ref renderingData, m_BackBufferColor);
 
-        m_RenderOpaqueForwardPass.DrawRenderGraphObjects(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle,
-            m_MainLightShadowmapTextureHdl, TextureHandle.nullHandle, ref renderingData);
+        m_RenderOpaqueForwardPass.DrawRenderGraphObjects(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle, m_MainLightShadowmapTextureHdl, m_AdditionalLightsShadowmapTextureHdl, ref renderingData);
 
         // TODO: m_CopyDepthPass if needed
 
@@ -121,8 +127,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
 
         // TODO: m_CopyColorPass if needed
 
-        m_RenderTransparentForwardPass.DrawRenderGraphObjects(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle,
-            m_MainLightShadowmapTextureHdl, TextureHandle.nullHandle, ref renderingData);
+        m_RenderTransparentForwardPass.DrawRenderGraphObjects(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle, m_MainLightShadowmapTextureHdl, m_AdditionalLightsShadowmapTextureHdl, ref renderingData);
 
         DrawRenderGraphGizmos(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle, GizmoSubset.PreImageEffects, ref renderingData);
 

@@ -59,6 +59,8 @@ public class DrawObjectsForwardPass
 
             if (mainShadowsTexture.IsValid())
                 builder.UseTexture(mainShadowsTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
+            if (additionalLightsShadowmap.IsValid())
+                builder.UseTexture(additionalLightsShadowmap, IBaseRenderGraphBuilder.AccessFlags.Read);
 
             var sortFlags = m_IsOpaque ? SortingCriteria.CommonOpaque : SortingCriteria.CommonTransparent;
             var filteringSettings = m_IsOpaque ? new FilteringSettings(RenderQueueRange.opaque) : new FilteringSettings(RenderQueueRange.transparent);
