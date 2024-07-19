@@ -118,7 +118,7 @@ public class MainLightShadowPass
         if (m_CreateEmptyShadowmap)
         {
             SetEmptyMainLightCascadeShadowmap(CommandBufferHelpers.GetRasterCommandBuffer(cmd));
-            renderingData.commandBuffer.SetGlobalTexture(m_MainLightShadowmapID, m_EmptyLightShadowmapTexture.nameID);
+            cmd.SetGlobalTexture(m_MainLightShadowmapID, m_EmptyLightShadowmapTexture.nameID);
 
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();

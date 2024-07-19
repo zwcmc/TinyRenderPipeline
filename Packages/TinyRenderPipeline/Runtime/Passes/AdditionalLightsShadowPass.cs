@@ -259,46 +259,11 @@ public class AdditionalLightsShadowPass
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
 
-            ref var cullResults = ref renderingData.cullResults;
-            NativeArray<VisibleLight> visibleLights = cullResults.visibleLights;
-            int shadowSlicesCount = m_ShadowSliceToAdditionalLightIndex.Count;
+            InitPassData(context, default(RenderGraph), ref renderingData, ref m_PassData, false);
 
-            for (int globalShadowSliceIndex = 0; globalShadowSliceIndex < shadowSlicesCount; ++globalShadowSliceIndex)
-            {
-                int additionalLightIndex = m_ShadowSliceToAdditionalLightIndex[globalShadowSliceIndex];
-
-                // we do the shadow strength check here again here because we might have zero strength for non-shadow-casting lights.
-                // In that case we need the shadow data buffer but we can skip rendering them to shadowmap.
-                if (Mathf.Approximately(m_AdditionalLightIndexToShadowParams[additionalLightIndex].x, 0.0f) || Mathf.Approximately(m_AdditionalLightIndexToShadowParams[additionalLightIndex].w, -1.0f))
-                    continue;
-
-                int shadowLightIndex = m_AdditionalLightIndexToVisibleLightIndex[additionalLightIndex];
-                VisibleLight shadowLight = visibleLights[shadowLightIndex];
-                ShadowSliceData shadowSliceData = m_AdditionalLightsShadowSlices[globalShadowSliceIndex];
-
-                var shadowDrawingSettings = new ShadowDrawingSettings(cullResults, shadowLightIndex);
-                shadowDrawingSettings.useRenderingLayerMaskTest = true;
-
-                shadowDrawingSettings.splitData = shadowSliceData.splitData;
-
-                Vector4 shadowBias = ShadowUtils.GetShadowBias(shadowLight, shadowLightIndex, shadowSliceData.projectionMatrix, shadowSliceData.resolution);
-                ShadowUtils.SetupShadowCasterConstantBuffer(CommandBufferHelpers.GetRasterCommandBuffer(cmd), shadowLight, shadowBias);
-
-                cmd.SetViewport(new Rect(shadowSliceData.offsetX, shadowSliceData.offsetY, shadowSliceData.resolution, shadowSliceData.resolution));
-                cmd.SetViewProjectionMatrices(shadowSliceData.viewMatrix, shadowSliceData.projectionMatrix);
-
-                context.ExecuteCommandBuffer(cmd);
-                cmd.Clear();
-
-                context.DrawShadows(ref shadowDrawingSettings);
-            }
+            RenderAdditionalShadowmapAtlas(CommandBufferHelpers.GetRasterCommandBuffer(cmd), ref m_PassData, ref renderingData, false);
 
             cmd.SetGlobalTexture(m_AdditionalLightsShadowmapID, m_AdditionalLightsShadowmapHandle.nameID);
-            cmd.SetGlobalVectorArray(AdditionalShadowsConstantBuffer._AdditionalShadowParams, m_AdditionalLightIndexToShadowParams);                         // per-additional-light data
-            cmd.SetGlobalMatrixArray(AdditionalShadowsConstantBuffer._AdditionalLightsWorldToShadow, m_AdditionalLightShadowSliceIndexTo_WorldShadowMatrix); // per-shadow-slice data
-
-            ShadowUtils.GetScaleAndBiasForLinearDistanceFade(m_MaxShadowDistanceSq, m_CascadeBorder, out float shadowFadeScale, out float shadowFadeBias);
-            cmd.SetGlobalVector(AdditionalShadowsConstantBuffer._AdditionalShadowFadeParams, new Vector4(shadowFadeScale, shadowFadeBias, 0, 0));
 
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
