@@ -65,7 +65,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         // Setup lights data
         m_ForwardLights.SetupRenderGraphLights(renderGraph, ref renderingData);
 
-        // TODO: Render main light shadowmap
+        // Main light shadowmap
         if (m_MainLightShadowPass.Setup(ref renderingData))
         {
             m_MainLightShadowmapTextureHdl = m_MainLightShadowPass.RenderGraphRender(renderGraph, ref renderingData);
