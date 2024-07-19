@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Unity.Collections;
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 
 public class AdditionalLightsShadowPass
@@ -259,7 +260,7 @@ public class AdditionalLightsShadowPass
                 shadowDrawingSettings.splitData = shadowSliceData.splitData;
 
                 Vector4 shadowBias = ShadowUtils.GetShadowBias(shadowLight, shadowLightIndex, shadowSliceData.projectionMatrix, shadowSliceData.resolution);
-                ShadowUtils.SetupShadowCasterConstantBuffer(cmd, shadowLight, shadowBias);
+                ShadowUtils.SetupShadowCasterConstantBuffer(CommandBufferHelpers.GetRasterCommandBuffer(cmd), shadowLight, shadowBias);
 
                 cmd.SetViewport(new Rect(shadowSliceData.offsetX, shadowSliceData.offsetY, shadowSliceData.resolution, shadowSliceData.resolution));
                 cmd.SetViewProjectionMatrices(shadowSliceData.viewMatrix, shadowSliceData.projectionMatrix);

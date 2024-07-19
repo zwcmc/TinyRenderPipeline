@@ -37,7 +37,10 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         }
     }
 
+    private TextureHandle m_MainLightShadowmapTextureHdl;
+
     private ForwardLights m_ForwardLights;
+    private MainLightShadowPass m_MainLightShadowPass;
 
     // Passes
     private DrawObjectsForwardPass m_RenderOpaqueForwardPass;
@@ -47,6 +50,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
     public TinyRenderGraphRenderer()
     {
         m_ForwardLights = new ForwardLights();
+        m_MainLightShadowPass = new MainLightShadowPass();
 
         m_RenderOpaqueForwardPass = new DrawObjectsForwardPass(true);
         m_DrawSkyboxPass = new DrawSkyboxPass();
@@ -58,12 +62,16 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         var camera = renderingData.camera;
         var cameraType = camera.cameraType;
 
-        // to-do: Setup lighting data
+        // Setup lights data
         m_ForwardLights.SetupRenderGraphLights(renderGraph, ref renderingData);
 
-        // to-do: Render main light shadowmap
+        // TODO: Render main light shadowmap
+        if (m_MainLightShadowPass.Setup(ref renderingData))
+        {
+            m_MainLightShadowmapTextureHdl = m_MainLightShadowPass.RenderGraphRender(renderGraph, ref renderingData);
+        }
 
-        // to-do: Render additional lights shadowmap
+        // TODO: Render additional lights shadowmap
 
         var additionalCameraData = camera.GetComponent<AdditionalCameraData>();
         var postProcessingData = additionalCameraData ?
@@ -79,7 +87,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         bool generateColorGradingLut = applyPostProcessing && renderingData.isHdrEnabled;
         if (generateColorGradingLut)
         {
-            // to-do: m_ColorGradingLutPass
+            // TODO: m_ColorGradingLutPass
         }
 
         bool needCopyColor = renderingData.copyColorTexture;
@@ -105,16 +113,16 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         SetupRenderGraphCameraProperties(renderGraph, ref renderingData, m_BackBufferColor);
 
         m_RenderOpaqueForwardPass.DrawRenderGraphObjects(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle,
-            TextureHandle.nullHandle, TextureHandle.nullHandle, ref renderingData);
+            m_MainLightShadowmapTextureHdl, TextureHandle.nullHandle, ref renderingData);
 
-        // to-do: m_CopyDepthPass if needed
+        // TODO: m_CopyDepthPass if needed
 
         m_DrawSkyboxPass.DrawRenderGraphSkybox(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle, ref renderingData);
 
-        // to-do: m_CopyColorPass if needed
+        // TODO: m_CopyColorPass if needed
 
         m_RenderTransparentForwardPass.DrawRenderGraphObjects(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle,
-            TextureHandle.nullHandle, TextureHandle.nullHandle, ref renderingData);
+            m_MainLightShadowmapTextureHdl, TextureHandle.nullHandle, ref renderingData);
 
         DrawRenderGraphGizmos(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle, GizmoSubset.PreImageEffects, ref renderingData);
 
@@ -125,13 +133,13 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
 
         if (applyPostProcessing)
         {
-            // to-do: m_PostProcessingPass
+            // TODO: m_PostProcessingPass
         }
 
         // FXAA pass always blit to final camera target
         if (hasFxaaPass)
         {
-            // to-do: m_FXAAPass
+            // TODO: m_FXAAPass
         }
 
         // Check active color attachment is resolved to final target:
@@ -148,11 +156,11 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         // If is not resolved to final camera target, need final blit pass to do this
         if (!cameraTargetResolved)
         {
-            // to-do: m_FinalBlitPass
+            // TODO: m_FinalBlitPass
         }
 
 #if UNITY_EDITOR
-        // to-do: m_FinalDepthCopyPass
+        // TODO: m_FinalDepthCopyPass
 #endif
 
         DrawRenderGraphGizmos(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle, GizmoSubset.PostImageEffects, ref renderingData);

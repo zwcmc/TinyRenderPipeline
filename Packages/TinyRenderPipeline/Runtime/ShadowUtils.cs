@@ -11,7 +11,7 @@ public static class ShadowUtils
         return RTHandles.Alloc(rtd, FilterMode.Bilinear, TextureWrapMode.Clamp, isShadowMap: true, name: name);
     }
 
-    public static void SetupShadowCasterConstantBuffer(CommandBuffer cmd, VisibleLight shadowLight, Vector4 shadowBias)
+    public static void SetupShadowCasterConstantBuffer(RasterCommandBuffer cmd, VisibleLight shadowLight, Vector4 shadowBias)
     {
         cmd.SetGlobalVector("_ShadowBias", shadowBias);
 
@@ -181,13 +181,17 @@ public static class ShadowUtils
         return success;
     }
 
-    public static void ShadowRTReAllocateIfNeeded(ref RTHandle handle, int width, int height, int bits, int anisoLevel = 1, float mipMapBias = 0, string name = "")
+    public static bool ShadowRTReAllocateIfNeeded(ref RTHandle handle, int width, int height, int bits, int anisoLevel = 1, float mipMapBias = 0, string name = "")
     {
         if (ShadowRTNeedsReAlloc(handle, width, height, bits, anisoLevel, mipMapBias, name))
         {
             handle?.Release();
             handle = AllocShadowRT(width, height, bits, name);
+
+            return true;
         }
+
+        return false;
     }
 
     public static int GetAdditionalLightShadowSliceCount(in LightType lightType)
