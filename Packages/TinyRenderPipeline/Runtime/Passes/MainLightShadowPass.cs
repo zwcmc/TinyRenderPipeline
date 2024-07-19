@@ -119,6 +119,10 @@ public class MainLightShadowPass
         {
             SetEmptyMainLightCascadeShadowmap(CommandBufferHelpers.GetRasterCommandBuffer(cmd));
             renderingData.commandBuffer.SetGlobalTexture(m_MainLightShadowmapID, m_EmptyLightShadowmapTexture.nameID);
+
+            context.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
+
             return;
         }
 
@@ -134,7 +138,7 @@ public class MainLightShadowPass
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
 
-            InitializePassData(context, default(RenderGraph), ref renderingData, ref m_PassData, false);
+            InitPassData(context, default(RenderGraph), ref renderingData, ref m_PassData, false);
 
             RenderMainLightCascadeShadowmap(CommandBufferHelpers.GetRasterCommandBuffer(cmd), ref m_PassData, ref renderingData, false);
 
@@ -145,17 +149,17 @@ public class MainLightShadowPass
         }
     }
 
-    private void InitializePassData(ScriptableRenderContext context, RenderGraph renderGraph, ref RenderingData renderingData, ref PassData passData, bool useRenderGraph)
+    private void InitPassData(ScriptableRenderContext context, RenderGraph renderGraph, ref RenderingData renderingData, ref PassData passData, bool useRenderGraph)
     {
         passData.pass = this;
         passData.emptyShadowmap = m_CreateEmptyShadowmap;
         passData.shadowmapID = m_MainLightShadowmapID;
         passData.renderingData = renderingData;
 
-        var cullResults = renderingData.cullResults;
         int shadowLightIndex = renderingData.mainLightIndex;
         if (!m_CreateEmptyShadowmap && shadowLightIndex != -1)
         {
+            var cullResults = renderingData.cullResults;
             var settings = new ShadowDrawingSettings(cullResults, shadowLightIndex);
             settings.useRenderingLayerMaskTest = true;
             for (int cascadeIndex = 0; cascadeIndex < m_ShadowCasterCascadesCount; ++cascadeIndex)
@@ -250,14 +254,14 @@ public class MainLightShadowPass
 
         using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_ProfilingSampler.name, out var passData, s_ProfilingSampler))
         {
-            InitializePassData(default(ScriptableRenderContext), renderGraph, ref renderingData, ref passData, true);
+            InitPassData(default(ScriptableRenderContext), renderGraph, ref renderingData, ref passData, true);
 
             if (!m_CreateEmptyShadowmap)
             {
                 for (int cascadeIndex = 0; cascadeIndex < m_ShadowCasterCascadesCount; ++cascadeIndex)
                     builder.UseRendererList(passData.shadowRendererListHandle[cascadeIndex]);
 
-                passData.shadowmapTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, m_MainLightShadowmapTexture.rt.descriptor, "_MainLightShadowmapTexture", true, FilterMode.Bilinear);
+                passData.shadowmapTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, m_MainLightShadowmapTexture.rt.descriptor, k_ShadowmapTextureName, true, FilterMode.Bilinear);
                 builder.UseTextureFragmentDepth(passData.shadowmapTexture, IBaseRenderGraphBuilder.AccessFlags.Write);
             }
 
