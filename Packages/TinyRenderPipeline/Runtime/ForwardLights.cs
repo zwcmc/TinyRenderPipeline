@@ -82,7 +82,7 @@ public class ForwardLights
 
             builder.SetRenderFunc((SetupLightsPassData data, LowLevelGraphContext lowLevelGraphContext) =>
             {
-                data.forwardLights.SetupLights(lowLevelGraphContext.legacyCmd, ref data.renderingData);
+                data.forwardLights.SetupShaderLightConstants(lowLevelGraphContext.legacyCmd, ref data.renderingData);
             });
         }
     }
