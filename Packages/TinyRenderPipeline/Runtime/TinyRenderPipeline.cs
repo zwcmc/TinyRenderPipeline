@@ -59,7 +59,7 @@ public class TinyRenderPipeline : RenderPipeline
 
         s_UseRenderGraph = asset.useRenderGraph;
         if (s_UseRenderGraph)
-            s_TinyRenderGraphRenderer = new TinyRenderGraphRenderer();
+            s_TinyRenderGraphRenderer = new TinyRenderGraphRenderer(pipelineAsset);
         else
             s_TinyRenderer = new TinyRenderer(pipelineAsset);
     }

@@ -235,4 +235,47 @@ public static class RenderingUtils
         var rendererListParameters = new RendererListParams(renderingData.cullResults, ds, fs);
         rl = renderGraph.CreateRendererList(rendererListParameters);
     }
+
+    private class PassData
+    {
+        public TextureHandle texture;
+        public string name;
+        public int nameID;
+    }
+
+    private static readonly ProfilingSampler s_SetGlobalRenderGraphTextureSampler = new ProfilingSampler("SetGlobalRenderGraphTexture");
+
+    public static void SetGlobalRenderGraphTextureName(RenderGraph renderGraph, string name, TextureHandle texture, string passName = "Set Global Texture")
+    {
+        using (var builder = renderGraph.AddRasterRenderPass<PassData>(passName, out var passData, s_SetGlobalRenderGraphTextureSampler))
+        {
+            passData.texture = builder.UseTexture(texture, IBaseRenderGraphBuilder.AccessFlags.Read);
+            passData.name = name;
+
+            builder.AllowPassCulling(false);
+            builder.AllowGlobalStateModification(true);
+
+            builder.SetRenderFunc((PassData data, RasterGraphContext rasterGraphContext) =>
+            {
+                rasterGraphContext.cmd.SetGlobalTexture(data.name, data.texture);
+            });
+        }
+    }
+
+    public static void SetGlobalRenderGraphTextureNameID(RenderGraph renderGraph, int nameID, TextureHandle texture, string passName = "Set Global Texture")
+    {
+        using (var builder = renderGraph.AddRasterRenderPass<PassData>(passName, out var passData, s_SetGlobalRenderGraphTextureSampler))
+        {
+            passData.texture = builder.UseTexture(texture, IBaseRenderGraphBuilder.AccessFlags.Read);
+            passData.nameID = nameID;
+
+            builder.AllowPassCulling(false);
+            builder.AllowGlobalStateModification(true);
+
+            builder.SetRenderFunc((PassData data, RasterGraphContext rasterGraphContext) =>
+            {
+                rasterGraphContext.cmd.SetGlobalTexture(data.nameID, data.texture);
+            });
+        }
+    }
 }
