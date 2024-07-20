@@ -339,8 +339,6 @@ public class TinyRenderer : TinyBaseRenderer
         m_MainLightShadowPass?.Dispose();
         m_AdditionalLightsShadowPass?.Dispose();
 
-        m_FinalBlitPass?.Dispose();
-
         m_FXAAPass?.Dispose();
 
         m_CameraDepthAttachment?.Release();

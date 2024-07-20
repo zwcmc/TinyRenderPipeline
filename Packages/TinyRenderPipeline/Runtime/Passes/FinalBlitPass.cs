@@ -6,7 +6,7 @@ public class FinalBlitPass
     private RTHandle m_Source;
     private Material m_BlitMaterial;
 
-    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("Final Blit");
+    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("FinalBlit");
 
     public FinalBlitPass(Material blitMaterial)
     {
@@ -46,10 +46,5 @@ public class FinalBlitPass
 
             Blitter.BlitTexture(cmd, m_Source, scaleBias, m_BlitMaterial, 0);
         }
-    }
-
-    public void Dispose()
-    {
-
     }
 }
