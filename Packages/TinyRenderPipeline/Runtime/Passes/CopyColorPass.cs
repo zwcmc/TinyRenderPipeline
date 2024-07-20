@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
+using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
 public class CopyColorPass
@@ -7,12 +9,13 @@ public class CopyColorPass
 
     private RTHandle m_Source;
     private RTHandle m_Destination;
-
     private Material m_CopyColorMaterial;
+    private PassData m_PassData;
 
     public CopyColorPass(Material copyColorMaterial)
     {
         m_CopyColorMaterial = copyColorMaterial;
+        m_PassData = new PassData();
     }
 
     public void Setup(RTHandle source, RTHandle destination)
@@ -23,12 +26,6 @@ public class CopyColorPass
 
     public void Render(ScriptableRenderContext context, ref RenderingData renderingData)
     {
-        if (m_CopyColorMaterial == null)
-        {
-            Debug.LogError("Copy Color Pass: Copy Color Material is null.");
-            return;
-        }
-
         var cmd = renderingData.commandBuffer;
         using (new ProfilingScope(cmd, s_ProfilingSampler))
         {
@@ -37,8 +34,52 @@ public class CopyColorPass
 
             CoreUtils.SetRenderTarget(cmd, m_Destination, RenderBufferLoadAction.Load, RenderBufferStoreAction.Store, ClearFlag.None, Color.black);
 
-            Vector4 scaleBias = new Vector4(1, 1, 0, 0);
-            Blitter.BlitTexture(cmd, m_Source, scaleBias, m_CopyColorMaterial, 0);
+            m_PassData.blitMaterial = m_CopyColorMaterial;
+
+            ExecutePass(CommandBufferHelpers.GetRasterCommandBuffer(cmd), ref m_PassData, m_Source);
         }
+    }
+
+    private static void ExecutePass(RasterCommandBuffer cmd, ref PassData data, RTHandle source)
+    {
+        var copyColorMaterial = data.blitMaterial;
+
+        if (copyColorMaterial == null)
+        {
+            Debug.LogError("Copy Color Pass: Copy Color Material is null.");
+            return;
+        }
+
+        Vector4 scaleBias = new Vector4(1f, 1f, 0f, 0f);
+        Blitter.BlitTexture(cmd, source, scaleBias, copyColorMaterial, 0);
+    }
+
+    private class PassData
+    {
+        public TextureHandle source;
+        public Material blitMaterial;
+    }
+
+    public void RenderGraphRender(RenderGraph renderGraph, TextureHandle source, TextureHandle destination, ref RenderingData renderingData)
+    {
+        // Copy color pass
+        using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_ProfilingSampler.name, out var passData, s_ProfilingSampler))
+        {
+            passData.source = source;
+            passData.blitMaterial = m_CopyColorMaterial;
+
+            builder.UseTexture(source, IBaseRenderGraphBuilder.AccessFlags.Read);
+            builder.UseTextureFragment(destination, 0, IBaseRenderGraphBuilder.AccessFlags.Write);
+
+            builder.AllowPassCulling(false);
+
+            builder.SetRenderFunc((PassData data, RasterGraphContext rasterGraphContext) =>
+            {
+                ExecutePass(rasterGraphContext.cmd, ref data, data.source);
+            });
+        }
+
+        // Set global opaque texture
+        RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_CameraOpaqueTexture", destination, "SetGlobalCameraOpaqueTexture");
     }
 }

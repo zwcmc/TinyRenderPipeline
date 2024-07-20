@@ -42,6 +42,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
     private TextureHandle m_AdditionalLightsShadowmapTextureHdl;
 
     private TextureHandle m_DepthTextureHdl;
+    private TextureHandle m_OpaqueColorTextureHdl;
 
     private ForwardLights m_ForwardLights;
     private MainLightShadowPass m_MainLightShadowPass;
@@ -51,6 +52,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
     private DrawObjectsForwardPass m_RenderOpaqueForwardPass;
     private CopyDepthPass m_CopyDepthPass;
     private DrawSkyboxPass m_DrawSkyboxPass;
+    private CopyColorPass m_CopyColorPass;
     private DrawObjectsForwardPass m_RenderTransparentForwardPass;
 
     private FinalBlitPass m_FinalBlitPass;
@@ -75,6 +77,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         m_RenderOpaqueForwardPass = new DrawObjectsForwardPass(true);
         m_CopyDepthPass = new CopyDepthPass(m_CopyDepthMaterial);
         m_DrawSkyboxPass = new DrawSkyboxPass();
+        m_CopyColorPass = new CopyColorPass(m_BlitMaterial);
         m_RenderTransparentForwardPass = new DrawObjectsForwardPass();
 
         m_FinalBlitPass = new FinalBlitPass(m_BlitMaterial);
@@ -144,16 +147,12 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         // Copy depth texture if needed after rendering opaque objects
         if (needCopyDepth)
         {
-            var descriptor = renderingData.cameraTargetDescriptor;
-            descriptor.useMipMap = false;
-            descriptor.autoGenerateMips = false;
-            descriptor.graphicsFormat = GraphicsFormat.R32_SFloat;
-            descriptor.depthStencilFormat = GraphicsFormat.None;
-            descriptor.depthBufferBits = (int)DepthBits.None;
+            var depthDescriptor = renderingData.cameraTargetDescriptor;
+            depthDescriptor.graphicsFormat = GraphicsFormat.R32_SFloat;
+            depthDescriptor.depthStencilFormat = GraphicsFormat.None;
+            depthDescriptor.depthBufferBits = (int)DepthBits.None;
 
-            descriptor.msaaSamples = 1;
-
-            m_DepthTextureHdl = RenderingUtils.CreateRenderGraphTexture(renderGraph, descriptor, "_CameraDepthTexture", true);
+            m_DepthTextureHdl = RenderingUtils.CreateRenderGraphTexture(renderGraph, depthDescriptor, "_CameraDepthTexture", true);
             m_CopyDepthPass.RenderGraphRender(renderGraph, m_ActiveRenderGraphCameraDepthHandle, m_DepthTextureHdl, ref renderingData);
         }
         else
@@ -164,6 +163,19 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         m_DrawSkyboxPass.DrawRenderGraphSkybox(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle, ref renderingData);
 
         // TODO: m_CopyColorPass if needed
+        // Copy color texture if needed after rendering skybox
+        if (needCopyColor)
+        {
+            var colorDescriptor = renderingData.cameraTargetDescriptor;
+            colorDescriptor.depthBufferBits = (int)DepthBits.None;
+
+            m_OpaqueColorTextureHdl = RenderingUtils.CreateRenderGraphTexture(renderGraph, colorDescriptor, "_CameraOpaqueTexture", true, FilterMode.Bilinear);
+            m_CopyColorPass.RenderGraphRender(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_OpaqueColorTextureHdl, ref renderingData);
+        }
+        else
+        {
+            RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_CameraOpaqueTexture", renderGraph.defaultResources.whiteTexture);
+        }
 
         m_RenderTransparentForwardPass.DrawRenderGraphObjects(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle, m_MainLightShadowmapTextureHdl, m_AdditionalLightsShadowmapTextureHdl, ref renderingData);
 
