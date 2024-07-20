@@ -19,7 +19,7 @@ public class TinyRenderPipeline : RenderPipeline
     private static RenderGraph s_RenderGraph;
 
     // Enable or disable render graph
-    private static bool s_UseRenderGraph = true;
+    private static bool s_UseRenderGraph;
 
     public static class Profiling
     {
@@ -57,6 +57,7 @@ public class TinyRenderPipeline : RenderPipeline
         s_RenderGraph = new RenderGraph("TRRenderGraph");
         s_RenderGraph.NativeRenderPassesEnabled = true;
 
+        s_UseRenderGraph = asset.useRenderGraph;
         if (s_UseRenderGraph)
             s_TinyRenderGraphRenderer = new TinyRenderGraphRenderer();
         else

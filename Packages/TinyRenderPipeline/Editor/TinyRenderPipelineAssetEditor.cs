@@ -1,4 +1,5 @@
 using UnityEditor;
+using UnityEditor.Rendering;
 
 [CustomEditor(typeof(TinyRenderPipelineAsset))]
 public class TinyRenderPipelineAssetEditor : Editor
@@ -13,6 +14,7 @@ public class TinyRenderPipelineAssetEditor : Editor
     private SerializedProperty m_RequireDepthTexture;
     private SerializedProperty m_RequireColorTexture;
     private SerializedProperty m_RenderScale;
+    private SerializedProperty m_UseRenderGraph;
 
     private void OnEnable()
     {
@@ -26,6 +28,7 @@ public class TinyRenderPipelineAssetEditor : Editor
         m_RequireDepthTexture = serializedObject.FindProperty("m_RequireDepthTexture");
         m_RequireColorTexture = serializedObject.FindProperty("m_RequireColorTexture");
         m_RenderScale = serializedObject.FindProperty("m_RenderScale");
+        m_UseRenderGraph = serializedObject.FindProperty("m_UseRenderGraph");
     }
 
     public override void OnInspectorGUI()
@@ -45,6 +48,7 @@ public class TinyRenderPipelineAssetEditor : Editor
         EditorGUILayout.PropertyField(m_PostProcessingData);
         EditorGUILayout.PropertyField(m_ColorGradingLutSize);
         EditorGUILayout.PropertyField(m_RenderScale);
+        EditorGUILayout.PropertyField(m_UseRenderGraph);
 
         serializedObject.ApplyModifiedProperties();
     }

@@ -89,6 +89,9 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     [Range(0.1f, 2f)]
     private float m_RenderScale = 1f;
 
+    [SerializeField]
+    private bool m_UseRenderGraph = false;
+
     public bool useSRPBatcher
     {
         get { return m_UseSRPBatcher; }
@@ -163,6 +166,12 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     {
         get { return m_RenderScale; }
         set { m_RenderScale = Mathf.Clamp(value, 0.1f, 2f); }
+    }
+
+    public bool useRenderGraph
+    {
+        get { return m_UseRenderGraph; }
+        set { m_UseRenderGraph = value; }
     }
 
     public ShaderResources shaders
