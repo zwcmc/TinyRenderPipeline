@@ -232,7 +232,7 @@ public class TinyRenderer : TinyBaseRenderer
             m_CopyDepthPass.Setup(m_ActiveCameraDepthAttachment, m_DepthTexture);
             m_CopyDepthPass.Render(context, ref renderingData);
 
-            // Switch back to active render targets after coping depth
+            // After coping the depth buffer, switching back to active render targets, and continuing to render skybox and transparent objects
             cmd.SetRenderTarget(m_ActiveCameraColorAttachment, RenderBufferLoadAction.Load, RenderBufferStoreAction.Store,
                 m_ActiveCameraDepthAttachment, RenderBufferLoadAction.Load, RenderBufferStoreAction.Store);
 
@@ -259,7 +259,7 @@ public class TinyRenderer : TinyBaseRenderer
             m_CopyColorPass.Setup(m_ActiveCameraColorAttachment, m_OpaqueColor);
             m_CopyColorPass.Render(context, ref renderingData);
 
-            // Switch back to active render targets after coping depth
+            // After coping the color buffer, switching back to active render targets, and continuing to render transparent objects
             cmd.SetRenderTarget(m_ActiveCameraColorAttachment, RenderBufferLoadAction.Load, RenderBufferStoreAction.Store,
                 m_ActiveCameraDepthAttachment, RenderBufferLoadAction.Load, RenderBufferStoreAction.DontCare);
 
