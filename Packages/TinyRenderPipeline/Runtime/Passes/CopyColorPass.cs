@@ -35,7 +35,7 @@ public class CopyColorPass
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
 
-            CoreUtils.SetRenderTarget(cmd, m_Destination, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, ClearFlag.None, Color.black);
+            CoreUtils.SetRenderTarget(cmd, m_Destination, RenderBufferLoadAction.Load, RenderBufferStoreAction.Store, ClearFlag.None, Color.black);
 
             Vector4 scaleBias = new Vector4(1, 1, 0, 0);
             Blitter.BlitTexture(cmd, m_Source, scaleBias, m_CopyColorMaterial, 0);

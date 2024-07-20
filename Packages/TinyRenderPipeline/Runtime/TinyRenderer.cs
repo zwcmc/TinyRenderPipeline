@@ -206,7 +206,7 @@ public class TinyRenderer : TinyBaseRenderer
         var cameraBackgroundColorSRGB = camera.backgroundColor;
 #if UNITY_EDITOR
         if (cameraType == CameraType.Preview)
-            cameraBackgroundColorSRGB = new Color(82f / 255.0f, 82f / 255.0f, 82.0f / 255.0f, 0.0f);
+            cameraBackgroundColorSRGB = new Color(82.0f / 255.0f, 82.0f / 255.0f, 82.0f / 255.0f, 0.0f);
 #endif
         cmd.ClearRenderTarget(clearFlags <= CameraClearFlags.Depth, clearFlags <= CameraClearFlags.Color,
             clearFlags == CameraClearFlags.Color ? cameraBackgroundColorSRGB.linear : Color.clear);
@@ -233,8 +233,8 @@ public class TinyRenderer : TinyBaseRenderer
             m_CopyDepthPass.Render(context, ref renderingData);
 
             // Switch back to active render targets after coping depth
-            cmd.SetRenderTarget(m_ActiveCameraColorAttachment, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
-                m_ActiveCameraDepthAttachment, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+            cmd.SetRenderTarget(m_ActiveCameraColorAttachment, RenderBufferLoadAction.Load, RenderBufferStoreAction.Store,
+                m_ActiveCameraDepthAttachment, RenderBufferLoadAction.Load, RenderBufferStoreAction.Store);
 
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
@@ -260,8 +260,8 @@ public class TinyRenderer : TinyBaseRenderer
             m_CopyColorPass.Render(context, ref renderingData);
 
             // Switch back to active render targets after coping depth
-            cmd.SetRenderTarget(m_ActiveCameraColorAttachment, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
-                m_ActiveCameraDepthAttachment, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+            cmd.SetRenderTarget(m_ActiveCameraColorAttachment, RenderBufferLoadAction.Load, RenderBufferStoreAction.Store,
+                m_ActiveCameraDepthAttachment, RenderBufferLoadAction.Load, RenderBufferStoreAction.DontCare);
 
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
