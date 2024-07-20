@@ -188,18 +188,12 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         // Check active color attachment is resolved to final target:
         // 1. FXAA pass is enabled, it always blit active color attachment to final camera target
         // 2. Post-processing is enabled and FXAA pass is disabled, active color attachment apply post-processing effects and then blit it to final camera target
-
-        // [need to check ???]
         // 3. Active color attachment is the final camera target
-        // RTHandle handle0 = m_ActiveRenderGraphCameraColorHandle;
-        // RTHandle handle1 = m_BackBufferColor;
-        //  || (handle0.nameID == handle1.nameID)
         bool cameraTargetResolved = hasFxaaPass || (applyPostProcessing && resolvePostProcessingToCameraTarget) || m_IsActiveTargetBackBuffer;
 
         // If is not resolved to final camera target, need final blit pass to do this
         if (!cameraTargetResolved)
         {
-            // TODO: m_FinalBlitPass
             m_FinalBlitPass.RenderGraphRender(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_BackBufferColor, ref renderingData);
 
             m_IsActiveTargetBackBuffer = true;
