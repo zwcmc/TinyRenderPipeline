@@ -53,12 +53,18 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
     private DrawSkyboxPass m_DrawSkyboxPass;
     private DrawObjectsForwardPass m_RenderTransparentForwardPass;
 
+    private FinalBlitPass m_FinalBlitPass;
+
+    private Material m_BlitMaterial;
     private Material m_CopyDepthMaterial;
+
+    private bool m_IsActiveTargetBackBuffer;
 
     public TinyRenderGraphRenderer(TinyRenderPipelineAsset asset)
     {
         if (asset.shaders != null)
         {
+            m_BlitMaterial = CoreUtils.CreateEngineMaterial(asset.shaders.blitShader);
             m_CopyDepthMaterial = CoreUtils.CreateEngineMaterial(asset.shaders.copyDepthShader);
         }
 
@@ -70,6 +76,10 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         m_CopyDepthPass = new CopyDepthPass(m_CopyDepthMaterial);
         m_DrawSkyboxPass = new DrawSkyboxPass();
         m_RenderTransparentForwardPass = new DrawObjectsForwardPass();
+
+        m_FinalBlitPass = new FinalBlitPass(m_BlitMaterial);
+
+        m_IsActiveTargetBackBuffer = true;
     }
 
     private void RecordRenderGraph(RenderGraph renderGraph, ref RenderingData renderingData)
@@ -184,12 +194,15 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         // RTHandle handle0 = m_ActiveRenderGraphCameraColorHandle;
         // RTHandle handle1 = m_BackBufferColor;
         //  || (handle0.nameID == handle1.nameID)
-        bool cameraTargetResolved = hasFxaaPass || (applyPostProcessing && resolvePostProcessingToCameraTarget);
+        bool cameraTargetResolved = hasFxaaPass || (applyPostProcessing && resolvePostProcessingToCameraTarget) || m_IsActiveTargetBackBuffer;
 
         // If is not resolved to final camera target, need final blit pass to do this
         if (!cameraTargetResolved)
         {
             // TODO: m_FinalBlitPass
+            m_FinalBlitPass.RenderGraphRender(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_BackBufferColor, ref renderingData);
+
+            m_IsActiveTargetBackBuffer = true;
         }
 
 #if UNITY_EDITOR
@@ -315,13 +328,16 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         }
 
         m_ActiveRenderGraphCameraColorHandle = intermediateRenderTexture ? currentRenderGraphCameraColorHandle : m_BackBufferColor;
+        m_IsActiveTargetBackBuffer = intermediateRenderTexture ? false : true;
         m_ActiveRenderGraphCameraDepthHandle = intermediateRenderTexture ? m_RenderGraphCameraDepthHandle : m_BackBufferDepth;
     }
 
+#if UNITY_EDITOR
     private class DrawGizmosPassData
     {
         public RendererListHandle rendererList;
     }
+#endif
 
     [Conditional("UNITY_EDITOR")]
     private void DrawRenderGraphGizmos(RenderGraph renderGraph, TextureHandle color, TextureHandle depth, GizmoSubset gizmoSubset, ref RenderingData renderingData)
@@ -399,6 +415,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         m_CameraColorHandles[1]?.Release();
         m_CameraDepthHandle?.Release();
 
+        CoreUtils.Destroy(m_BlitMaterial);
         CoreUtils.Destroy(m_CopyDepthMaterial);
     }
 }
