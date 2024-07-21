@@ -88,7 +88,7 @@ public class ColorGradingLutPass
                     break;
             }
 
-            Blitter.BlitTexture(cmd, m_ColorGradingLut, Vector2.one, m_LutBuilder, 0);
+            Blitter.BlitTexture(cmd, m_ColorGradingLut, new Vector4(1f, 1f, 0f, 0f), m_LutBuilder, 0);
         }
     }
 

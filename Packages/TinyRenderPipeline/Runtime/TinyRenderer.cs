@@ -133,9 +133,7 @@ public class TinyRenderer : TinyBaseRenderer
         // Post processing
         // Check post processing data setup
         var additionalCameraData = camera.GetComponent<AdditionalCameraData>();
-        var postProcessingData = additionalCameraData ?
-            (additionalCameraData.isOverridePostProcessingData ? additionalCameraData.overridePostProcessingData : renderingData.postProcessingData) :
-                renderingData.postProcessingData;
+        var postProcessingData = additionalCameraData ? (additionalCameraData.isOverridePostProcessingData ? additionalCameraData.overridePostProcessingData : renderingData.postProcessingData) : renderingData.postProcessingData;
         bool applyPostProcessing = postProcessingData != null;
         // Only game camera and scene camera have post processing effects
         applyPostProcessing &= cameraType <= CameraType.SceneView;

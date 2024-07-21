@@ -136,7 +136,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!199 &66323432
 ParticleSystemRenderer:
   serializedVersion: 6
@@ -5349,7 +5349,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a601b68244a3dc64aa7f76f1eb66795c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_OverridePostProcessingData: 1
+  m_OverridePostProcessingData: 0
   m_PostProcessingData: {fileID: 0}
   m_RequireDepthTexture: 1
   m_RequireColorTexture: 1
@@ -5379,7 +5379,7 @@ Transform:
   m_GameObject: {fileID: 1099130133}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 1, z: -1}
+  m_LocalPosition: {x: 0, y: 1.5, z: -0.75}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5395,8 +5395,8 @@ Light:
   m_Enabled: 1
   serializedVersion: 11
   m_Type: 2
-  m_Color: {r: 0.05724907, g: 1, b: 0, a: 1}
-  m_Intensity: 2
+  m_Color: {r: 1, g: 1, b: 0, a: 1}
+  m_Intensity: 1
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -5573,13 +5573,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1892537013}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0.40547115, z: -0, w: 0.9141079}
   m_LocalPosition: {x: 0, y: 0.5, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: -47.841, z: 0}
 --- !u!65 &1892537015
 BoxCollider:
   m_ObjectHideFlags: 0

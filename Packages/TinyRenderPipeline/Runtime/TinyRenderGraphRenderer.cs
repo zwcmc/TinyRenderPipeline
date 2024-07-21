@@ -54,7 +54,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
     private DrawSkyboxPass m_DrawSkyboxPass;
     private CopyColorPass m_CopyColorPass;
     private DrawObjectsForwardPass m_RenderTransparentForwardPass;
-
+    private PostProcessingPass m_PostProcessingPass;
     private FinalBlitPass m_FinalBlitPass;
 
 #if UNITY_EDITOR
@@ -83,7 +83,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         m_DrawSkyboxPass = new DrawSkyboxPass();
         m_CopyColorPass = new CopyColorPass(m_BlitMaterial);
         m_RenderTransparentForwardPass = new DrawObjectsForwardPass();
-
+        m_PostProcessingPass = new PostProcessingPass();
         m_FinalBlitPass = new FinalBlitPass(m_BlitMaterial);
 
 #if UNITY_EDITOR
@@ -196,6 +196,18 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         if (applyPostProcessing)
         {
             // TODO: m_PostProcessingPass
+            var target = resolvePostProcessingToCameraTarget ? m_BackBufferColor : nextRenderGraphCameraColorHandle;
+            m_PostProcessingPass.RenderGraphRender(renderGraph, in m_ActiveRenderGraphCameraColorHandle, TextureHandle.nullHandle, target, resolvePostProcessingToCameraTarget, postProcessingData, ref renderingData);
+
+            if (resolvePostProcessingToCameraTarget)
+            {
+                m_ActiveRenderGraphCameraColorHandle = m_BackBufferColor;
+                // m_ActiveRenderGraphCameraDepthHandle = m_BackBufferDepth;
+            }
+            else
+            {
+                m_ActiveRenderGraphCameraColorHandle = target;
+            }
         }
 
         // FXAA pass always blit to final camera target
@@ -429,6 +441,8 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
+
+        m_PostProcessingPass?.Dispose();
 
         m_CameraColorHandles[0]?.Release();
         m_CameraColorHandles[1]?.Release();
