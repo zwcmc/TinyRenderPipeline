@@ -211,9 +211,7 @@ public class PostProcessingPass
             return;
         }
 
-        if (m_PostProcessingData != null)
-            m_Materials = new MaterialLibrary(m_PostProcessingData);
-
+        m_Materials = new MaterialLibrary(m_PostProcessingData);
         if (m_Materials == null)
         {
             Debug.LogError("Post Processing Pass: post-processing materials is null.");
@@ -420,28 +418,9 @@ public class PostProcessingPass
 
             builder.SetRenderFunc((UberPassData data, RasterGraphContext rasterGraphContext) =>
             {
-                ScaleViewportAndBlit(rasterGraphContext.cmd, data.sourceTextureHdl, data.targetTextureHdl, ref data);
+                RenderingUtils.ScaleViewportAndBlit(rasterGraphContext.cmd, data.sourceTextureHdl, data.targetTextureHdl, ref data.renderingData, data.material);
             });
         }
-    }
-
-    private static void ScaleViewportAndBlit(RasterCommandBuffer cmd, RTHandle source, RTHandle target, ref UberPassData data)
-    {
-        ref var renderingData = ref data.renderingData;
-        var camera = renderingData.camera;
-        var cameraType = camera.cameraType;
-        bool isRenderToBackBufferTarget = cameraType != CameraType.SceneView;
-
-        // We y-flip if
-        // 1) we are blitting from render texture to back buffer(UV starts at bottom) and
-        // 2) renderTexture starts UV at top
-        bool yFlip = isRenderToBackBufferTarget && camera.targetTexture == null && SystemInfo.graphicsUVStartsAtTop;
-        Vector4 scaleBias = yFlip ? new Vector4(1, -1, 0, 1) : new Vector4(1, 1, 0, 0);
-
-        if (target.nameID == BuiltinRenderTextureType.CameraTarget || camera.targetTexture != null)
-            cmd.SetViewport(camera.pixelRect);
-
-        Blitter.BlitTexture(cmd, source, scaleBias, data.material, 0);
     }
 
     #endregion

@@ -198,7 +198,7 @@ public static class RenderingUtils
             return true;
 
         var handleID = new RenderTargetIdentifier(handle.nameID, 0, CubemapFace.Unknown, 0);
-        bool isBackbuffer = handleID == BuiltinRenderTextureType.CameraTarget;
+        bool isBackbuffer = handleID == BuiltinRenderTextureType.CameraTarget || handleID ==  BuiltinRenderTextureType.Depth;
 
         return !isBackbuffer;
     }
@@ -262,20 +262,20 @@ public static class RenderingUtils
         }
     }
 
-    public static void SetGlobalRenderGraphTextureNameID(RenderGraph renderGraph, int nameID, TextureHandle texture, string passName = "Set Global Texture")
+    public static void ScaleViewportAndBlit(RasterCommandBuffer cmd, RTHandle source, RTHandle target, ref RenderingData renderingData, Material material, int passIndex = 0)
     {
-        using (var builder = renderGraph.AddRasterRenderPass<PassData>(passName, out var passData, s_SetGlobalRenderGraphTextureSampler))
-        {
-            passData.texture = builder.UseTexture(texture, IBaseRenderGraphBuilder.AccessFlags.Read);
-            passData.nameID = nameID;
+        var camera = renderingData.camera;
 
-            builder.AllowPassCulling(false);
-            builder.AllowGlobalStateModification(true);
+        // We y-flip if
+        // 1) we are blitting from render texture to back buffer(UV starts at bottom) and
+        // 2) renderTexture starts UV at top
+        bool yFlip = IsHandleYFlipped(source, camera) != IsHandleYFlipped(target, camera);
 
-            builder.SetRenderFunc((PassData data, RasterGraphContext rasterGraphContext) =>
-            {
-                rasterGraphContext.cmd.SetGlobalTexture(data.nameID, data.texture);
-            });
-        }
+        Vector4 scaleBias = yFlip ? new Vector4(1, -1, 0, 1) : new Vector4(1, 1, 0, 0);
+
+        if (target.nameID == BuiltinRenderTextureType.CameraTarget || camera.targetTexture != null)
+            cmd.SetViewport(camera.pixelRect);
+
+        Blitter.BlitTexture(cmd, source, scaleBias, material, passIndex);
     }
 }

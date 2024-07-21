@@ -55,6 +55,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
     private CopyColorPass m_CopyColorPass;
     private DrawObjectsForwardPass m_RenderTransparentForwardPass;
     private PostProcessingPass m_PostProcessingPass;
+    private FXAAPass m_FXAAPass;
     private FinalBlitPass m_FinalBlitPass;
 
 #if UNITY_EDITOR
@@ -83,6 +84,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         m_DrawSkyboxPass = new DrawSkyboxPass();
         m_CopyColorPass = new CopyColorPass(m_BlitMaterial);
         m_RenderTransparentForwardPass = new DrawObjectsForwardPass();
+        m_FXAAPass = new FXAAPass();
         m_PostProcessingPass = new PostProcessingPass();
         m_FinalBlitPass = new FinalBlitPass(m_BlitMaterial);
 
@@ -113,10 +115,10 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
             m_AdditionalLightsShadowmapTextureHdl = m_AdditionalLightsShadowPass.RenderGraphRender(renderGraph, ref renderingData);
         }
 
+        // Post processing
+        // Check post processing data setup
         var additionalCameraData = camera.GetComponent<AdditionalCameraData>();
-        var postProcessingData = additionalCameraData ?
-            (additionalCameraData.isOverridePostProcessingData ? additionalCameraData.overridePostProcessingData : renderingData.postProcessingData) : renderingData.postProcessingData;
-
+        var postProcessingData = additionalCameraData ? (additionalCameraData.isOverridePostProcessingData ? additionalCameraData.overridePostProcessingData : renderingData.postProcessingData) : renderingData.postProcessingData;
         bool applyPostProcessing = postProcessingData != null;
         // Only game camera and scene camera have post processing effects
         applyPostProcessing &= cameraType <= CameraType.SceneView;
@@ -217,7 +219,9 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         // FXAA pass always blit to final camera target
         if (hasFxaaPass)
         {
-            // TODO: m_FXAAPass
+            m_FXAAPass.RenderGraphRender(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_BackBufferColor, postProcessingData, ref renderingData);
+            m_ActiveRenderGraphCameraColorHandle = m_BackBufferColor;
+            m_IsActiveTargetBackBuffer = true;
         }
 
         // Check active color attachment is resolved to final target:
@@ -230,7 +234,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         if (!cameraTargetResolved)
         {
             m_FinalBlitPass.RenderGraphRender(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_BackBufferColor, ref renderingData);
-
+            m_ActiveRenderGraphCameraColorHandle = m_BackBufferColor;
             m_IsActiveTargetBackBuffer = true;
         }
 
@@ -345,10 +349,6 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
             m_RenderGraphCameraColorHandles[1] = renderGraph.ImportTexture(m_CameraColorHandles[1], importColorParams);
 
             var depthDescriptor = renderingData.cameraTargetDescriptor;
-            depthDescriptor.useMipMap = false;
-            depthDescriptor.autoGenerateMips = false;
-            depthDescriptor.bindMS = false;
-
             depthDescriptor.graphicsFormat = GraphicsFormat.None;
             depthDescriptor.depthStencilFormat = GraphicsFormat.D32_SFloat_S8_UInt;
             depthDescriptor.depthBufferBits = 32;
@@ -447,6 +447,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         base.Dispose(disposing);
 
         m_PostProcessingPass?.Dispose();
+        m_FXAAPass?.Dispose();
 
         m_CameraColorHandles[0]?.Release();
         m_CameraColorHandles[1]?.Release();
