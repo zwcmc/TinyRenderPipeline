@@ -195,9 +195,14 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
 
         if (applyPostProcessing)
         {
+            // After post-processing pass, blit final target to Camera Target if FXAA is disabled
+            // if FXAA is enabled, blit final target to another intermediate render texture
             var target = resolvePostProcessingToCameraTarget ? m_BackBufferColor : nextRenderGraphCameraColorHandle;
+
             m_PostProcessingPass.RenderGraphRender(renderGraph, in m_ActiveRenderGraphCameraColorHandle, TextureHandle.nullHandle, target, resolvePostProcessingToCameraTarget, postProcessingData, ref renderingData);
 
+            // Camera color handle has resolved to camera target, set active camera color handle to camera color target;
+            // If not resolved to camera target, set active camera color handle to another intermediate render texture handle, just like swap RenderTargetBufferSystem in TinyRenderer(not using Render Graph);
             if (resolvePostProcessingToCameraTarget)
             {
                 m_ActiveRenderGraphCameraColorHandle = m_BackBufferColor;
