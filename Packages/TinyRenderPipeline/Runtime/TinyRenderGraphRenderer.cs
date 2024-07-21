@@ -57,6 +57,10 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
 
     private FinalBlitPass m_FinalBlitPass;
 
+#if UNITY_EDITOR
+    private CopyDepthPass m_FinalDepthCopyPass;
+#endif
+
     private Material m_BlitMaterial;
     private Material m_CopyDepthMaterial;
 
@@ -81,6 +85,10 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         m_RenderTransparentForwardPass = new DrawObjectsForwardPass();
 
         m_FinalBlitPass = new FinalBlitPass(m_BlitMaterial);
+
+#if UNITY_EDITOR
+        m_FinalDepthCopyPass = new CopyDepthPass(m_CopyDepthMaterial, true);
+#endif
 
         m_IsActiveTargetBackBuffer = true;
     }
@@ -153,7 +161,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
             depthDescriptor.depthBufferBits = (int)DepthBits.None;
 
             m_DepthTextureHdl = RenderingUtils.CreateRenderGraphTexture(renderGraph, depthDescriptor, "_CameraDepthTexture", true);
-            m_CopyDepthPass.RenderGraphRender(renderGraph, m_ActiveRenderGraphCameraDepthHandle, m_DepthTextureHdl, ref renderingData);
+            m_CopyDepthPass.RenderGraphRender(renderGraph, m_ActiveRenderGraphCameraDepthHandle, m_DepthTextureHdl, ref renderingData, true);
         }
         else
         {
@@ -162,7 +170,6 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
 
         m_DrawSkyboxPass.DrawRenderGraphSkybox(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle, ref renderingData);
 
-        // TODO: m_CopyColorPass if needed
         // Copy color texture if needed after rendering skybox
         if (needCopyColor)
         {
@@ -211,8 +218,14 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
             m_IsActiveTargetBackBuffer = true;
         }
 
+        // When use intermediate rendering, copying depth to the camera target finally to make gizmos render correctly in scene camera view or preview camera view
 #if UNITY_EDITOR
-        // TODO: m_FinalDepthCopyPass
+        bool isGizmosEnabled = Handles.ShouldRenderGizmos();
+        bool isSceneViewOrPreviewCamera = cameraType == CameraType.SceneView || cameraType == CameraType.Preview;
+        if (intermediateRenderTexture && (isSceneViewOrPreviewCamera || isGizmosEnabled))
+        {
+            m_FinalDepthCopyPass.RenderGraphRender(renderGraph, m_ActiveRenderGraphCameraDepthHandle, m_BackBufferDepth, ref renderingData, false, "FinalDepthCopy");
+        }
 #endif
 
         DrawRenderGraphGizmos(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle, GizmoSubset.PostImageEffects, ref renderingData);

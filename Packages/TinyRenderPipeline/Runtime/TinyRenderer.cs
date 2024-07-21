@@ -65,7 +65,7 @@ public class TinyRenderer : TinyBaseRenderer
         m_FXAAPass = new FXAAPass();
 
 #if UNITY_EDITOR
-        m_FinalDepthCopyPass = new CopyDepthPass(m_CopyDepthMaterial);
+        m_FinalDepthCopyPass = new CopyDepthPass(m_CopyDepthMaterial, true);
 #endif
 
         m_RenderOpaqueForwardPass = new DrawObjectsForwardPass(true);
@@ -307,13 +307,13 @@ public class TinyRenderer : TinyBaseRenderer
             m_FinalBlitPass.Render(context, ref renderingData);
         }
 
-        // Blit depth buffer to camera target for Gizmos rendering in scene view and game view while using intermediate rendering
+        // When use intermediate rendering, copying depth to the camera target finally to make gizmos render correctly in scene camera view or preview camera view
 #if UNITY_EDITOR
         bool isGizmosEnabled = Handles.ShouldRenderGizmos();
         bool isSceneViewOrPreviewCamera = cameraType == CameraType.SceneView || cameraType == CameraType.Preview;
         if (intermediateRenderTexture && (isSceneViewOrPreviewCamera || isGizmosEnabled))
         {
-            m_FinalDepthCopyPass.Setup(m_ActiveCameraDepthAttachment, TinyRenderPipeline.k_CameraTarget, copyToDepthTexture: true);
+            m_FinalDepthCopyPass.Setup(m_ActiveCameraDepthAttachment, TinyRenderPipeline.k_CameraTarget);
             m_FinalDepthCopyPass.Render(context, ref renderingData);
         }
 #endif

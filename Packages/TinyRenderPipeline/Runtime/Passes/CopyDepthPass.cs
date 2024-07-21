@@ -16,18 +16,18 @@ public class CopyDepthPass
 
     private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("CopyDepth");
 
-    public CopyDepthPass(Material copyDepthMaterial)
+    public CopyDepthPass(Material copyDepthMaterial, bool copyToDepthTexture = false)
     {
         m_CopyDepthMaterial = copyDepthMaterial;
+        m_CopyToDepthTexture = copyToDepthTexture;
 
         m_PassData = new PassData();
     }
 
-    public void Setup(RTHandle source, RTHandle destination, bool copyToDepthTexture = false)
+    public void Setup(RTHandle source, RTHandle destination)
     {
         m_Source = source;
         m_Destination = destination;
-        m_CopyToDepthTexture = copyToDepthTexture;
     }
 
     public void Render(ScriptableRenderContext context, ref RenderingData renderingData)
@@ -100,13 +100,13 @@ public class CopyDepthPass
         Blitter.BlitTexture(cmd, source, scaleBias, copyDepthMaterial, 0);
     }
 
-    public void RenderGraphRender(RenderGraph renderGraph, TextureHandle source, TextureHandle destination, ref RenderingData renderingData)
+    public void RenderGraphRender(RenderGraph renderGraph, TextureHandle source, TextureHandle destination, ref RenderingData renderingData, bool bindAsCameraDepth = false, string passName = "CopyDepthPass")
     {
         // Set global depth attachment
         RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_CameraDepthAttachment", source, "SetGlobalCameraDepthAttachment");
 
         // Copy depth pass
-        using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_ProfilingSampler.name, out var passData, s_ProfilingSampler))
+        using (var builder = renderGraph.AddRasterRenderPass<PassData>(passName, out var passData, s_ProfilingSampler))
         {
             passData.source = builder.UseTexture(source, IBaseRenderGraphBuilder.AccessFlags.Read);
 
@@ -133,6 +133,7 @@ public class CopyDepthPass
         }
 
         // Set global depth texture
-        RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_CameraDepthTexture", destination, "SetGlobalCameraDepthTexture");
+        if (bindAsCameraDepth)
+            RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_CameraDepthTexture", destination, "SetGlobalCameraDepthTexture");
     }
 }
