@@ -195,14 +195,13 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
 
         if (applyPostProcessing)
         {
-            // TODO: m_PostProcessingPass
             var target = resolvePostProcessingToCameraTarget ? m_BackBufferColor : nextRenderGraphCameraColorHandle;
             m_PostProcessingPass.RenderGraphRender(renderGraph, in m_ActiveRenderGraphCameraColorHandle, TextureHandle.nullHandle, target, resolvePostProcessingToCameraTarget, postProcessingData, ref renderingData);
 
             if (resolvePostProcessingToCameraTarget)
             {
                 m_ActiveRenderGraphCameraColorHandle = m_BackBufferColor;
-                // m_ActiveRenderGraphCameraDepthHandle = m_BackBufferDepth;
+                m_IsActiveTargetBackBuffer = true;
             }
             else
             {
