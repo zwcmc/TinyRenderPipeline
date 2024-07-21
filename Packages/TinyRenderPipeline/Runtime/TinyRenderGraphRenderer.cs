@@ -248,7 +248,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         }
 #endif
 
-        DrawRenderGraphGizmos(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_ActiveRenderGraphCameraDepthHandle, GizmoSubset.PostImageEffects, ref renderingData);
+        DrawRenderGraphGizmos(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_BackBufferDepth, GizmoSubset.PostImageEffects, ref renderingData);
     }
 
     private void CreateRenderGraphCameraRenderTargets(RenderGraph renderGraph, ref RenderingData renderingData, bool intermediateRenderTexture)
