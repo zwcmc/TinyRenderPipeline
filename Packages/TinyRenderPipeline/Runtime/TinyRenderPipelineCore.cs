@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 
 public struct ShadowData
@@ -33,6 +34,8 @@ public struct RenderingData
     /// True if this camera should render to high dynamic range color targets.
     /// </summary>
     public bool isHdrEnabled;
+
+    public GraphicsFormat defaultFormat;
 
     public RenderTextureDescriptor cameraTargetDescriptor;
 

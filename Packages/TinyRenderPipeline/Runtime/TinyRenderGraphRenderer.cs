@@ -293,7 +293,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
             // See: ConfigureTargetTexture in PlayModeView.cs
             if (Application.isEditor)
                 importInfo.msaaSamples = 1;
-            importInfo.format = renderingData.isHdrEnabled ? SystemInfo.GetGraphicsFormat(DefaultFormat.HDR) : SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
+            importInfo.format = renderingData.defaultFormat;
             importInfoDepth = importInfo;
             importInfoDepth.format = SystemInfo.GetGraphicsFormat(DefaultFormat.DepthStencil);
         }

@@ -145,7 +145,7 @@ public class TinyRenderer : TinyBaseRenderer
         {
             int lutHeight = renderingData.lutSize;
             int lutWidth = lutHeight * lutHeight;
-            var lutFormat = renderingData.isHdrEnabled ? SystemInfo.GetGraphicsFormat(DefaultFormat.HDR) : SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
+            var lutFormat = renderingData.defaultFormat;
             var descriptor = new RenderTextureDescriptor(lutWidth, lutHeight, lutFormat, 0);
             RenderingUtils.ReAllocateIfNeeded(ref m_ColorGradingLut, descriptor, FilterMode.Bilinear, TextureWrapMode.Clamp, name: "_InternalGradingLut");
 

@@ -103,7 +103,7 @@ public class ColorGradingLutPass
         {
             int lutHeight = renderingData.lutSize;
             int lutWidth = lutHeight * lutHeight;
-            var lutFormat = renderingData.isHdrEnabled ? SystemInfo.GetGraphicsFormat(DefaultFormat.HDR) : SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
+            var lutFormat = renderingData.defaultFormat;
             var descriptor = new RenderTextureDescriptor(lutWidth, lutHeight, lutFormat, 0);
             lutTarget = RenderingUtils.CreateRenderGraphTexture(renderGraph, descriptor, "_InternalGradingLut", true, FilterMode.Bilinear);
 

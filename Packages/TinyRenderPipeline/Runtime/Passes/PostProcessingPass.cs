@@ -144,7 +144,7 @@ public class PostProcessingPass
 
         m_Bloom = m_PostProcessingData.bloom;
 
-        m_DefaultHDRFormat = renderingData.isHdrEnabled ? SystemInfo.GetGraphicsFormat(DefaultFormat.HDR) : SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
+        m_DefaultHDRFormat = renderingData.defaultFormat;
 
         var cmd = renderingData.commandBuffer;
         using (new ProfilingScope(cmd, Profiling.s_RenderPostProcessing))
@@ -177,7 +177,7 @@ public class PostProcessingPass
         m_ResolveToScreen = resolveToScreen;
 
         m_Bloom = m_PostProcessingData.bloom;
-        m_DefaultHDRFormat = renderingData.isHdrEnabled ? SystemInfo.GetGraphicsFormat(DefaultFormat.HDR) : SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
+        m_DefaultHDRFormat = renderingData.defaultFormat;
 
         // Reset uber pass keywords
         m_Materials.uberPost.shaderKeywords = null;

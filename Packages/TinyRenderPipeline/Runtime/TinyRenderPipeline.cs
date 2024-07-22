@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Unity.Collections;
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 
@@ -190,7 +191,8 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.renderScale = disableRenderScale ? 1.0f : asset.renderScale;
 
         renderingData.isHdrEnabled = camera.allowHDR && asset.supportsHDR;
-        renderingData.cameraTargetDescriptor = RenderingUtils.CreateRenderTextureDescriptor(renderingData.camera, renderingData.isHdrEnabled, renderingData.renderScale);
+        renderingData.defaultFormat = renderingData.isHdrEnabled ? SystemInfo.GetGraphicsFormat(DefaultFormat.HDR) : SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
+        renderingData.cameraTargetDescriptor = RenderingUtils.CreateRenderTextureDescriptor(renderingData.camera, renderingData.defaultFormat, renderingData.isHdrEnabled, renderingData.renderScale);
 
         var cameraRect = camera.rect;
         renderingData.isDefaultCameraViewport = !(Math.Abs(cameraRect.x) > 0.0f || Math.Abs(cameraRect.y) > 0.0f || Math.Abs(cameraRect.width) < 1.0f || Math.Abs(cameraRect.height) < 1.0f);

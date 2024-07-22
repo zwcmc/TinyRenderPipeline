@@ -51,7 +51,7 @@ public static class RenderingUtils
         return desc;
     }
 
-    public static RenderTextureDescriptor CreateRenderTextureDescriptor(Camera camera, bool isHdrEnabled = false, float renderScale = 1.0f)
+    public static RenderTextureDescriptor CreateRenderTextureDescriptor(Camera camera, GraphicsFormat format, bool isHdrEnabled, float renderScale = 1.0f)
     {
         int scaledWidth = (int)((float)camera.pixelWidth * renderScale);
         int scaledHeight = (int)((float)camera.pixelHeight * renderScale);
@@ -62,7 +62,7 @@ public static class RenderingUtils
             desc = new RenderTextureDescriptor(camera.pixelWidth, camera.pixelHeight);
             desc.width = scaledWidth;
             desc.height = scaledHeight;
-            desc.graphicsFormat = isHdrEnabled ? SystemInfo.GetGraphicsFormat(DefaultFormat.HDR) : SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
+            desc.graphicsFormat = format;
             desc.depthBufferBits = 32;
             desc.msaaSamples = 1;
             desc.sRGB = (QualitySettings.activeColorSpace == ColorSpace.Linear);
