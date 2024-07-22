@@ -18,11 +18,6 @@ public class DrawObjectsForwardPass
 
     private PassData m_PassData;
 
-    private static void ExecutePass(RasterCommandBuffer cmd, RendererList rendererList)
-    {
-        cmd.DrawRendererList(rendererList);
-    }
-
     public DrawObjectsForwardPass(bool isOpaque = false)
     {
         m_IsOpaque = isOpaque;
@@ -47,7 +42,7 @@ public class DrawObjectsForwardPass
         }
     }
 
-    public void DrawRenderGraphObjects(RenderGraph renderGraph, TextureHandle colorTarget, TextureHandle depthTarget, TextureHandle mainShadowsTexture, TextureHandle additionalLightsShadowmap, ref RenderingData renderingData)
+    public void Record(RenderGraph renderGraph, TextureHandle colorTarget, TextureHandle depthTarget, TextureHandle mainShadowsTexture, TextureHandle additionalLightsShadowmap, ref RenderingData renderingData)
     {
         var sampler = m_IsOpaque ? s_DrawOpaqueObjectsSampler : s_DrawTransparentObjectsSampler;
         using (var builder = renderGraph.AddRasterRenderPass<PassData>(sampler.name, out var passData, sampler))
@@ -77,5 +72,10 @@ public class DrawObjectsForwardPass
                 ExecutePass(rasterGraphContext.cmd, data.rendererListHandle);
             });
         }
+    }
+
+    private static void ExecutePass(RasterCommandBuffer cmd, RendererList rendererList)
+    {
+        cmd.DrawRendererList(rendererList);
     }
 }

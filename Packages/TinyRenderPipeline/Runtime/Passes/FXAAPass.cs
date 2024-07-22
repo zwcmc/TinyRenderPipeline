@@ -5,36 +5,41 @@ using UnityEngine.Rendering;
 
 public class FXAAPass
 {
-    private PostProcessingData m_PostProcessingData;
-    private Material m_FXAAMaterial;
-
-    private RTHandle m_Source;
-
     private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("ApplyFXAA");
 
-    private static class ShaderConstants
+    private PostProcessingData m_PostProcessingData;
+    private Material m_FXAAMaterial;
+    private RTHandle m_Source;
+
+    private class PassData
     {
-        public static readonly int _SourceSize = Shader.PropertyToID("_SourceSize");
+        public TextureHandle sourceTextureHdl;
+        public TextureHandle targetTextureHdl;
+        public Material material;
+        public RenderingData renderingData;
     }
 
-    public void Setup(in RTHandle source, PostProcessingData postProcessingData)
+    public void Render(ScriptableRenderContext context, in RTHandle source, PostProcessingData postProcessingData, ref RenderingData renderingData)
     {
         m_PostProcessingData = postProcessingData;
-        if (m_PostProcessingData != null)
+        if (m_PostProcessingData == null)
+        {
+            Debug.LogError("FXAA Pass: post-processing data is null.");
+            return;
+        }
+
+        if (m_FXAAMaterial == null && m_PostProcessingData != null)
         {
             m_FXAAMaterial = CoreUtils.CreateEngineMaterial(m_PostProcessingData.shaders.fxaaShader);
         }
 
-        m_Source = source;
-    }
-
-    public void Render(ScriptableRenderContext context, ref RenderingData renderingData)
-    {
         if (m_FXAAMaterial == null)
         {
             Debug.LogError("FXAA Pass: material is null");
             return;
         }
+
+        m_Source = source;
 
         var cmd = renderingData.commandBuffer;
         using (new ProfilingScope(cmd, s_ProfilingSampler))
@@ -49,15 +54,7 @@ public class FXAAPass
         }
     }
 
-    private class PassData
-    {
-        public TextureHandle sourceTextureHdl;
-        public TextureHandle targetTextureHdl;
-        public Material material;
-        public RenderingData renderingData;
-    }
-
-    public void RenderGraphRender(RenderGraph renderGraph, TextureHandle source, TextureHandle target, PostProcessingData postProcessingData, ref RenderingData renderingData)
+    public void Record(RenderGraph renderGraph, TextureHandle source, TextureHandle target, PostProcessingData postProcessingData, ref RenderingData renderingData)
     {
         m_PostProcessingData = postProcessingData;
         if (m_PostProcessingData == null)
@@ -103,6 +100,6 @@ public class FXAAPass
     {
         float width = source.rt.width;
         float height = source.rt.height;
-        cmd.SetGlobalVector(ShaderConstants._SourceSize, new Vector4(width, height, 1.0f / width, 1.0f / height));
+        cmd.SetGlobalVector(ShaderPropertyId.sourceSize, new Vector4(width, height, 1.0f / width, 1.0f / height));
     }
 }

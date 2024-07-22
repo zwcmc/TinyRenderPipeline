@@ -11,11 +11,6 @@ public class DrawSkyboxPass
         public RendererList rendererList;
     }
 
-    private static void ExecutePass(RasterCommandBuffer cmd, RendererList rendererList)
-    {
-        cmd.DrawRendererList(rendererList);
-    }
-
     public void Render(ScriptableRenderContext context, ref RenderingData renderingData)
     {
         var cmd = renderingData.commandBuffer;
@@ -46,5 +41,10 @@ public class DrawSkyboxPass
                 ExecutePass(rasterGraphContext.cmd, data.rendererList);
             });
         }
+    }
+
+    private static void ExecutePass(RasterCommandBuffer cmd, RendererList rendererList)
+    {
+        cmd.DrawRendererList(rendererList);
     }
 }

@@ -5,14 +5,11 @@ using UnityEngine.Rendering;
 
 public class ColorGradingLutPass
 {
-    private Material m_LutBuilderMaterial;
     private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("ColorGradingLUT");
 
+    private Material m_LutBuilderMaterial;
     private PostProcessingData m_PostProcessingData;
-
     private RTHandle m_ColorGradingLut;
-
-    private PassData m_PassData;
 
     private static class ShaderConstants
     {
@@ -26,35 +23,41 @@ public class ColorGradingLutPass
         public static readonly int _ColorBalance = Shader.PropertyToID("_ColorBalance");
     }
 
+    private class PassData
+    {
+        public TextureHandle lutTextureHdl;
+        public Material lutBuilderMaterial;
+        public RenderingData renderingData;
+        public PostProcessingData postProcessingData;
+    }
+
+    private PassData m_PassData;
+
     public ColorGradingLutPass()
     {
         m_PassData = new PassData();
     }
 
-    public void Setup(in RTHandle colorGradingLut, PostProcessingData postProcessingData)
+    public void Render(ScriptableRenderContext context, in RTHandle colorGradingLut, PostProcessingData postProcessingData, ref RenderingData renderingData)
     {
-        m_ColorGradingLut = colorGradingLut;
         m_PostProcessingData = postProcessingData;
-
-        if (m_LutBuilderMaterial == null && m_PostProcessingData != null)
-        {
-            m_LutBuilderMaterial = CoreUtils.CreateEngineMaterial(m_PostProcessingData.shaders.lutBuilderShader);
-        }
-    }
-
-    public void Render(ScriptableRenderContext context, ref RenderingData renderingData)
-    {
         if (m_PostProcessingData == null)
         {
             Debug.LogError("Color Grading Lut Pass: post-processing data is null.");
             return;
         }
 
+        if (m_LutBuilderMaterial == null && m_PostProcessingData != null)
+        {
+            m_LutBuilderMaterial = CoreUtils.CreateEngineMaterial(m_PostProcessingData.shaders.lutBuilderShader);
+        }
         if (m_LutBuilderMaterial == null)
         {
             Debug.LogError("Color Grading Lut Pass: lut builder material is null.");
             return;
         }
+
+        m_ColorGradingLut = colorGradingLut;
 
         var cmd = renderingData.commandBuffer;
 
@@ -74,15 +77,7 @@ public class ColorGradingLutPass
         }
     }
 
-    private class PassData
-    {
-        public TextureHandle lutTextureHdl;
-        public Material lutBuilderMaterial;
-        public RenderingData renderingData;
-        public PostProcessingData postProcessingData;
-    }
-
-    public void RenderGraphRender(RenderGraph renderGraph, out TextureHandle lutTarget, PostProcessingData postProcessingData, ref RenderingData renderingData)
+    public void Record(RenderGraph renderGraph, out TextureHandle lutTarget, PostProcessingData postProcessingData, ref RenderingData renderingData)
     {
         m_PostProcessingData = postProcessingData;
         if (m_PostProcessingData == null)
@@ -127,6 +122,11 @@ public class ColorGradingLutPass
         }
     }
 
+    public void Dispose()
+    {
+        CoreUtils.Destroy(m_LutBuilderMaterial);
+    }
+
     private static void ExecutePass(RasterCommandBuffer cmd, RTHandle lutTarget, PassData data)
     {
         var material = data.lutBuilderMaterial;
@@ -166,10 +166,5 @@ public class ColorGradingLutPass
         }
 
         Blitter.BlitTexture(cmd, lutTarget, new Vector4(1f, 1f, 0f, 0f), material, 0);
-    }
-
-    public void Dispose()
-    {
-        CoreUtils.Destroy(m_LutBuilderMaterial);
     }
 }

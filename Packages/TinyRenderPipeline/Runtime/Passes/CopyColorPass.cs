@@ -10,6 +10,13 @@ public class CopyColorPass
     private RTHandle m_Source;
     private RTHandle m_Destination;
     private Material m_CopyColorMaterial;
+
+    private class PassData
+    {
+        public TextureHandle source;
+        public Material blitMaterial;
+    }
+
     private PassData m_PassData;
 
     public CopyColorPass(Material copyColorMaterial)
@@ -18,14 +25,11 @@ public class CopyColorPass
         m_PassData = new PassData();
     }
 
-    public void Setup(RTHandle source, RTHandle destination)
+    public void Render(ScriptableRenderContext context, RTHandle source, RTHandle destination, ref RenderingData renderingData)
     {
         m_Source = source;
         m_Destination = destination;
-    }
 
-    public void Render(ScriptableRenderContext context, ref RenderingData renderingData)
-    {
         var cmd = renderingData.commandBuffer;
         using (new ProfilingScope(cmd, s_ProfilingSampler))
         {
@@ -40,27 +44,7 @@ public class CopyColorPass
         }
     }
 
-    private static void ExecutePass(RasterCommandBuffer cmd, ref PassData data, RTHandle source)
-    {
-        var copyColorMaterial = data.blitMaterial;
-
-        if (copyColorMaterial == null)
-        {
-            Debug.LogError("Copy Color Pass: Copy Color Material is null.");
-            return;
-        }
-
-        Vector4 scaleBias = new Vector4(1f, 1f, 0f, 0f);
-        Blitter.BlitTexture(cmd, source, scaleBias, copyColorMaterial, 0);
-    }
-
-    private class PassData
-    {
-        public TextureHandle source;
-        public Material blitMaterial;
-    }
-
-    public void RenderGraphRender(RenderGraph renderGraph, TextureHandle source, TextureHandle destination, ref RenderingData renderingData)
+    public void Record(RenderGraph renderGraph, TextureHandle source, TextureHandle destination, ref RenderingData renderingData)
     {
         // Copy color pass
         using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_ProfilingSampler.name, out var passData, s_ProfilingSampler))
@@ -81,5 +65,19 @@ public class CopyColorPass
 
         // Set global opaque texture
         RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_CameraOpaqueTexture", destination, "SetGlobalCameraOpaqueTexture");
+    }
+
+    private static void ExecutePass(RasterCommandBuffer cmd, ref PassData data, RTHandle source)
+    {
+        var copyColorMaterial = data.blitMaterial;
+
+        if (copyColorMaterial == null)
+        {
+            Debug.LogError("Copy Color Pass: Copy Color Material is null.");
+            return;
+        }
+
+        Vector4 scaleBias = new Vector4(1f, 1f, 0f, 0f);
+        Blitter.BlitTexture(cmd, source, scaleBias, copyColorMaterial, 0);
     }
 }

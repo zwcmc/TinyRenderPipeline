@@ -36,6 +36,12 @@ public class ForwardLights
 
     private static readonly ProfilingSampler s_SetupLightsSampler = new ProfilingSampler("SetupForwardLights");
 
+    private class SetupLightsPassData
+    {
+        public RenderingData renderingData;
+        public ForwardLights forwardLights;
+    }
+
     public ForwardLights()
     {
         LightConstantBuffer._MainLightPosition = Shader.PropertyToID("_MainLightPosition");
@@ -63,12 +69,6 @@ public class ForwardLights
         {
             SetupShaderLightConstants(cmd, ref renderingData);
         }
-    }
-
-    private class SetupLightsPassData
-    {
-        public RenderingData renderingData;
-        public ForwardLights forwardLights;
     }
 
     public void SetupRenderGraphLights(RenderGraph renderGraph, ref RenderingData renderingData)
@@ -139,8 +139,7 @@ public class ForwardLights
         }
     }
 
-    private void InitializeLightConstants(NativeArray<VisibleLight> lights, int lightIndex, out Vector4 lightPos, out Vector4 lightColor, out Vector4 lightAttenuation,
-        out Vector4 lightSpotDir, out uint lightLayerMask)
+    private void InitializeLightConstants(NativeArray<VisibleLight> lights, int lightIndex, out Vector4 lightPos, out Vector4 lightColor, out Vector4 lightAttenuation, out Vector4 lightSpotDir, out uint lightLayerMask)
     {
         lightPos = LightDefaultValue.DefaultLightPosition;
         lightColor = LightDefaultValue.DefaultLightColor;

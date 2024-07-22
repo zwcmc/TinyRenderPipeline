@@ -70,6 +70,7 @@ public static class RenderingUtils
         else
         {
             desc = camera.targetTexture.descriptor;
+            desc.msaaSamples = 1;
             desc.width = scaledWidth;
             desc.height = scaledHeight;
 

@@ -129,9 +129,6 @@ public class TinyRenderer : TinyBaseRenderer
             RTHandleStaticHelpers.SetRTHandleUserManagedWrapper(ref m_TargetDepthHandle, targetId);
         }
 
-        // Setup camera properties
-        context.SetupCameraProperties(camera);
-
         // Post processing
         // Check post processing data setup
         var additionalCameraData = camera.GetComponent<AdditionalCameraData>();
@@ -150,17 +147,17 @@ public class TinyRenderer : TinyBaseRenderer
             int lutWidth = lutHeight * lutHeight;
             var lutFormat = renderingData.isHdrEnabled ? SystemInfo.GetGraphicsFormat(DefaultFormat.HDR) : SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
             var descriptor = new RenderTextureDescriptor(lutWidth, lutHeight, lutFormat, 0);
-
             RenderingUtils.ReAllocateIfNeeded(ref m_ColorGradingLut, descriptor, FilterMode.Bilinear, TextureWrapMode.Clamp, name: "_InternalGradingLut");
 
-            m_ColorGradingLutPass.Setup(m_ColorGradingLut, postProcessingData);
-            m_ColorGradingLutPass.Render(context, ref renderingData);
+            m_ColorGradingLutPass.Render(context, in m_ColorGradingLut, postProcessingData, ref renderingData);
         }
 
         // Create color texture logic
         bool needCopyColor = renderingData.copyColorTexture;
         if (additionalCameraData)
+        {
             needCopyColor &= additionalCameraData.requireColorTexture;
+        }
 
         bool createColorTexture = applyPostProcessing; // post-processing is active
         createColorTexture |= !renderingData.isDefaultCameraViewport; // camera's viewport rect is not default(0, 0, 1, 1)
@@ -169,7 +166,9 @@ public class TinyRenderer : TinyBaseRenderer
         // Check if need copy depth texture
         bool needCopyDepth = renderingData.copyDepthTexture;
         if (additionalCameraData)
+        {
             needCopyDepth &= additionalCameraData.requireDepthTexture;
+        }
 
         // Use intermediate rendering textures while:
         // 1. need create color texture
@@ -180,11 +179,15 @@ public class TinyRenderer : TinyBaseRenderer
 
         // Create color buffer and depth buffer for intermediate rendering
         if (intermediateRenderTexture)
+        {
             CreateCameraRenderTarget(context, ref cameraTargetDescriptor, cmd, camera);
+        }
 
         m_ActiveCameraColorAttachment = intermediateRenderTexture ? m_ColorBufferSystem.PeekBackBuffer() : m_TargetColorHandle;
         m_ActiveCameraDepthAttachment = intermediateRenderTexture ? m_CameraDepthAttachment : m_TargetDepthHandle;
 
+        // Setup camera properties
+        context.SetupCameraProperties(camera);
         // This is still required because of the following reasons:
         // - Camera billboard properties.
         // - Camera frustum planes: unity_CameraWorldClipPlanes[6]
@@ -224,13 +227,10 @@ public class TinyRenderer : TinyBaseRenderer
             depthDescriptor.graphicsFormat = GraphicsFormat.R32_SFloat;
             depthDescriptor.depthStencilFormat = GraphicsFormat.None;
             depthDescriptor.depthBufferBits = 0;
-
-            depthDescriptor.msaaSamples = 1;
             RenderingUtils.ReAllocateIfNeeded(ref m_DepthTexture, depthDescriptor, FilterMode.Point, wrapMode: TextureWrapMode.Clamp, name: "_CameraDepthTexture");
             cmd.SetGlobalTexture(m_DepthTexture.name, m_DepthTexture.nameID);
 
-            m_CopyDepthPass.Setup(m_ActiveCameraDepthAttachment, m_DepthTexture);
-            m_CopyDepthPass.Render(context, ref renderingData);
+            m_CopyDepthPass.Render(context, m_ActiveCameraDepthAttachment, m_DepthTexture, ref renderingData);
 
             // After copying the depth buffer, switching back to active render targets, and continuing to render skybox and transparent objects
             cmd.SetRenderTarget(m_ActiveCameraColorAttachment, RenderBufferLoadAction.Load, RenderBufferStoreAction.Store,
@@ -251,13 +251,12 @@ public class TinyRenderer : TinyBaseRenderer
         if (needCopyColor)
         {
             var descriptor = cameraTargetDescriptor;
-            descriptor.msaaSamples = 1;
             descriptor.depthBufferBits = 0;
+            descriptor.depthStencilFormat = GraphicsFormat.None;
             RenderingUtils.ReAllocateIfNeeded(ref m_OpaqueColor, descriptor, FilterMode.Bilinear, TextureWrapMode.Clamp, name: "_CameraOpaqueTexture");
             cmd.SetGlobalTexture(m_OpaqueColor.name, m_OpaqueColor.nameID);
 
-            m_CopyColorPass.Setup(m_ActiveCameraColorAttachment, m_OpaqueColor);
-            m_CopyColorPass.Render(context, ref renderingData);
+            m_CopyColorPass.Render(context, m_ActiveCameraColorAttachment, m_OpaqueColor, ref renderingData);
 
             // After copying the color buffer, switching back to active render targets, and continuing to render transparent objects
             cmd.SetRenderTarget(m_ActiveCameraColorAttachment, RenderBufferLoadAction.Load, RenderBufferStoreAction.Store,
@@ -283,15 +282,13 @@ public class TinyRenderer : TinyBaseRenderer
 
         if (applyPostProcessing)
         {
-            m_PostProcessingPass.Setup(cameraTargetDescriptor, m_ActiveCameraColorAttachment, resolvePostProcessingToCameraTarget, m_ColorGradingLut, postProcessingData);
-            m_PostProcessingPass.Render(context, ref renderingData);
+            m_PostProcessingPass.Render(context, m_ActiveCameraColorAttachment, resolvePostProcessingToCameraTarget, m_ColorGradingLut, postProcessingData, ref renderingData);
         }
 
         // FXAA pass always blit to final camera target
         if (hasFxaaPass)
         {
-            m_FXAAPass.Setup(m_ActiveCameraColorAttachment, postProcessingData);
-            m_FXAAPass.Render(context, ref renderingData);
+            m_FXAAPass.Render(context, m_ActiveCameraColorAttachment, postProcessingData, ref renderingData);
         }
 
         // Check active color attachment is resolved to final target:
@@ -303,8 +300,7 @@ public class TinyRenderer : TinyBaseRenderer
         // If is not resolved to final camera target, need final blit pass to do this
         if (!cameraTargetResolved)
         {
-            m_FinalBlitPass.Setup(m_ActiveCameraColorAttachment);
-            m_FinalBlitPass.Render(context, ref renderingData);
+            m_FinalBlitPass.Render(context, m_ActiveCameraColorAttachment, ref renderingData);
         }
 
         // When use intermediate rendering, copying depth to the camera target finally to make gizmos render correctly in scene camera view or preview camera view
@@ -313,8 +309,7 @@ public class TinyRenderer : TinyBaseRenderer
         bool isSceneViewOrPreviewCamera = cameraType == CameraType.SceneView || cameraType == CameraType.Preview;
         if (intermediateRenderTexture && (isSceneViewOrPreviewCamera || isGizmosEnabled))
         {
-            m_FinalDepthCopyPass.Setup(m_ActiveCameraDepthAttachment, TinyRenderPipeline.k_CameraTarget);
-            m_FinalDepthCopyPass.Render(context, ref renderingData);
+            m_FinalDepthCopyPass.Render(context, m_ActiveCameraDepthAttachment, TinyRenderPipeline.k_CameraTarget, ref renderingData);
         }
 #endif
 

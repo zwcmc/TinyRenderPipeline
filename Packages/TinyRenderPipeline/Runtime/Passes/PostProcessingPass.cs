@@ -71,6 +71,31 @@ public class PostProcessingPass
         BloomUpsample,
     }
 
+    private class BloomMaterialSetupPassData
+    {
+        public Vector4 bloomParams;
+        public bool highQualityFiltering;
+        public Material bloomMaterial;
+    }
+
+    private class BloomPassData
+    {
+        public TextureHandle sourceTextureHdl;
+        public TextureHandle sourceTextureLowMipHdl;
+        public Material material;
+        public float bloomIntensity;
+    }
+
+    private class UberPassData
+    {
+        public TextureHandle sourceTextureHdl;
+        public TextureHandle targetTextureHdl;
+        public RenderingData renderingData;
+        public Material material;
+        public TextureHandle lutTextureHdl;
+        public Vector4 lutParams;
+    }
+
     public PostProcessingPass()
     {
         ShaderConstants._BloomMipUp = new int[k_MaxPyramidSize];
@@ -92,24 +117,18 @@ public class PostProcessingPass
         }
     }
 
-    public void Setup(in RenderTextureDescriptor baseDescriptor, in RTHandle source, bool resolveToScreen, in RTHandle internalLut, PostProcessingData postProcessingData)
+    public void Render(ScriptableRenderContext context, in RTHandle source, bool resolveToScreen, in RTHandle internalLut, PostProcessingData postProcessingData, ref RenderingData renderingData)
     {
         m_PostProcessingData = postProcessingData;
-        if (m_PostProcessingData != null)
-            m_Materials = new MaterialLibrary(m_PostProcessingData);
-
-        m_Descriptor = baseDescriptor;
-        m_Source = source;
-        m_ResolveToScreen = resolveToScreen;
-        m_InternalLut = internalLut;
-    }
-
-    public void Render(ScriptableRenderContext context, ref RenderingData renderingData)
-    {
         if (m_PostProcessingData == null)
         {
             Debug.LogError("Post Processing Pass: post-processing data is null.");
             return;
+        }
+
+        if (m_Materials == null && m_PostProcessingData != null)
+        {
+            m_Materials = new MaterialLibrary(m_PostProcessingData);
         }
 
         if (m_Materials == null)
@@ -117,6 +136,11 @@ public class PostProcessingPass
             Debug.LogError("Post Processing Pass: post-processing materials is null.");
             return;
         }
+
+        m_Descriptor = renderingData.cameraTargetDescriptor;
+        m_Source = source;
+        m_ResolveToScreen = resolveToScreen;
+        m_InternalLut = internalLut;
 
         m_Bloom = m_PostProcessingData.bloom;
 
@@ -130,6 +154,48 @@ public class PostProcessingPass
 
             RenderPostProcessingEffects(cmd, ref renderingData);
         }
+    }
+
+    public void Record(RenderGraph renderGraph, in TextureHandle source, TextureHandle colorLut, TextureHandle target, bool resolveToScreen, PostProcessingData postProcessingData, ref RenderingData renderingData)
+    {
+        m_PostProcessingData = postProcessingData;
+
+        if (m_PostProcessingData == null)
+        {
+            Debug.LogError("Post Processing Pass: post-processing data is null.");
+            return;
+        }
+
+        m_Materials = new MaterialLibrary(m_PostProcessingData);
+        if (m_Materials == null)
+        {
+            Debug.LogError("Post Processing Pass: post-processing materials is null.");
+            return;
+        }
+
+        m_Descriptor = renderingData.cameraTargetDescriptor;
+        m_ResolveToScreen = resolveToScreen;
+
+        m_Bloom = m_PostProcessingData.bloom;
+        m_DefaultHDRFormat = renderingData.isHdrEnabled ? SystemInfo.GetGraphicsFormat(DefaultFormat.HDR) : SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
+
+        // Reset uber pass keywords
+        m_Materials.uberPost.shaderKeywords = null;
+
+        // Bloom
+        if (m_Bloom.IsActive())
+        {
+            // Render bloom texture
+            SetupRenderGraphBloom(renderGraph, source, out var bloomTexture);
+            // Setup bloom on uber pass
+            SetupRenderGraphUberPassBloom(renderGraph, bloomTexture, m_Materials.uberPost);
+        }
+
+        // Setup color grading on uber pass
+        SetupRenderGraphColorGrading(renderGraph, colorLut, ref renderingData, m_Materials.uberPost);
+
+        // Final uber pass
+        RenderGraphRenderUberPass(renderGraph, source, target, m_Materials.uberPost, ref renderingData);
     }
 
     public void Dispose()
@@ -176,73 +242,89 @@ public class PostProcessingPass
         }
     }
 
-    #region Render Graph
-
-    private class BloomMaterialSetupPassData
+    private void SetupBloom(CommandBuffer cmd, RTHandle source, Material uberMaterial)
     {
-        public Vector4 bloomParams;
-        public bool highQualityFiltering;
-        public Material bloomMaterial;
-    }
-
-    private class BloomPassData
-    {
-        public TextureHandle sourceTextureHdl;
-        public TextureHandle sourceTextureLowMipHdl;
-        public Material material;
-        public float bloomIntensity;
-    }
-
-    private class UberPassData
-    {
-        public TextureHandle sourceTextureHdl;
-        public TextureHandle targetTextureHdl;
-        public RenderingData renderingData;
-        public Material material;
-        public TextureHandle lutTextureHdl;
-        public Vector4 lutParams;
-    }
-
-    public void RenderGraphRender(RenderGraph renderGraph, in TextureHandle source, TextureHandle colorLut, TextureHandle target, bool resolveToScreen, PostProcessingData postProcessingData, ref RenderingData renderingData)
-    {
-        m_PostProcessingData = postProcessingData;
-
-        if (m_PostProcessingData == null)
+        // Start at half-res
+        int downres = 1;
+        switch (m_Bloom.downscale)
         {
-            Debug.LogError("Post Processing Pass: post-processing data is null.");
-            return;
+            case PostProcessingData.BloomDownscaleMode.Half:
+                downres = 1;
+                break;
+            case PostProcessingData.BloomDownscaleMode.Quarter:
+                downres = 2;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
         }
 
-        m_Materials = new MaterialLibrary(m_PostProcessingData);
-        if (m_Materials == null)
+        int tw = m_Descriptor.width >> downres;
+        int th = m_Descriptor.height >> downres;
+
+        // Determine the iteration count
+        int maxSize = Mathf.Max(tw, th);
+        int iterations = Mathf.FloorToInt(Mathf.Log(maxSize, 2f) - 1);
+        int mipCount = Mathf.Clamp(iterations, 1, m_Bloom.maxIterations);
+
+        // Pre-filtering parameters
+        float clamp = m_Bloom.clamp;
+        float threshold = Mathf.GammaToLinearSpace(m_Bloom.threshold);
+        float thresholdKnee = threshold * 0.5f;
+
+        // Bloom material setup
+        float scatter = Mathf.Lerp(0.05f, 0.95f, m_Bloom.scatter);
+        var bloomMaterial = m_Materials.bloom;
+        bloomMaterial.SetVector(ShaderConstants._BloomParams, new Vector4(scatter, clamp, threshold, thresholdKnee));
+        CoreUtils.SetKeyword(bloomMaterial, ShaderKeywordStrings.BloomHQ, m_Bloom.highQualityFiltering);
+
+        // Prefilter
+        var desc = RenderingUtils.GetCompatibleDescriptor(m_Descriptor, tw, th, m_DefaultHDRFormat);
+        for (int i = 0; i < mipCount; i++)
         {
-            Debug.LogError("Post Processing Pass: post-processing materials is null.");
-            return;
+            RenderingUtils.ReAllocateIfNeeded(ref m_BloomMipUp[i], desc, FilterMode.Bilinear, TextureWrapMode.Clamp, name: m_BloomMipUp[i].name);
+            RenderingUtils.ReAllocateIfNeeded(ref m_BloomMipDown[i], desc, FilterMode.Bilinear, TextureWrapMode.Clamp, name: m_BloomMipDown[i].name);
+            desc.width = Mathf.Max(1, desc.width >> 1);
+            desc.height = Mathf.Max(1, desc.height >> 1);
+        }
+        Blitter.BlitCameraTexture(cmd, source, m_BloomMipDown[0], RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, bloomMaterial, (int)BloomPass.BloomPrefilter);
+
+        // Downsample - gaussian pyramid
+        var lastDown = m_BloomMipDown[0];
+        for (int i = 1; i < mipCount; i++)
+        {
+            Blitter.BlitCameraTexture(cmd, lastDown, m_BloomMipUp[i], RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, bloomMaterial, (int)BloomPass.BloomBlurH);
+            Blitter.BlitCameraTexture(cmd, m_BloomMipUp[i], m_BloomMipDown[i], RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, bloomMaterial, (int)BloomPass.BloomBlurV);
+
+            lastDown = m_BloomMipDown[i];
         }
 
-        m_Descriptor = renderingData.cameraTargetDescriptor;
-        m_ResolveToScreen = resolveToScreen;
-
-        m_Bloom = m_PostProcessingData.bloom;
-        m_DefaultHDRFormat = renderingData.isHdrEnabled ? SystemInfo.GetGraphicsFormat(DefaultFormat.HDR) : SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
-
-        // Reset uber keywords
-        m_Materials.uberPost.shaderKeywords = null;
-
-        // Bloom
-        if (m_Bloom.IsActive())
+        // Upsample (bilinear by default, HQ filtering does bicubic instead
+        for (int i = mipCount - 2; i >= 0; i--)
         {
-            // Render bloom texture
-            SetupRenderGraphBloom(renderGraph, source, out var bloomTexture);
-            // Setup bloom on uber pass
-            SetupRenderGraphUberPassBloom(renderGraph, bloomTexture, m_Materials.uberPost);
+            var lowMip = (i == mipCount - 2) ? m_BloomMipDown[i + 1] : m_BloomMipUp[i + 1];
+            var highMip = m_BloomMipDown[i];
+            var dst = m_BloomMipUp[i];
+
+            cmd.SetGlobalTexture(ShaderConstants._SourceTexLowMip, lowMip);
+            Blitter.BlitCameraTexture(cmd, highMip, dst, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, bloomMaterial, (int)BloomPass.BloomUpsample);
         }
 
-        // Setup color grading on uber pass
-        SetupRenderGraphColorGrading(renderGraph, colorLut, ref renderingData, m_Materials.uberPost);
+        // Setup bloom on uber post
+        uberMaterial.EnableKeyword(ShaderKeywordStrings.Bloom);
+        uberMaterial.SetFloat(ShaderConstants._BloomIntensity, m_Bloom.intensity);
+        cmd.SetGlobalTexture(ShaderConstants._Bloom_Texture, m_BloomMipUp[0]);
+    }
 
-        // Final uber pass
-        RenderGraphRenderUberPass(renderGraph, source, target, m_Materials.uberPost, ref renderingData);
+    private void SetupColorGrading(ref RenderingData renderingData, Material uberMaterial)
+    {
+        int lutHeight = renderingData.lutSize;
+        int lutWidth = lutHeight * lutHeight;
+
+        uberMaterial.SetTexture(ShaderConstants._InternalLut, m_InternalLut);
+        uberMaterial.SetVector(ShaderConstants._Lut_Params, new Vector4(1f / lutWidth, 1f / lutHeight, lutHeight - 1f, 1f));
+
+        if (renderingData.isHdrEnabled)
+            uberMaterial.EnableKeyword(ShaderKeywordStrings.HDRColorGrading);
     }
 
     private void SetupRenderGraphBloom(RenderGraph renderGraph, in TextureHandle source, out TextureHandle destination)
@@ -457,101 +539,6 @@ public class PostProcessingPass
             });
         }
     }
-
-    #endregion
-
-    #region Bloom
-
-    private void SetupBloom(CommandBuffer cmd, RTHandle source, Material uberMaterial)
-    {
-        // Start at half-res
-        int downres = 1;
-        switch (m_Bloom.downscale)
-        {
-            case PostProcessingData.BloomDownscaleMode.Half:
-                downres = 1;
-                break;
-            case PostProcessingData.BloomDownscaleMode.Quarter:
-                downres = 2;
-                break;
-            default:
-                throw new ArgumentOutOfRangeException();
-        }
-
-        int tw = m_Descriptor.width >> downres;
-        int th = m_Descriptor.height >> downres;
-
-        // Determine the iteration count
-        int maxSize = Mathf.Max(tw, th);
-        int iterations = Mathf.FloorToInt(Mathf.Log(maxSize, 2f) - 1);
-        int mipCount = Mathf.Clamp(iterations, 1, m_Bloom.maxIterations);
-
-        // Pre-filtering parameters
-        float clamp = m_Bloom.clamp;
-        float threshold = Mathf.GammaToLinearSpace(m_Bloom.threshold);
-        float thresholdKnee = threshold * 0.5f;
-
-        // Bloom material setup
-        float scatter = Mathf.Lerp(0.05f, 0.95f, m_Bloom.scatter);
-        var bloomMaterial = m_Materials.bloom;
-        bloomMaterial.SetVector(ShaderConstants._BloomParams, new Vector4(scatter, clamp, threshold, thresholdKnee));
-        CoreUtils.SetKeyword(bloomMaterial, ShaderKeywordStrings.BloomHQ, m_Bloom.highQualityFiltering);
-
-        // Prefilter
-        var desc = RenderingUtils.GetCompatibleDescriptor(m_Descriptor, tw, th, m_DefaultHDRFormat);
-        for (int i = 0; i < mipCount; i++)
-        {
-            RenderingUtils.ReAllocateIfNeeded(ref m_BloomMipUp[i], desc, FilterMode.Bilinear, TextureWrapMode.Clamp, name: m_BloomMipUp[i].name);
-            RenderingUtils.ReAllocateIfNeeded(ref m_BloomMipDown[i], desc, FilterMode.Bilinear, TextureWrapMode.Clamp, name: m_BloomMipDown[i].name);
-            desc.width = Mathf.Max(1, desc.width >> 1);
-            desc.height = Mathf.Max(1, desc.height >> 1);
-        }
-        Blitter.BlitCameraTexture(cmd, source, m_BloomMipDown[0], RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, bloomMaterial, (int)BloomPass.BloomPrefilter);
-
-        // Downsample - gaussian pyramid
-        var lastDown = m_BloomMipDown[0];
-        for (int i = 1; i < mipCount; i++)
-        {
-            Blitter.BlitCameraTexture(cmd, lastDown, m_BloomMipUp[i], RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, bloomMaterial, (int)BloomPass.BloomBlurH);
-            Blitter.BlitCameraTexture(cmd, m_BloomMipUp[i], m_BloomMipDown[i], RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, bloomMaterial, (int)BloomPass.BloomBlurV);
-
-            lastDown = m_BloomMipDown[i];
-        }
-
-        // Upsample (bilinear by default, HQ filtering does bicubic instead
-        for (int i = mipCount - 2; i >= 0; i--)
-        {
-            var lowMip = (i == mipCount - 2) ? m_BloomMipDown[i + 1] : m_BloomMipUp[i + 1];
-            var highMip = m_BloomMipDown[i];
-            var dst = m_BloomMipUp[i];
-
-            cmd.SetGlobalTexture(ShaderConstants._SourceTexLowMip, lowMip);
-            Blitter.BlitCameraTexture(cmd, highMip, dst, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, bloomMaterial, (int)BloomPass.BloomUpsample);
-        }
-
-        // Setup bloom on uber post
-        uberMaterial.EnableKeyword(ShaderKeywordStrings.Bloom);
-        uberMaterial.SetFloat(ShaderConstants._BloomIntensity, m_Bloom.intensity);
-        cmd.SetGlobalTexture(ShaderConstants._Bloom_Texture, m_BloomMipUp[0]);
-    }
-
-    #endregion
-
-    #region Color Grading
-
-    private void SetupColorGrading(ref RenderingData renderingData, Material uberMaterial)
-    {
-        int lutHeight = renderingData.lutSize;
-        int lutWidth = lutHeight * lutHeight;
-
-        uberMaterial.SetTexture(ShaderConstants._InternalLut, m_InternalLut);
-        uberMaterial.SetVector(ShaderConstants._Lut_Params, new Vector4(1f / lutWidth, 1f / lutHeight, lutHeight - 1f, 1f));
-
-        if (renderingData.isHdrEnabled)
-            uberMaterial.EnableKeyword(ShaderKeywordStrings.HDRColorGrading);
-    }
-
-    #endregion
 
     private class MaterialLibrary
     {
