@@ -100,7 +100,7 @@ public class CopyDepthPass
         Blitter.BlitTexture(cmd, source, scaleBias, copyDepthMaterial, 0);
     }
 
-    public void RenderGraphRender(RenderGraph renderGraph, TextureHandle source, TextureHandle destination, ref RenderingData renderingData, bool bindAsCameraDepth = false, string passName = "CopyDepthPass")
+    public void RenderGraphRender(RenderGraph renderGraph, TextureHandle source, TextureHandle destination, TextureHandle activeColorTexture, ref RenderingData renderingData, bool bindAsCameraDepth = false, string passName = "CopyDepthPass")
     {
         // Set global depth attachment
         RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_CameraDepthAttachment", source, "SetGlobalCameraDepthAttachment");
@@ -112,6 +112,8 @@ public class CopyDepthPass
 
             if (m_CopyToDepthTexture)
             {
+                if (activeColorTexture.IsValid())
+                    builder.UseTextureFragment(activeColorTexture, 0);
                 passData.destination = builder.UseTextureFragmentDepth(destination, IBaseRenderGraphBuilder.AccessFlags.Write);
             }
             else

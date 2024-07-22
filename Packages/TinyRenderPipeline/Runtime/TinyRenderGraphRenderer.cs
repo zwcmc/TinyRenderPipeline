@@ -167,7 +167,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
             depthDescriptor.depthStencilFormat = GraphicsFormat.None;
             depthDescriptor.depthBufferBits = (int)DepthBits.None;
             m_DepthTextureHdl = RenderingUtils.CreateRenderGraphTexture(renderGraph, depthDescriptor, "_CameraDepthTexture", true);
-            m_CopyDepthPass.RenderGraphRender(renderGraph, m_ActiveRenderGraphCameraDepthHandle, m_DepthTextureHdl, ref renderingData, true);
+            m_CopyDepthPass.RenderGraphRender(renderGraph, m_ActiveRenderGraphCameraDepthHandle, m_DepthTextureHdl, TextureHandle.nullHandle, ref renderingData, true);
         }
         else
         {
@@ -248,10 +248,11 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         bool isSceneViewOrPreviewCamera = cameraType == CameraType.SceneView || cameraType == CameraType.Preview;
         if (intermediateRenderTexture && (isSceneViewOrPreviewCamera || isGizmosEnabled))
         {
-            m_FinalDepthCopyPass.RenderGraphRender(renderGraph, m_ActiveRenderGraphCameraDepthHandle, m_BackBufferDepth, ref renderingData, false, "FinalDepthCopy");
+            m_FinalDepthCopyPass.RenderGraphRender(renderGraph, m_ActiveRenderGraphCameraDepthHandle, m_BackBufferDepth, m_ActiveRenderGraphCameraColorHandle, ref renderingData, false, "FinalDepthCopy");
         }
 #endif
 
+        // Drawing Gizmos
         DrawRenderGraphGizmos(renderGraph, m_ActiveRenderGraphCameraColorHandle, m_BackBufferDepth, GizmoSubset.PostImageEffects, ref renderingData);
     }
 
