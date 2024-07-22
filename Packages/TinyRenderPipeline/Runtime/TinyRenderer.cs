@@ -43,6 +43,8 @@ public class TinyRenderer : TinyBaseRenderer
     private RTHandle m_DepthTexture;
     private RTHandle m_OpaqueColor;
 
+    private RTHandle m_ColorGradingLut;
+
     private Material m_BlitMaterial;
     private Material m_CopyDepthMaterial;
 
@@ -149,9 +151,9 @@ public class TinyRenderer : TinyBaseRenderer
             var lutFormat = renderingData.isHdrEnabled ? SystemInfo.GetGraphicsFormat(DefaultFormat.HDR) : SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
             var descriptor = new RenderTextureDescriptor(lutWidth, lutHeight, lutFormat, 0);
 
-            RenderingUtils.ReAllocateIfNeeded(ref m_ColorGradingLutPass.m_ColorGradingLut, descriptor, FilterMode.Bilinear, TextureWrapMode.Clamp, name: "_InternalGradingLut");
+            RenderingUtils.ReAllocateIfNeeded(ref m_ColorGradingLut, descriptor, FilterMode.Bilinear, TextureWrapMode.Clamp, name: "_InternalGradingLut");
 
-            m_ColorGradingLutPass.Setup(postProcessingData);
+            m_ColorGradingLutPass.Setup(m_ColorGradingLut, postProcessingData);
             m_ColorGradingLutPass.Render(context, ref renderingData);
         }
 
@@ -281,7 +283,7 @@ public class TinyRenderer : TinyBaseRenderer
 
         if (applyPostProcessing)
         {
-            m_PostProcessingPass.Setup(cameraTargetDescriptor, m_ActiveCameraColorAttachment, resolvePostProcessingToCameraTarget, m_ColorGradingLutPass.m_ColorGradingLut, postProcessingData);
+            m_PostProcessingPass.Setup(cameraTargetDescriptor, m_ActiveCameraColorAttachment, resolvePostProcessingToCameraTarget, m_ColorGradingLut, postProcessingData);
             m_PostProcessingPass.Render(context, ref renderingData);
         }
 
@@ -346,6 +348,8 @@ public class TinyRenderer : TinyBaseRenderer
 
         m_DepthTexture?.Release();
         m_OpaqueColor?.Release();
+
+        m_ColorGradingLut?.Release();
 
         CoreUtils.Destroy(m_BlitMaterial);
         CoreUtils.Destroy(m_CopyDepthMaterial);

@@ -199,6 +199,8 @@ public class PostProcessingPass
         public TextureHandle targetTextureHdl;
         public RenderingData renderingData;
         public Material material;
+        public TextureHandle lutTextureHdl;
+        public Vector4 lutParams;
     }
 
     public void RenderGraphRender(RenderGraph renderGraph, in TextureHandle source, TextureHandle colorLut, TextureHandle target, bool resolveToScreen, PostProcessingData postProcessingData, ref RenderingData renderingData)
@@ -227,11 +229,17 @@ public class PostProcessingPass
         // Reset uber keywords
         m_Materials.uberPost.shaderKeywords = null;
 
+        // Bloom
         if (m_Bloom.IsActive())
         {
+            // Render bloom texture
             SetupRenderGraphBloom(renderGraph, source, out var bloomTexture);
+            // Setup bloom on uber pass
             SetupRenderGraphUberPassBloom(renderGraph, bloomTexture, m_Materials.uberPost);
         }
+
+        // Setup color grading on uber pass
+        SetupRenderGraphColorGrading(renderGraph, colorLut, ref renderingData, m_Materials.uberPost);
 
         // Final uber pass
         RenderGraphRenderUberPass(renderGraph, source, target, m_Materials.uberPost, ref renderingData);
@@ -398,6 +406,33 @@ public class PostProcessingPass
                 material.EnableKeyword(ShaderKeywordStrings.Bloom);
                 material.SetFloat(ShaderConstants._BloomIntensity, data.bloomIntensity);
                 rasterGraphContext.cmd.SetGlobalTexture(ShaderConstants._Bloom_Texture, data.sourceTextureHdl);
+            });
+        }
+    }
+
+    private void SetupRenderGraphColorGrading(RenderGraph renderGraph, TextureHandle lutTexture, ref RenderingData renderingData, Material uberMaterial)
+    {
+        using (var builder = renderGraph.AddRasterRenderPass<UberPassData>("Setup Color Grading Lut Texture", out var passData))
+        {
+            if (lutTexture.IsValid())
+                passData.lutTextureHdl = builder.UseTexture(lutTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
+
+            int lutHeight = renderingData.lutSize;
+            int lutWidth = lutHeight * lutHeight;
+            passData.lutParams = new Vector4(1f / lutWidth, 1f / lutHeight, lutHeight - 1f, 1f);
+            passData.material = uberMaterial;
+            passData.renderingData = renderingData;
+
+            builder.AllowPassCulling(false);
+
+            builder.SetRenderFunc((UberPassData data, RasterGraphContext rasterGraphContext) =>
+            {
+                var material = data.material;
+
+                material.SetTexture(ShaderConstants._InternalLut, data.lutTextureHdl);
+                material.SetVector(ShaderConstants._Lut_Params, data.lutParams);
+                if (data.renderingData.isHdrEnabled)
+                    material.EnableKeyword(ShaderKeywordStrings.HDRColorGrading);
             });
         }
     }

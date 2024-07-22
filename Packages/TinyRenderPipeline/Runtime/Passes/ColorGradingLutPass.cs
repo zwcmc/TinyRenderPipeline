@@ -1,14 +1,18 @@
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
+using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
 public class ColorGradingLutPass
 {
-    private Material m_LutBuilder;
+    private Material m_LutBuilderMaterial;
     private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("ColorGradingLUT");
 
     private PostProcessingData m_PostProcessingData;
 
-    public RTHandle m_ColorGradingLut;
+    private RTHandle m_ColorGradingLut;
+
+    private PassData m_PassData;
 
     private static class ShaderConstants
     {
@@ -22,27 +26,33 @@ public class ColorGradingLutPass
         public static readonly int _ColorBalance = Shader.PropertyToID("_ColorBalance");
     }
 
-    public void Setup(PostProcessingData postProcessingData)
+    public ColorGradingLutPass()
     {
+        m_PassData = new PassData();
+    }
+
+    public void Setup(in RTHandle colorGradingLut, PostProcessingData postProcessingData)
+    {
+        m_ColorGradingLut = colorGradingLut;
         m_PostProcessingData = postProcessingData;
 
-        if (m_LutBuilder == null && m_PostProcessingData != null)
+        if (m_LutBuilderMaterial == null && m_PostProcessingData != null)
         {
-            m_LutBuilder = CoreUtils.CreateEngineMaterial(m_PostProcessingData.shaders.lutBuilderShader);
+            m_LutBuilderMaterial = CoreUtils.CreateEngineMaterial(m_PostProcessingData.shaders.lutBuilderShader);
         }
     }
 
     public void Render(ScriptableRenderContext context, ref RenderingData renderingData)
     {
-        if (m_LutBuilder == null)
-        {
-            Debug.LogError("Color Grading Lut Pass: lut builder material is null.");
-            return;
-        }
-
         if (m_PostProcessingData == null)
         {
             Debug.LogError("Color Grading Lut Pass: post-processing data is null.");
+            return;
+        }
+
+        if (m_LutBuilderMaterial == null)
+        {
+            Debug.LogError("Color Grading Lut Pass: lut builder material is null.");
             return;
         }
 
@@ -56,46 +66,110 @@ public class ColorGradingLutPass
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
 
-            m_LutBuilder.shaderKeywords = null;
+            m_PassData.lutBuilderMaterial = m_LutBuilderMaterial;
+            m_PassData.renderingData = renderingData;
+            m_PassData.postProcessingData = m_PostProcessingData;
 
+            ExecutePass(CommandBufferHelpers.GetRasterCommandBuffer(cmd), m_ColorGradingLut, m_PassData);
+        }
+    }
+
+    private class PassData
+    {
+        public TextureHandle lutTextureHdl;
+        public Material lutBuilderMaterial;
+        public RenderingData renderingData;
+        public PostProcessingData postProcessingData;
+    }
+
+    public void RenderGraphRender(RenderGraph renderGraph, out TextureHandle lutTarget, PostProcessingData postProcessingData, ref RenderingData renderingData)
+    {
+        m_PostProcessingData = postProcessingData;
+        if (m_PostProcessingData == null)
+        {
+            Debug.LogError("Color Grading Lut Pass: post-processing data is null.");
+            lutTarget = TextureHandle.nullHandle;
+            return;
+        }
+
+        if (m_LutBuilderMaterial == null && m_PostProcessingData != null)
+        {
+            m_LutBuilderMaterial = CoreUtils.CreateEngineMaterial(m_PostProcessingData.shaders.lutBuilderShader);
+        }
+
+        if (m_LutBuilderMaterial == null)
+        {
+            Debug.LogError("Color Grading Lut Pass: lut builder material is null.");
+            lutTarget = TextureHandle.nullHandle;
+            return;
+        }
+
+        using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_ProfilingSampler.name, out var passData, s_ProfilingSampler))
+        {
             int lutHeight = renderingData.lutSize;
             int lutWidth = lutHeight * lutHeight;
-            var lutParameters = new Vector4(lutHeight, 0.5f / lutWidth, 0.5f / lutHeight, lutHeight / (lutHeight - 1f));
+            var lutFormat = renderingData.isHdrEnabled ? SystemInfo.GetGraphicsFormat(DefaultFormat.HDR) : SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
+            var descriptor = new RenderTextureDescriptor(lutWidth, lutHeight, lutFormat, 0);
+            lutTarget = RenderingUtils.CreateRenderGraphTexture(renderGraph, descriptor, "_InternalGradingLut", true, FilterMode.Bilinear);
 
-            m_LutBuilder.SetVector(ShaderConstants._Lut_Params, lutParameters);
+            passData.lutTextureHdl = builder.UseTextureFragment(lutTarget, 0, IBaseRenderGraphBuilder.AccessFlags.WriteAll);
 
-            var colorAdjustments = m_PostProcessingData.colorAdjustments;
-            var whiteBalance = m_PostProcessingData.whiteBalance;
+            passData.lutBuilderMaterial = m_LutBuilderMaterial;
+            passData.renderingData = renderingData;
+            passData.postProcessingData = m_PostProcessingData;
 
-            float postExposureLinear = Mathf.Pow(2f, colorAdjustments.postExposure);
-            var hueSatConPos = new Vector4(colorAdjustments.hueShift / 360f, colorAdjustments.saturation * 0.01f + 1f, colorAdjustments.contrast * 0.01f + 1f, postExposureLinear);
-            var lmsColorBalance = ColorUtils.ColorBalanceToLMSCoeffs(whiteBalance.temperature, whiteBalance.tint);
+            builder.AllowPassCulling(false);
 
-            m_LutBuilder.SetVector(ShaderConstants._HueSatConPos, hueSatConPos);
-            m_LutBuilder.SetVector(ShaderConstants._ColorFilter, colorAdjustments.colorFilter);
-            m_LutBuilder.SetVector(ShaderConstants._ColorBalance, lmsColorBalance);
-
-            var tonemapping = m_PostProcessingData.tonemapping;
-            switch (tonemapping.mode)
+            builder.SetRenderFunc((PassData data, RasterGraphContext rasterGraphContext) =>
             {
-                case PostProcessingData.TonemappingMode.Neutral:
-                    m_LutBuilder.EnableKeyword(ShaderKeywordStrings.TonemapNeutral);
-                    break;
-                case PostProcessingData.TonemappingMode.ACES:
-                    m_LutBuilder.EnableKeyword(ShaderKeywordStrings.TonemapACES);
-                    break;
-                default:
-                    break;
-            }
-
-            Blitter.BlitTexture(cmd, m_ColorGradingLut, new Vector4(1f, 1f, 0f, 0f), m_LutBuilder, 0);
+                ExecutePass(rasterGraphContext.cmd, data.lutTextureHdl, data);
+            });
         }
+    }
+
+    private static void ExecutePass(RasterCommandBuffer cmd, RTHandle lutTarget, PassData data)
+    {
+        var material = data.lutBuilderMaterial;
+
+        material.shaderKeywords = null;
+
+        ref var renderingData = ref data.renderingData;
+        int lutHeight = renderingData.lutSize;
+        int lutWidth = lutHeight * lutHeight;
+
+        var lutParams = new Vector4(lutHeight, 0.5f / lutWidth, 0.5f / lutHeight, lutHeight / (lutHeight - 1f));
+        material.SetVector(ShaderConstants._Lut_Params, lutParams);
+
+        var postProcessingData = data.postProcessingData;
+        var colorAdjustments = postProcessingData.colorAdjustments;
+        var whiteBalance = postProcessingData.whiteBalance;
+
+        float postExposureLinear = Mathf.Pow(2f, colorAdjustments.postExposure);
+        var hueSatConPos = new Vector4(colorAdjustments.hueShift / 360f, colorAdjustments.saturation * 0.01f + 1f, colorAdjustments.contrast * 0.01f + 1f, postExposureLinear);
+        var lmsColorBalance = ColorUtils.ColorBalanceToLMSCoeffs(whiteBalance.temperature, whiteBalance.tint);
+
+        material.SetVector(ShaderConstants._HueSatConPos, hueSatConPos);
+        material.SetVector(ShaderConstants._ColorFilter, colorAdjustments.colorFilter);
+        material.SetVector(ShaderConstants._ColorBalance, lmsColorBalance);
+
+        var tonemapping = postProcessingData.tonemapping;
+        switch (tonemapping.mode)
+        {
+            case PostProcessingData.TonemappingMode.Neutral:
+                material.EnableKeyword(ShaderKeywordStrings.TonemapNeutral);
+                break;
+            case PostProcessingData.TonemappingMode.ACES:
+                material.EnableKeyword(ShaderKeywordStrings.TonemapACES);
+                break;
+            default:
+                break;
+        }
+
+        Blitter.BlitTexture(cmd, lutTarget, new Vector4(1f, 1f, 0f, 0f), material, 0);
     }
 
     public void Dispose()
     {
-        CoreUtils.Destroy(m_LutBuilder);
-
-        m_ColorGradingLut?.Release();
+        CoreUtils.Destroy(m_LutBuilderMaterial);
     }
 }

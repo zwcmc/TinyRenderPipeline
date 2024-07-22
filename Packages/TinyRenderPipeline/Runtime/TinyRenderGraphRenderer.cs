@@ -44,6 +44,8 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
     private TextureHandle m_DepthTextureHdl;
     private TextureHandle m_OpaqueColorTextureHdl;
 
+    private TextureHandle m_ColorGradingLutTextureHdl;
+
     private ForwardLights m_ForwardLights;
     private MainLightShadowPass m_MainLightShadowPass;
     private AdditionalLightsShadowPass m_AdditionalLightsShadowPass;
@@ -54,6 +56,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
     private DrawSkyboxPass m_DrawSkyboxPass;
     private CopyColorPass m_CopyColorPass;
     private DrawObjectsForwardPass m_RenderTransparentForwardPass;
+    private ColorGradingLutPass m_ColorGradingLutPass;
     private PostProcessingPass m_PostProcessingPass;
     private FXAAPass m_FXAAPass;
     private FinalBlitPass m_FinalBlitPass;
@@ -85,6 +88,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         m_CopyColorPass = new CopyColorPass(m_BlitMaterial);
         m_RenderTransparentForwardPass = new DrawObjectsForwardPass();
         m_FXAAPass = new FXAAPass();
+        m_ColorGradingLutPass = new ColorGradingLutPass();
         m_PostProcessingPass = new PostProcessingPass();
         m_FinalBlitPass = new FinalBlitPass(m_BlitMaterial);
 
@@ -130,6 +134,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         if (generateColorGradingLut)
         {
             // TODO: m_ColorGradingLutPass
+            m_ColorGradingLutPass.RenderGraphRender(renderGraph, out m_ColorGradingLutTextureHdl, postProcessingData, ref renderingData);
         }
 
         bool needCopyColor = renderingData.copyColorTexture;
@@ -161,7 +166,6 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
             depthDescriptor.graphicsFormat = GraphicsFormat.R32_SFloat;
             depthDescriptor.depthStencilFormat = GraphicsFormat.None;
             depthDescriptor.depthBufferBits = (int)DepthBits.None;
-
             m_DepthTextureHdl = RenderingUtils.CreateRenderGraphTexture(renderGraph, depthDescriptor, "_CameraDepthTexture", true);
             m_CopyDepthPass.RenderGraphRender(renderGraph, m_ActiveRenderGraphCameraDepthHandle, m_DepthTextureHdl, ref renderingData, true);
         }
@@ -201,7 +205,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
             // if FXAA is enabled, blit final target to another intermediate render texture
             var target = resolvePostProcessingToCameraTarget ? m_BackBufferColor : nextRenderGraphCameraColorHandle;
 
-            m_PostProcessingPass.RenderGraphRender(renderGraph, in m_ActiveRenderGraphCameraColorHandle, TextureHandle.nullHandle, target, resolvePostProcessingToCameraTarget, postProcessingData, ref renderingData);
+            m_PostProcessingPass.RenderGraphRender(renderGraph, in m_ActiveRenderGraphCameraColorHandle, m_ColorGradingLutTextureHdl, target, resolvePostProcessingToCameraTarget, postProcessingData, ref renderingData);
 
             // Camera color handle has resolved to camera target, set active camera color handle to camera color target;
             // If not resolved to camera target, set active camera color handle to another intermediate render texture handle, just like swap RenderTargetBufferSystem in TinyRenderer(not using Render Graph);
@@ -445,6 +449,8 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
+
+        m_ColorGradingLutPass?.Dispose();
 
         m_PostProcessingPass?.Dispose();
         m_FXAAPass?.Dispose();
