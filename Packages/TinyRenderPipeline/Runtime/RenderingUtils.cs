@@ -3,15 +3,46 @@ using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
+using System.Diagnostics;
 
 public static class RenderingUtils
 {
-    private static List<ShaderTagId> m_TinyRPShaderTagIds = new List<ShaderTagId>
+    private static List<ShaderTagId> m_ShaderPassNames = new List<ShaderTagId>
     {
         new ShaderTagId("TinyRPUnlit"),
         new ShaderTagId("TinyRPLit"),
         new ShaderTagId("SRPDefaultUnlit")
     };
+
+    static List<ShaderTagId> m_LegacyShaderPassNames = new List<ShaderTagId>
+    {
+        new ShaderTagId("Always"),
+        new ShaderTagId("ForwardBase"),
+        new ShaderTagId("PrepassBase"),
+        new ShaderTagId("Vertex"),
+        new ShaderTagId("VertexLMRGBM"),
+        new ShaderTagId("VertexLM"),
+    };
+
+    // Error material for unsupported shaders
+    private static Material s_ErrorMaterial;
+
+    private static Material errorMaterial
+    {
+        get
+        {
+            if (s_ErrorMaterial == null)
+            {
+                try
+                {
+                    s_ErrorMaterial = new Material(Shader.Find("Hidden/Core/FallbackError"));
+                }
+                catch { }
+            }
+
+            return s_ErrorMaterial;
+        }
+    }
 
     private static void AddStaleResourceToPoolOrRelease(TextureDesc desc, RTHandle handle)
     {
@@ -19,25 +50,6 @@ public static class RenderingUtils
         {
             RTHandles.Release(handle);
         }
-    }
-
-    public static DrawingSettings CreateDrawingSettings(ref RenderingData renderingData, SortingCriteria sortingCriteria)
-    {
-        Camera camera = renderingData.camera;
-        SortingSettings sortingSettings = new SortingSettings(camera) { criteria = sortingCriteria };
-        DrawingSettings settings = new DrawingSettings(m_TinyRPShaderTagIds[0], sortingSettings)
-        {
-            perObjectData = renderingData.perObjectData,
-            // Disable dynamic batching
-            enableDynamicBatching = false,
-            // Disable instancing
-            enableInstancing = false
-        };
-
-        for (int i = 1; i < m_TinyRPShaderTagIds.Count; ++i)
-            settings.SetShaderPassName(i, m_TinyRPShaderTagIds[i]);
-
-        return settings;
     }
 
     public static RenderTextureDescriptor GetCompatibleDescriptor(RenderTextureDescriptor desc, int width, int height,
@@ -183,12 +195,6 @@ public static class RenderingUtils
         Blitter.BlitTexture(cmd, source, scaleBias, material, passIndex);
     }
 
-    public static RenderTargetIdentifier GetCameraTargetIdentifier(Camera camera)
-    {
-        RenderTargetIdentifier cameraTarget = (camera.targetTexture != null) ? new RenderTargetIdentifier(camera.targetTexture) : BuiltinRenderTextureType.CameraTarget;
-        return cameraTarget;
-    }
-
     public static bool IsHandleYFlipped(RTHandle handle, Camera camera)
     {
         if (!SystemInfo.graphicsUVStartsAtTop)
@@ -225,16 +231,89 @@ public static class RenderingUtils
         return renderGraph.CreateTexture(rgDesc);
     }
 
-    public static void CreateRendererList(ScriptableRenderContext context, ref RenderingData renderingData, DrawingSettings ds, FilteringSettings fs, ref RendererList rl)
+    private static void CreateRendererParamsObjects(ref RenderingData renderingData, FilteringSettings fs, SortingCriteria sortingCriteria, ref RendererListParams param)
     {
-        var parameters = new RendererListParams(renderingData.cullResults, ds, fs);
-        rl = context.CreateRendererList(ref parameters);
+        var camera = renderingData.camera;
+        SortingSettings sortingSettings = new SortingSettings(camera) { criteria = sortingCriteria };
+        DrawingSettings drawingSettings = new DrawingSettings(m_ShaderPassNames[0], sortingSettings)
+        {
+            perObjectData = renderingData.perObjectData,
+            // Disable dynamic batching
+            enableDynamicBatching = false,
+            // Disable instancing
+            enableInstancing = false
+        };
+
+        for (int i = 1; i < m_ShaderPassNames.Count; ++i)
+            drawingSettings.SetShaderPassName(i, m_ShaderPassNames[i]);
+
+        param = new RendererListParams(renderingData.cullResults, drawingSettings, fs);
     }
 
-    public static void CreateRendererListWithRenderGraph(RenderGraph renderGraph, ref RenderingData renderingData, DrawingSettings ds, FilteringSettings fs, ref RendererListHandle rl)
+    public static void CreateRendererList(ScriptableRenderContext context, ref RenderingData renderingData, FilteringSettings fs, SortingCriteria sortingCriteria, ref RendererList rl)
     {
-        var rendererListParameters = new RendererListParams(renderingData.cullResults, ds, fs);
-        rl = renderGraph.CreateRendererList(rendererListParameters);
+        RendererListParams param = new RendererListParams();
+        CreateRendererParamsObjects(ref renderingData, fs, sortingCriteria, ref param);
+        rl = context.CreateRendererList(ref param);
+    }
+
+    public static void CreateRendererListHandle(RenderGraph renderGraph, ref RenderingData renderingData, FilteringSettings fs, SortingCriteria sortingCriteria, ref RendererListHandle rl)
+    {
+        RendererListParams param = new RendererListParams();
+        CreateRendererParamsObjects(ref renderingData, fs, sortingCriteria, ref param);
+        rl = renderGraph.CreateRendererList(param);
+    }
+
+    [Conditional("DEVELOPMENT_BUILD"), Conditional("UNITY_EDITOR")]
+    private static void CreateRendererParamsObjectsWithLegacyShaderPassNames(ref CullingResults cullResults, Camera camera, FilteringSettings fs, SortingCriteria sortingCriteria, ref RendererListParams param)
+    {
+        SortingSettings sortingSettings = new SortingSettings(camera) { criteria = sortingCriteria };
+        DrawingSettings errorSettings = new DrawingSettings(m_LegacyShaderPassNames[0], sortingSettings)
+        {
+            perObjectData = PerObjectData.None,
+            overrideMaterial = errorMaterial,
+            overrideMaterialPassIndex = 0
+        };
+        for (int i = 1; i < m_LegacyShaderPassNames.Count; ++i)
+        {
+            errorSettings.SetShaderPassName(i, m_LegacyShaderPassNames[i]);
+        }
+
+        param = new RendererListParams(cullResults, errorSettings, fs);
+    }
+
+    [Conditional("DEVELOPMENT_BUILD"), Conditional("UNITY_EDITOR")]
+    public static void CreateRendererListWithLegacyShaderPassNames(ScriptableRenderContext context, ref RenderingData renderingData, FilteringSettings fs, SortingCriteria sortingCriteria, ref RendererList rl)
+    {
+        if (errorMaterial == null)
+        {
+            rl = RendererList.nullRendererList;
+            return;
+        }
+
+        RendererListParams param = new RendererListParams();
+        CreateRendererParamsObjectsWithLegacyShaderPassNames(ref renderingData.cullResults, renderingData.camera, fs, sortingCriteria, ref param);
+        rl = context.CreateRendererList(ref param);
+    }
+
+    [Conditional("DEVELOPMENT_BUILD"), Conditional("UNITY_EDITOR")]
+    public static void CreateRendererListHandleWithLegacyShaderPassNames(RenderGraph renderGraph, ref RenderingData renderingData, FilteringSettings fs, SortingCriteria sortingCriteria, ref RendererListHandle rl)
+    {
+        if (errorMaterial == null)
+        {
+            rl = new RendererListHandle();
+            return;
+        }
+
+        RendererListParams param = new RendererListParams();
+        CreateRendererParamsObjectsWithLegacyShaderPassNames(ref renderingData.cullResults, renderingData.camera, fs, sortingCriteria, ref param);
+        rl = renderGraph.CreateRendererList(param);
+    }
+
+    [Conditional("DEVELOPMENT_BUILD"), Conditional("UNITY_EDITOR")]
+    public static void DrawLegacyShaderPassNameObjectsWithError(RasterCommandBuffer cmd, ref RendererList rl)
+    {
+        cmd.DrawRendererList(rl);
     }
 
     private class PassData

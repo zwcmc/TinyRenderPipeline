@@ -4,7 +4,6 @@ using System.Diagnostics;
 using UnityEngine.Rendering;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
-using Debug = UnityEngine.Debug;
 
 public class TinyRenderGraphRenderer : TinyBaseRenderer
 {

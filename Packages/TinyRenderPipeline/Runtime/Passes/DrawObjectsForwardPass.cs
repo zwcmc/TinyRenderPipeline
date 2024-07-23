@@ -1,7 +1,6 @@
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
-using UnityEngine.Rendering.RendererUtils;
 
 public class DrawObjectsForwardPass
 {
@@ -14,6 +13,10 @@ public class DrawObjectsForwardPass
     {
         public RendererList rendererList;
         public RendererListHandle rendererListHandle;
+
+        // Unsupported built-in shaders
+        public RendererList legacyRendererList;
+        public RendererListHandle legacyRendererListHandle;
     }
 
     private PassData m_PassData;
@@ -33,12 +36,13 @@ public class DrawObjectsForwardPass
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
 
-            var sortFlags = m_IsOpaque ? SortingCriteria.CommonOpaque : SortingCriteria.CommonTransparent;
-            var drawingSettings = RenderingUtils.CreateDrawingSettings(ref renderingData, sortFlags);
             var filteringSettings = m_IsOpaque ? new FilteringSettings(RenderQueueRange.opaque) : new FilteringSettings(RenderQueueRange.transparent);
+            var sortingCriteria = m_IsOpaque ? SortingCriteria.CommonOpaque : SortingCriteria.CommonTransparent;
 
-            RenderingUtils.CreateRendererList(context, ref renderingData, drawingSettings, filteringSettings, ref m_PassData.rendererList);
-            ExecutePass(CommandBufferHelpers.GetRasterCommandBuffer(cmd), m_PassData.rendererList);
+            RenderingUtils.CreateRendererList(context, ref renderingData, filteringSettings, sortingCriteria, ref m_PassData.rendererList);
+            RenderingUtils.CreateRendererListWithLegacyShaderPassNames(context, ref renderingData, filteringSettings, sortingCriteria, ref m_PassData.legacyRendererList);
+
+            ExecutePass(CommandBufferHelpers.GetRasterCommandBuffer(cmd), m_PassData.rendererList, m_PassData.legacyRendererList);
         }
     }
 
@@ -57,25 +61,29 @@ public class DrawObjectsForwardPass
             if (additionalLightsShadowmap.IsValid())
                 builder.UseTexture(additionalLightsShadowmap, IBaseRenderGraphBuilder.AccessFlags.Read);
 
-            var sortFlags = m_IsOpaque ? SortingCriteria.CommonOpaque : SortingCriteria.CommonTransparent;
             var filteringSettings = m_IsOpaque ? new FilteringSettings(RenderQueueRange.opaque) : new FilteringSettings(RenderQueueRange.transparent);
-            DrawingSettings drawingSettings = RenderingUtils.CreateDrawingSettings(ref renderingData, sortFlags);
+            var sortingCriteria = m_IsOpaque ? SortingCriteria.CommonOpaque : SortingCriteria.CommonTransparent;
 
-            RenderingUtils.CreateRendererListWithRenderGraph(renderGraph, ref renderingData, drawingSettings, filteringSettings, ref passData.rendererListHandle);
+            RenderingUtils.CreateRendererListHandle(renderGraph, ref renderingData, filteringSettings, sortingCriteria, ref passData.rendererListHandle);
+            RenderingUtils.CreateRendererListHandleWithLegacyShaderPassNames(renderGraph, ref renderingData, filteringSettings, sortingCriteria, ref passData.legacyRendererListHandle);
 
             builder.UseRendererList(passData.rendererListHandle);
+            builder.UseRendererList(passData.legacyRendererListHandle);
 
             builder.AllowPassCulling(false);
 
             builder.SetRenderFunc((PassData data, RasterGraphContext rasterGraphContext) =>
             {
-                ExecutePass(rasterGraphContext.cmd, data.rendererListHandle);
+                ExecutePass(rasterGraphContext.cmd, data.rendererListHandle, data.legacyRendererListHandle);
             });
         }
     }
 
-    private static void ExecutePass(RasterCommandBuffer cmd, RendererList rendererList)
+    private static void ExecutePass(RasterCommandBuffer cmd, RendererList rendererList, RendererList legacyRendererList)
     {
         cmd.DrawRendererList(rendererList);
+
+        // Drawing unsupported legacy shader pass name objects with error in UNITY_EDITOR or DEVELOPMENT_BUILD modes
+        RenderingUtils.DrawLegacyShaderPassNameObjectsWithError(cmd, ref legacyRendererList);
     }
 }
