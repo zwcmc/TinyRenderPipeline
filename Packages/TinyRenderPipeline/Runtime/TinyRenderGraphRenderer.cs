@@ -141,7 +141,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
             needCopyColor &= additionalCameraData.requireColorTexture;
 
         bool createColorTexture = applyPostProcessing; // post-processing is active
-        createColorTexture |= !renderingData.isDefaultCameraViewport; // camera's viewport rect is not default(0, 0, 1, 1)
+        createColorTexture |= !renderingData.isDefaultCameraViewport; // camera's Viewport Rect is not full screen (full screen Viewport Rect=(0, 0, 1, 1))
         createColorTexture |= needCopyColor; // copy color texture is enabled
 
         bool needCopyDepth = renderingData.copyDepthTexture;
@@ -317,7 +317,8 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
                 clearFlags = CameraClearFlags.Color;
         }
 
-        bool clearColor = clearFlags <= CameraClearFlags.Color;
+        // If using intermediate rendering, do dot clear on first use in case of a camera with a Viewport Rect smaller than the full screen.
+        bool clearColor = clearFlags <= CameraClearFlags.Color && !intermediateRenderTexture;
         bool clearDepth = clearFlags <= CameraClearFlags.Depth;
         var backgroundColor = camera.backgroundColor;
         ImportResourceParams importBackbufferColorParams = new ImportResourceParams();
@@ -343,7 +344,8 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
             RenderingUtils.ReAllocateIfNeeded(ref m_CameraColorHandles[1], cameraTargetDescriptor, FilterMode.Bilinear, TextureWrapMode.Clamp, name: "_CameraTargetAttachmentB");
 
             ImportResourceParams importColorParams = new ImportResourceParams();
-            importColorParams.clearOnFirstUse = clearColor;
+            // Always clear on first use for intermediate render texture
+            importColorParams.clearOnFirstUse = true;
             importColorParams.clearColor = backgroundColor.linear;
             importColorParams.discardOnLastUse = true;
 
@@ -360,7 +362,8 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
             RenderingUtils.ReAllocateIfNeeded(ref m_CameraDepthHandle, depthDescriptor, FilterMode.Point, TextureWrapMode.Clamp, name: "_CameraDepthAttachment");
 
             ImportResourceParams importDepthParams = new ImportResourceParams();
-            importDepthParams.clearOnFirstUse = clearDepth;
+            // Always clear on first use for intermediate render texture
+            importDepthParams.clearOnFirstUse = true;
             importDepthParams.clearColor = backgroundColor.linear;
             importDepthParams.discardOnLastUse = true;
             m_RenderGraphCameraDepthHandle = renderGraph.ImportTexture(m_CameraDepthHandle, importDepthParams);
