@@ -30,15 +30,26 @@ real4 unity_SHBr;
 real4 unity_SHBg;
 real4 unity_SHBb;
 real4 unity_SHC;
+
+// Velocity
+float4x4 unity_MatrixPreviousM;
+float4x4 unity_MatrixPreviousMI;
+//X : Use last frame positions (right now skinned meshes are the only objects that use this
+//Y : Force No Motion
+//Z : Z bias value
+//W : Camera only
+float4 unity_MotionVectorsParams;
+
 CBUFFER_END
 
-float4x4 unity_MatrixVP;
+// ------------------------------------------------
+float4x4 glstate_matrix_projection;
 float4x4 unity_MatrixV;
 float4x4 unity_MatrixInvV;
-float4x4 unity_prev_MatrixM;
-float4x4 unity_prev_MatrixIM;
-float4x4 glstate_matrix_projection;
-
+float4x4 unity_MatrixInvP;
+float4x4 unity_MatrixVP;
+float4x4 unity_MatrixInvVP;
+// ------------------------------------------------
 
 // Set these variables in C#
 // ------------------------------------------------
