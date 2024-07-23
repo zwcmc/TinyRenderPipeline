@@ -105,8 +105,6 @@ public class TinyRenderer : TinyBaseRenderer
 
         var cameraTargetDescriptor = renderingData.cameraTargetDescriptor;
         var colorDescriptor = cameraTargetDescriptor;
-        colorDescriptor.useMipMap = false;
-        colorDescriptor.autoGenerateMips = false;
         colorDescriptor.depthBufferBits = (int)DepthBits.None;
         m_ColorBufferSystem.SetCameraSettings(colorDescriptor, FilterMode.Bilinear);
 
@@ -380,10 +378,6 @@ public class TinyRenderer : TinyBaseRenderer
         if (m_CameraDepthAttachment == null || m_CameraDepthAttachment.nameID != BuiltinRenderTextureType.CameraTarget)
         {
             var depthDescriptor = descriptor;
-            depthDescriptor.useMipMap = false;
-            depthDescriptor.autoGenerateMips = false;
-            depthDescriptor.bindMS = false;
-
             depthDescriptor.graphicsFormat = GraphicsFormat.None;
             depthDescriptor.depthStencilFormat = k_DepthStencilFormat;
             depthDescriptor.depthBufferBits = k_DepthBufferBits;

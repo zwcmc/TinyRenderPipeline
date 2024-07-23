@@ -335,8 +335,6 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         if (intermediateRenderTexture)
         {
             var cameraTargetDescriptor = renderingData.cameraTargetDescriptor;
-            cameraTargetDescriptor.useMipMap = false;
-            cameraTargetDescriptor.autoGenerateMips = false;
             cameraTargetDescriptor.depthBufferBits = (int)DepthBits.None;
 
             RenderingUtils.ReAllocateIfNeeded(ref m_CameraColorHandles[0], cameraTargetDescriptor, FilterMode.Bilinear, TextureWrapMode.Clamp, name: "_CameraTargetAttachmentA");

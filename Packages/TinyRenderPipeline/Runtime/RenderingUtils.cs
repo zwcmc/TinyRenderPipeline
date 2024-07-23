@@ -100,6 +100,7 @@ public static class RenderingUtils
         desc.enableRandomWrite = false;
         desc.useMipMap = false;
         desc.autoGenerateMips = false;
+        desc.bindMS = false;
 
         return desc;
     }
