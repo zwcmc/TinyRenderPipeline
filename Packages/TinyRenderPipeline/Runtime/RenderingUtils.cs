@@ -239,6 +239,7 @@ public static class RenderingUtils
         DrawingSettings drawingSettings = new DrawingSettings(m_ShaderPassNames[0], sortingSettings)
         {
             perObjectData = renderingData.perObjectData,
+            mainLightIndex = renderingData.mainLightIndex,
             // Disable dynamic batching
             enableDynamicBatching = false,
             // Disable instancing
