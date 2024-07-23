@@ -287,7 +287,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
             importInfo.width = Screen.width;
             importInfo.height = Screen.height;
             importInfo.volumeDepth = 1;
-            importInfo.msaaSamples = Screen.msaaSamples;
+            importInfo.msaaSamples = 1;
             // The editor always allocates the system rendertarget with a single msaa sample
             // See: ConfigureTargetTexture in PlayModeView.cs
             if (Application.isEditor)
@@ -302,7 +302,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
             importInfo.width = targetTexture.width;
             importInfo.height = targetTexture.height;
             importInfo.volumeDepth = targetTexture.volumeDepth;
-            importInfo.msaaSamples = targetTexture.antiAliasing;
+            importInfo.msaaSamples = 1;
             importInfo.format = targetTexture.graphicsFormat;
 
             importInfoDepth = importInfo;
