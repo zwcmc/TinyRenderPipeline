@@ -88,5 +88,6 @@ Shader "Tiny Render Pipeline/Lit"
         }
     }
 
+    FallBack "Hidden/Tiny Render Pipeline/FallbackError"
     CustomEditor "TinyRenderPipeline.CustomShaderGUI.LitGUI"
 }

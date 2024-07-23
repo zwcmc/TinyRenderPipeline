@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
@@ -35,7 +36,7 @@ public static class RenderingUtils
             {
                 try
                 {
-                    s_ErrorMaterial = new Material(Shader.Find("Hidden/Core/FallbackError"));
+                    s_ErrorMaterial = new Material(Shader.Find("Hidden/Tiny Render Pipeline/FallbackError"));
                 }
                 catch { }
             }

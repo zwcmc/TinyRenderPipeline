@@ -24,4 +24,6 @@ Shader "Hidden/Tiny Render Pipeline/FXAA"
             ENDHLSL
         }
     }
+
+    FallBack "Hidden/Tiny Render Pipeline/FallbackError"
 }

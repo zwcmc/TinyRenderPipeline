@@ -37,4 +37,6 @@ Shader "Hidden/Tiny Render Pipeline/CopyDepth"
             ENDHLSL
         }
     }
+
+    FallBack "Hidden/Tiny Render Pipeline/FallbackError"
 }

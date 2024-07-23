@@ -120,4 +120,6 @@ Shader "Hidden/Tiny Render Pipeline/LutBuilder"
             ENDHLSL
         }
     }
+
+    FallBack "Hidden/Tiny Render Pipeline/FallbackError"
 }

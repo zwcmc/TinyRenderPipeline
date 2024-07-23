@@ -44,6 +44,9 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
 
         [Reload("Shaders/Utils/CopyDepth.shader")]
         public Shader copyDepthShader;
+
+        [Reload("Shaders/Utils/FallbackError.shader")]
+        public Shader fallbackErrorShader;
     }
 
     // Shadows

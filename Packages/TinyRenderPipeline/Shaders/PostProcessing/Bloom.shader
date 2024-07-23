@@ -174,4 +174,6 @@ Shader "Hidden/Tiny Render Pipeline/Bloom"
             ENDHLSL
         }
     }
+
+    FallBack "Hidden/Tiny Render Pipeline/FallbackError"
 }

@@ -29,4 +29,6 @@ Shader "Hidden/Tiny Render Pipeline/Blit"
             ENDHLSL
         }
     }
+
+    FallBack "Hidden/Tiny Render Pipeline/FallbackError"
 }

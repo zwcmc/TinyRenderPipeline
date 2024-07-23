@@ -62,4 +62,6 @@ Shader "Hidden/Tiny Render Pipeline/Uber Post"
             ENDHLSL
         }
     }
+
+    FallBack "Hidden/Tiny Render Pipeline/FallbackError"
 }

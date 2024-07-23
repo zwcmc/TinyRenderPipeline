@@ -49,5 +49,6 @@ Shader "Tiny Render Pipeline/Unlit"
         }
     }
 
+    FallBack "Hidden/Tiny Render Pipeline/FallbackError"
     CustomEditor "TinyRenderPipeline.CustomShaderGUI.UnlitGUI"
 }
