@@ -64,8 +64,8 @@ public class AdditionalLightsShadowPass
         public int shadowmapID;
         public bool emptyShadowmap;
 
-        public RendererListHandle[] shadowRendererListHandles = new RendererListHandle[TinyRenderPipeline.maxVisibleAdditionalLights];
-        public RendererList[] shadowRendererLists = new RendererList[TinyRenderPipeline.maxVisibleAdditionalLights];
+        public RendererListHandle[] shadowRendererListHandles;
+        public RendererList[] shadowRendererLists;
     }
 
     private PassData m_PassData;
@@ -420,6 +420,12 @@ public class AdditionalLightsShadowPass
         if (!m_CreateEmptyShadowmap)
         {
             var cullResults = renderingData.cullResults;
+
+            if (useRenderGraph)
+                passData.shadowRendererListHandles = new RendererListHandle[m_ShadowSliceToAdditionalLightIndex.Count];
+            else
+                passData.shadowRendererLists = new RendererList[m_ShadowSliceToAdditionalLightIndex.Count];
+
             for (int globalShadowSliceIndex = 0; globalShadowSliceIndex < m_ShadowSliceToAdditionalLightIndex.Count; ++globalShadowSliceIndex)
             {
                 int additionalLightIndex = m_ShadowSliceToAdditionalLightIndex[globalShadowSliceIndex];
