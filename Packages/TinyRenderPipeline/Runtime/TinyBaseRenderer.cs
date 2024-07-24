@@ -1,18 +1,84 @@
 using System;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.Experimental.Rendering;
 
 public class TinyBaseRenderer : IDisposable
 {
+    private Material m_BlitMaterial;
+    private Material m_CopyDepthMaterial;
+
+    protected ForwardLights forwardLights;
+
+    protected MainLightShadowPass mainLightShadowPass;
+    protected AdditionalLightsShadowPass additionalLightsShadowPass;
+
+    protected ColorGradingLutPass colorGradingLutPass;
+
+    protected DrawObjectsForwardPass renderOpaqueForwardPass;
+    protected CopyDepthPass copyDepthPass;
+    protected DrawSkyboxPass renderSkyboxPass;
+    protected CopyColorPass copyColorPass;
+    protected DrawObjectsForwardPass renderTransparentForwardPass;
+
+    protected PostProcessingPass postProcessingPass;
+    protected FXAAPass fxaaPass;
+    protected FinalBlitPass finalBlitPass;
+
+#if UNITY_EDITOR
+    protected CopyDepthPass finalDepthCopyPass;
+#endif
+
+    protected TinyBaseRenderer(TinyRenderPipelineAsset asset)
+    {
+        if (asset.shaders != null)
+        {
+            m_BlitMaterial = CoreUtils.CreateEngineMaterial(asset.shaders.blitShader);
+            m_CopyDepthMaterial = CoreUtils.CreateEngineMaterial(asset.shaders.copyDepthShader);
+        }
+
+        forwardLights = new ForwardLights();
+
+        mainLightShadowPass = new MainLightShadowPass();
+        additionalLightsShadowPass = new AdditionalLightsShadowPass();
+
+        colorGradingLutPass = new ColorGradingLutPass();
+
+        renderOpaqueForwardPass = new DrawObjectsForwardPass(true);
+        copyDepthPass = new CopyDepthPass(m_CopyDepthMaterial);
+        renderSkyboxPass = new DrawSkyboxPass();
+        copyColorPass = new CopyColorPass(m_BlitMaterial);
+        renderTransparentForwardPass = new DrawObjectsForwardPass();
+
+        postProcessingPass = new PostProcessingPass();
+        fxaaPass = new FXAAPass();
+        finalBlitPass = new FinalBlitPass(m_BlitMaterial);
+
+#if UNITY_EDITOR
+        finalDepthCopyPass = new CopyDepthPass(m_CopyDepthMaterial, true);
+#endif
+    }
+
     public void Dispose()
     {
+        mainLightShadowPass?.Dispose();
+        additionalLightsShadowPass?.Dispose();
+
+        colorGradingLutPass?.Dispose();
+
+        postProcessingPass?.Dispose();
+        fxaaPass?.Dispose();
+
+        CoreUtils.Destroy(m_BlitMaterial);
+        CoreUtils.Destroy(m_CopyDepthMaterial);
+
         Dispose(true);
         GC.SuppressFinalize(this);
     }
 
     protected virtual void Dispose(bool disposing) { }
 
-    public void SetPerCameraShaderVariables(RasterCommandBuffer cmd, Camera camera, bool isTargetFlipped)
+    protected static void SetPerCameraShaderVariables(RasterCommandBuffer cmd, Camera camera, bool isTargetFlipped)
     {
         float near = camera.nearClipPlane;
         float far = camera.farClipPlane;
