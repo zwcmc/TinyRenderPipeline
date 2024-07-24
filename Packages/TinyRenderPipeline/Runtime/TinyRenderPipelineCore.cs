@@ -2,6 +2,33 @@ using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 
+/// <summary>
+/// Shadow map resolution.
+/// </summary>
+public enum ShadowResolution
+{
+    _1024 = 1024,
+    _2048 = 2048,
+    _4096 = 4096
+}
+
+/// <summary>
+/// Rendering path
+/// </summary>
+public enum RenderPath
+{
+    /// <summary>
+    /// Forward rendering path: Render all objects and lighting in one pass, with a hard limit on the number of lights that can be applied on an object.
+    /// </summary>
+    Forward,
+
+    /// <summary>
+    /// Forward+ rendering path: Render all objects and lighting in one pass using a clustered data structure to access lighting data.
+    /// </summary>
+    [InspectorName("Forward+")]
+    ForwardPlus,
+}
+
 public struct ShadowData
 {
     public bool mainLightShadowsEnabled;

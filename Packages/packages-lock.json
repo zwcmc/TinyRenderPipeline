@@ -5,7 +5,9 @@
       "depth": 0,
       "source": "embedded",
       "dependencies": {
-        "com.unity.render-pipelines.core": "16.0.5"
+        "com.unity.render-pipelines.core": "16.0.5",
+        "com.unity.mathematics": "1.2.6",
+        "com.unity.burst": "1.8.16"
       }
     },
     "com.unity.burst": {

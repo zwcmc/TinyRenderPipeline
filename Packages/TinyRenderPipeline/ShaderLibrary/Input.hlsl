@@ -1,6 +1,7 @@
 #ifndef TINY_RP_INPUT_INCLUDED
 #define TINY_RP_INPUT_INCLUDED
 
+#include "Packages/com.tiny.render-pipeline/ShaderLibrary/Core.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/UnityInput.hlsl"
@@ -34,6 +35,26 @@ half4 _AdditionalLightsSpotDir[MAX_VISIBLE_LIGHTS];
 float _AdditionalLightsLayerMasks[MAX_VISIBLE_LIGHTS];
 #ifndef SHADER_API_GLES3
 CBUFFER_END
+#endif
+
+// Forward+ Rendering Path
+
+// Match with values in TinyRenderPipeline.cs
+#define MAX_ZBIN_VEC4S 1024
+#define MAX_TILE_VEC4S 1024
+
+#if _FORWARD_PLUS
+CBUFFER_START(urp_ZBinBuffer)
+float4 urp_ZBins[MAX_ZBIN_VEC4S];
+CBUFFER_END
+CBUFFER_START(urp_TileBuffer)
+float4 urp_Tiles[MAX_TILE_VEC4S];
+CBUFFER_END
+
+float4 _FPParams0;
+float4 _FPParams1;
+float4 _FPParams2;
+
 #endif
 
 #define UNITY_MATRIX_M     unity_ObjectToWorld

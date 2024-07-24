@@ -8,16 +8,6 @@ using UnityEngine.Rendering;
 
 public class TinyRenderPipelineAsset : RenderPipelineAsset
 {
-    /// <summary>
-    /// Shadow map resolution.
-    /// </summary>
-    public enum ShadowResolution
-    {
-        _1024 = 1024,
-        _2048 = 2048,
-        _4096 = 4096
-    }
-
     [Serializable]
     private class MainLightShadow
     {
@@ -94,6 +84,9 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
 
     [SerializeField]
     private bool m_UseRenderGraph = false;
+
+    [SerializeField]
+    private RenderPath m_RenderPath = RenderPath.Forward;
 
     public bool useSRPBatcher
     {
@@ -175,6 +168,12 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     {
         get { return m_UseRenderGraph; }
         set { m_UseRenderGraph = value; }
+    }
+
+    public RenderPath renderPath
+    {
+        get { return m_RenderPath; }
+        set { m_RenderPath = (RenderPath)value; }
     }
 
     public ShaderResources shaders

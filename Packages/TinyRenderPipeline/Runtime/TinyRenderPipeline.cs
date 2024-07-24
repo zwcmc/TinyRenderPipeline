@@ -8,9 +8,6 @@ using UnityEngine.Experimental.Rendering.RenderGraphModule;
 
 public class TinyRenderPipeline : RenderPipeline
 {
-    // This limit matches same limit in Input.hlsl
-    private const int k_MaxVisibleAdditionalLights = 8;
-
     private readonly TinyRenderPipelineAsset pipelineAsset;
 
     private static TinyRenderer s_TinyRenderer;
@@ -40,7 +37,15 @@ public class TinyRenderPipeline : RenderPipeline
         }
     }
 
+    // These limits have to match same limits in Input.hlsl
+    private const int k_MaxVisibleAdditionalLights = 8;
+
+    // For forward rendering path
     public static int maxVisibleAdditionalLights => k_MaxVisibleAdditionalLights;
+
+    // For forward+ rendering path
+    public static int maxTileWords => 1024 * 4;
+    public static int maxZBinWords => 1024 * 4;
 
     public static RTHandle k_CameraTarget = RTHandles.Alloc(BuiltinRenderTextureType.CameraTarget);
 
@@ -135,7 +140,10 @@ public class TinyRenderPipeline : RenderPipeline
             if (s_UseRenderGraph)
                 s_TinyRenderGraphRenderer.RecordAndExecuteRenderGraph(s_RenderGraph, ref renderingData);
             else
+            {
+                s_TinyRenderer.Setup(ref renderingData);
                 s_TinyRenderer.Execute(ref renderingData);
+            }
         }
 
         // Execute command buffer
@@ -239,7 +247,7 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.shadowData.additionalLightsShadowEnabled = SystemInfo.supportsShadows && additionalLightsCastShadows;
         renderingData.shadowData.additionalLightsShadowmapWidth = renderingData.shadowData.additionalLightsShadowmapHeight = asset.additionalLightsShadowmapResolution;
 
-        renderingData.perObjectData = GetPerObjectLightFlags(renderingData.additionalLightsCount);
+        renderingData.perObjectData = GetPerObjectLightFlags(renderingData.additionalLightsCount, asset.renderPath == RenderPath.ForwardPlus);
 
         renderingData.postProcessingData = asset.postProcessingData;
 
@@ -249,10 +257,10 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.copyColorTexture = asset.requireColorTexture;
     }
 
-    private static PerObjectData GetPerObjectLightFlags(int additionalLightsCount)
+    private static PerObjectData GetPerObjectLightFlags(int additionalLightsCount, bool isForwardPlus)
     {
         var configuration = PerObjectData.LightProbe | PerObjectData.ReflectionProbes | PerObjectData.LightData;
-        if (additionalLightsCount > 0)
+        if (additionalLightsCount > 0 && !isForwardPlus)
             configuration |= PerObjectData.LightIndices;
         return configuration;
     }

@@ -31,6 +31,12 @@ public class TinyRenderer : TinyBaseRenderer
         m_ColorBufferSystem = new RenderTargetBufferSystem("_CameraColorAttachment");
     }
 
+    public void Setup(ref RenderingData renderingData)
+    {
+        // PreSetup for forward+ rendering path
+        forwardLights.PreSetup(ref renderingData);
+    }
+
     public void Execute(ref RenderingData renderingData)
     {
         var context = renderingData.renderContext;

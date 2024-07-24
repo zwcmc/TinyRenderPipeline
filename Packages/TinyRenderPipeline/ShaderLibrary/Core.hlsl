@@ -1,0 +1,4 @@
+#ifndef TINY_RP_CORE_INCLUDED
+#define TINY_RP_CORE_INCLUDED
+
+#endif

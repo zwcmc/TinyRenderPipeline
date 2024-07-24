@@ -1,11 +1,18 @@
+using System;
 using System.Runtime.InteropServices;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
+using Unity.Jobs;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
 public class ForwardLights
 {
+    private static readonly ProfilingSampler s_SetupLightsSampler = new ProfilingSampler("SetupForwardLights");
+    private static readonly ProfilingSampler m_ProfilingSamplerFPUpload = new ProfilingSampler("Forward+ Upload");
+
     private static class LightDefaultValue
     {
         public static Vector4 DefaultLightPosition = new Vector4(0.0f, 0.0f, 1.0f, 0.0f);
@@ -34,16 +41,26 @@ public class ForwardLights
     private Vector4[] m_AdditionalLightSpotDirections;
     private float[] m_AdditionalLightsLayerMasks;  // Unity has no support for binding uint arrays. We will use asuint() in the shader instead.
 
-    private static readonly ProfilingSampler s_SetupLightsSampler = new ProfilingSampler("SetupForwardLights");
-
     private class SetupLightsPassData
     {
         public RenderingData renderingData;
         public ForwardLights forwardLights;
     }
 
-    public ForwardLights()
+    private bool m_UseForwardPlus;
+    private JobHandle m_CullingHandle;
+    NativeArray<uint> m_ZBins;
+    GraphicsBuffer m_ZBinsBuffer;
+    NativeArray<uint> m_TileMasks;
+    GraphicsBuffer m_TileMasksBuffer;
+
+    private int m_LightCount;
+    private int m_DirectionalLightCount;
+
+    public ForwardLights(bool isForwardPlusRenderingPath = false)
     {
+        m_UseForwardPlus = isForwardPlusRenderingPath;
+
         LightConstantBuffer._MainLightPosition = Shader.PropertyToID("_MainLightPosition");
         LightConstantBuffer._MainLightColor = Shader.PropertyToID("_MainLightColor");
         LightConstantBuffer._MainLightLayerMask = Shader.PropertyToID("_MainLightLayerMask");
@@ -61,13 +78,205 @@ public class ForwardLights
         m_AdditionalLightAttenuations = new Vector4[maxAdditionalLights];
         m_AdditionalLightSpotDirections = new Vector4[maxAdditionalLights];
         m_AdditionalLightsLayerMasks = new float[maxAdditionalLights];
+
+        // Forward+ rendering path
+        if (m_UseForwardPlus)
+        {
+            CreateForwardPlusBuffers();
+        }
     }
+
+    public void PreSetup(ref RenderingData renderingData)
+    {
+        if (m_UseForwardPlus)
+        {
+            if (!m_CullingHandle.IsCompleted)
+            {
+                throw new InvalidOperationException("Forward+ jobs have not completed yet.");
+            }
+
+            if (m_TileMasks.Length != TinyRenderPipeline.maxTileWords)
+            {
+                m_ZBins.Dispose();
+                m_ZBinsBuffer.Dispose();
+                m_TileMasks.Dispose();
+                m_TileMasksBuffer.Dispose();
+                CreateForwardPlusBuffers();
+            }
+            else
+            {
+                unsafe
+                {
+                    UnsafeUtility.MemClear(m_ZBins.GetUnsafePtr(), m_ZBins.Length * sizeof(uint));
+                    UnsafeUtility.MemClear(m_TileMasks.GetUnsafePtr(), m_TileMasks.Length * sizeof(uint));
+                }
+            }
+
+            var camera = renderingData.camera;
+
+            var screenResolution = math.int2(camera.pixelWidth, camera.pixelHeight);
+
+            m_LightCount = renderingData.cullResults.visibleLights.Length;
+            var lightOffset = 0;
+            while (lightOffset < m_LightCount && renderingData.cullResults.visibleLights[lightOffset].lightType == LightType.Directional)
+            {
+                lightOffset++;
+            }
+            m_LightCount -= lightOffset;
+
+            m_DirectionalLightCount = lightOffset;
+
+            if (renderingData.mainLightIndex != -1 && m_DirectionalLightCount != 0) m_DirectionalLightCount -= 1;
+
+            var visibleLights = renderingData.cullResults.visibleLights.GetSubArray(lightOffset, m_LightCount);
+            var itemsPerTile = visibleLights.Length;
+            m_WordsPerTile = (itemsPerTile + 31) / 32;
+
+            m_ActualTileWidth = 8 >> 1;
+            do
+            {
+                m_ActualTileWidth <<= 1;
+                m_TileResolution = (screenResolution + m_ActualTileWidth - 1) / m_ActualTileWidth;
+            } while ((m_TileResolution.x * m_TileResolution.y * m_WordsPerTile) > TinyRenderPipeline.maxTileWords);
+
+            if (!camera.orthographic)
+            {
+                // Use to calculate binIndex = log2(z) * zBinScale + zBinOffset
+                m_ZBinScale = (TinyRenderPipeline.maxZBinWords) / ((math.log2(camera.farClipPlane) - math.log2(camera.nearClipPlane)) * (2 + m_WordsPerTile));
+                m_ZBinOffset = -math.log2(camera.nearClipPlane) * m_ZBinScale;
+                m_BinCount = (int)(math.log2(camera.farClipPlane) * m_ZBinScale + m_ZBinOffset);
+            }
+            else
+            {
+                // Use to calculate binIndex = z * zBinScale + zBinOffset
+                m_ZBinScale = (TinyRenderPipeline.maxZBinWords) / ((camera.farClipPlane - camera.nearClipPlane) * (2 + m_WordsPerTile));
+                m_ZBinOffset = -camera.nearClipPlane * m_ZBinScale;
+                m_BinCount = (int)(camera.farClipPlane * m_ZBinScale + m_ZBinOffset);
+            }
+
+            var worldToView = camera.worldToCameraMatrix;
+            var viewToClip = camera.projectionMatrix;
+
+            var minMaxZs = new NativeArray<float2>(itemsPerTile, Allocator.TempJob);
+            var lightMinMaxZJob = new LightMinMaxZJob
+            {
+                worldToView =  worldToView,
+                lights = visibleLights,
+                minMaxZs = minMaxZs
+            };
+            // Innerloop batch count of 32 is not special, just a handwavy amount to not have too much scheduling overhead nor too little parallelism.
+            var lightMinMaxZHandle = lightMinMaxZJob.ScheduleParallel(m_LightCount, 32, new JobHandle());
+
+            var zBinningBatchCount = (m_BinCount + ZBinningJob.batchSize - 1) / ZBinningJob.batchSize;
+            var zBinningJob = new ZBinningJob
+            {
+                bins = m_ZBins,
+                minMaxZs = minMaxZs,
+                zBinScale = m_ZBinScale,
+                zBinOffset = m_ZBinOffset,
+                binCount = m_BinCount,
+                wordsPerTile = m_WordsPerTile,
+                lightCount = m_LightCount,
+                batchCount = zBinningBatchCount,
+                isOrthographic = camera.orthographic
+            };
+            var zBinningHandle = zBinningJob.ScheduleParallel(zBinningBatchCount, 1, lightMinMaxZHandle);
+
+            lightMinMaxZHandle.Complete();
+
+            GetViewParams(camera, viewToClip, out float viewPlaneBottom0, out float viewPlaneTop0, out float4 viewToViewportScaleBias0);
+
+            // Each light needs 1 range for Y, and a range per row. Align to 128-bytes to avoid false sharing.
+            var rangesPerItem = AlignByteCount((1 + m_TileResolution.y) * UnsafeUtility.SizeOf<InclusiveRange>(), 128) / UnsafeUtility.SizeOf<InclusiveRange>();
+            var tileRanges = new NativeArray<InclusiveRange>(rangesPerItem * itemsPerTile, Allocator.TempJob);
+            var tilingJob = new TilingJob
+            {
+                lights = visibleLights,
+                tileRanges = tileRanges,
+                itemsPerTile = itemsPerTile,
+                rangesPerItem = rangesPerItem,
+                worldToView = worldToView,
+                tileScale = (float2)screenResolution / m_ActualTileWidth,
+                tileScaleInv = m_ActualTileWidth / (float2)screenResolution,
+                viewPlaneBottom = viewPlaneBottom0,
+                viewPlaneTop = viewPlaneTop0,
+                viewToViewportScaleBias = viewToViewportScaleBias0,
+                tileCount = m_TileResolution,
+                near = camera.nearClipPlane,
+                isOrthographic = camera.orthographic
+            };
+            var tileRangeHandle = tilingJob.ScheduleParallel(itemsPerTile, 1, lightMinMaxZHandle);
+
+            var expansionJob = new TileRangeExpansionJob
+            {
+                tileRanges = tileRanges,
+                tileMasks = m_TileMasks,
+                rangesPerItem = rangesPerItem,
+                itemsPerTile = itemsPerTile,
+                wordsPerTile = m_WordsPerTile,
+                tileResolution = m_TileResolution
+            };
+            var tilingHandle = expansionJob.ScheduleParallel(m_TileResolution.y, 1, tileRangeHandle);
+
+            m_CullingHandle = JobHandle.CombineDependencies(
+                minMaxZs.Dispose(zBinningHandle),
+                tileRanges.Dispose(tilingHandle)
+            );
+
+            JobHandle.ScheduleBatchedJobs();
+        }
+    }
+
+    private static int AlignByteCount(int count, int align) => align * ((count + align - 1) / align);
+
+    // Calculate view planes and viewToViewportScaleBias. This handles projection center in case the projection is off-centered
+    private void GetViewParams(Camera camera, float4x4 viewToClip, out float viewPlaneBot, out float viewPlaneTop, out float4 viewToViewportScaleBias)
+    {
+        // We want to calculate `fovHalfHeight = tan(fov / 2)`
+        // `projection[1][1]` contains `1 / tan(fov / 2)`
+        var viewPlaneHalfSizeInv = math.float2(viewToClip[0][0], viewToClip[1][1]);
+        var viewPlaneHalfSize = math.rcp(viewPlaneHalfSizeInv);
+        var centerClipSpace = camera.orthographic ? -math.float2(viewToClip[3][0], viewToClip[3][1]): math.float2(viewToClip[2][0], viewToClip[2][1]);
+
+        viewPlaneBot = centerClipSpace.y * viewPlaneHalfSize.y - viewPlaneHalfSize.y;
+        viewPlaneTop = centerClipSpace.y * viewPlaneHalfSize.y + viewPlaneHalfSize.y;
+        viewToViewportScaleBias = math.float4(
+            viewPlaneHalfSizeInv * 0.5f,
+            -centerClipSpace * 0.5f + 0.5f
+        );
+    }
+
+    private int m_WordsPerTile;
+    private int m_ActualTileWidth;
+    private int2 m_TileResolution;
+    private float m_ZBinScale;
+    private float m_ZBinOffset;
+    private int m_BinCount;
 
     public void SetupLights(CommandBuffer cmd, ref RenderingData renderingData)
     {
         using (new ProfilingScope(s_SetupLightsSampler))
         {
+            if (m_UseForwardPlus)
+            {
+                m_CullingHandle.Complete();
+
+                using (new ProfilingScope(m_ProfilingSamplerFPUpload))
+                {
+                    m_ZBinsBuffer.SetData(m_ZBins.Reinterpret<float4>(UnsafeUtility.SizeOf<uint>()));
+                    m_TileMasksBuffer.SetData(m_TileMasks.Reinterpret<float4>(UnsafeUtility.SizeOf<uint>()));
+                    cmd.SetGlobalConstantBuffer(m_ZBinsBuffer, "_ZBinBuffer", 0, TinyRenderPipeline.maxZBinWords * 4);
+                    cmd.SetGlobalConstantBuffer(m_TileMasksBuffer, "_TileBuffer", 0, TinyRenderPipeline.maxTileWords * 4);
+                }
+
+                cmd.SetGlobalVector("_FPParams0", math.float4(m_ZBinScale, m_ZBinOffset, m_LightCount, m_DirectionalLightCount));
+                cmd.SetGlobalVector("_FPParams1", math.float4(renderingData.camera.pixelRect.size / m_ActualTileWidth, m_TileResolution.x, m_WordsPerTile));
+                cmd.SetGlobalVector("_FPParams2", math.float4(m_BinCount, m_TileResolution.x * m_TileResolution.y, 0, 0));
+            }
+
             SetupShaderLightConstants(cmd, ref renderingData);
+
+            CoreUtils.SetKeyword(cmd, "_FORWARD_PLUS", m_UseForwardPlus);
         }
     }
 
@@ -84,6 +293,14 @@ public class ForwardLights
             {
                 data.forwardLights.SetupShaderLightConstants(lowLevelGraphContext.legacyCmd, ref data.renderingData);
             });
+        }
+    }
+
+    public void Cleanup()
+    {
+        if (m_UseForwardPlus)
+        {
+            m_CullingHandle.Complete();
         }
     }
 
@@ -120,7 +337,7 @@ public class ForwardLights
                     InitializeLightConstants(visibleLights, i, out m_AdditionalLightPositions[lightIter], out m_AdditionalLightColors[lightIter],
                         out m_AdditionalLightAttenuations[lightIter], out m_AdditionalLightSpotDirections[lightIter], out uint lightLayerMask);
 
-                    m_AdditionalLightsLayerMasks[lightIter] = AsFloat((int)lightLayerMask);
+                    m_AdditionalLightsLayerMasks[lightIter] = math.asfloat(lightLayerMask);
                     lightIter++;
                 }
             }
@@ -189,7 +406,7 @@ public class ForwardLights
 
     private int SetupPerObjectLightIndices(ref RenderingData renderingData)
     {
-        if (renderingData.additionalLightsCount == 0)
+        if (renderingData.additionalLightsCount == 0 || m_UseForwardPlus)
             return renderingData.additionalLightsCount;
 
         var cullResults = renderingData.cullResults;
@@ -240,6 +457,17 @@ public class ForwardLights
         return additionalLightsCount;
     }
 
+    private void CreateForwardPlusBuffers()
+    {
+        m_ZBins = new NativeArray<uint>(TinyRenderPipeline.maxZBinWords, Allocator.Persistent);
+        m_ZBinsBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Constant, TinyRenderPipeline.maxZBinWords / 4, UnsafeUtility.SizeOf<float4>());
+        m_ZBinsBuffer.name = "Z-Bin Buffer";
+
+        m_TileMasks = new NativeArray<uint>(TinyRenderPipeline.maxTileWords, Allocator.Persistent);
+        m_TileMasksBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Constant, TinyRenderPipeline.maxTileWords / 4, UnsafeUtility.SizeOf<float4>());
+        m_TileMasksBuffer.name = "Tile Buffer";
+    }
+
     private static void GetPunctualLightDistanceAttenuation(float lightRange, ref Vector4 lightAttenuation)
     {
         // Light attenuation: attenuation = 1.0 / distanceToLightSqr
@@ -271,24 +499,5 @@ public class ForwardLights
     {
         Vector4 dir = lightLocalToWorldMatrix.GetColumn(2);
         lightSpotDir = new Vector4(-dir.x, -dir.y, -dir.z, 0.0f);
-    }
-
-    [StructLayout(LayoutKind.Explicit)]
-    private struct IntFloatUnion
-    {
-        [FieldOffset(0)]
-        public int intValue;
-
-        [FieldOffset(0)]
-        public float floatValue;
-    }
-
-    private static float AsFloat(int x)
-    {
-        IntFloatUnion u;
-        u.floatValue = 0;
-        u.intValue = x;
-
-        return u.floatValue;
     }
 }
