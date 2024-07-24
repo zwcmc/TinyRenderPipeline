@@ -25,6 +25,7 @@ struct LightMinMaxZJob : IJobFor
         originVS.z *= -1;
 
         var minMax = math.float2(originVS.z - light.range, originVS.z + light.range);
+
         if (light.lightType == LightType.Spot)
         {
             var angleA = math.radians(light.spotAngle) * 0.5f;

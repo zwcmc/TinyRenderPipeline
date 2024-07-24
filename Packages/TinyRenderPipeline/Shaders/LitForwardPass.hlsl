@@ -40,6 +40,8 @@ void InitializeInputData(Varyings input, half3 normalTS, out InputData inputData
     inputData.shadowCoord = TransformWorldToShadowCoord(inputData.positionWS);
 
     inputData.bakedGI = SampleSH(inputData.normalWS);
+
+    inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(input.positionCS);
 }
 
 Varyings LitVertex(Attributes input)

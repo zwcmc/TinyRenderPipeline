@@ -87,6 +87,8 @@ public class TinyBaseRenderer : IDisposable
         float invNear = Mathf.Approximately(near, 0.0f) ? 0.0f : 1.0f / near;
         float invFar = Mathf.Approximately(far, 0.0f) ? 0.0f : 1.0f / far;
         float isOrthographic = camera.orthographic ? 1.0f : 0.0f;
+        float cameraWidth = (float)camera.pixelWidth;
+        float cameraHeight = (float)camera.pixelHeight;
 
         // From http://www.humus.name/temp/Linearize%20depth.txt
         // But as depth component textures on OpenGL always return in 0..1 range (as in D3D), we have to use
@@ -115,5 +117,6 @@ public class TinyBaseRenderer : IDisposable
         cmd.SetGlobalVector(ShaderPropertyId.orthoParams, orthoParams);
         float projectionFlipSign = isTargetFlipped ? -1.0f : 1.0f;
         cmd.SetGlobalVector(ShaderPropertyId.projectionParams, new Vector4(projectionFlipSign, near, far, 1.0f * invFar));
+        cmd.SetGlobalVector(ShaderPropertyId.screenParams, new Vector4(cameraWidth, cameraHeight, 1.0f + 1.0f / cameraWidth, 1.0f + 1.0f / cameraHeight));
     }
 }

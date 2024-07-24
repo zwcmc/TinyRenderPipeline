@@ -1,7 +1,6 @@
 #ifndef TINY_RP_INPUT_INCLUDED
 #define TINY_RP_INPUT_INCLUDED
 
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/Core.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/UnityInput.hlsl"
@@ -16,6 +15,7 @@ struct InputData
     half3 viewDirectionWS;
     float4 shadowCoord;
     half3 bakedGI;
+    float2 normalizedScreenSpaceUV;
 };
 
 // Main light
@@ -43,17 +43,29 @@ CBUFFER_END
 #define MAX_ZBIN_VEC4S 1024
 #define MAX_TILE_VEC4S 1024
 
-#if _FORWARD_PLUS
-CBUFFER_START(urp_ZBinBuffer)
+#ifdef  _FORWARD_PLUS
+CBUFFER_START(trp_ZBinBuffer)
 float4 urp_ZBins[MAX_ZBIN_VEC4S];
 CBUFFER_END
-CBUFFER_START(urp_TileBuffer)
+CBUFFER_START(trp_TileBuffer)
 float4 urp_Tiles[MAX_TILE_VEC4S];
 CBUFFER_END
 
 float4 _FPParams0;
 float4 _FPParams1;
-float4 _FPParams2;
+// float4 _FPParams2;
+
+#define URP_FP_ZBIN_SCALE (_FPParams0.x)
+#define URP_FP_ZBIN_OFFSET (_FPParams0.y)
+#define URP_FP_PROBES_BEGIN ((uint)_FPParams0.z)
+// Directional lights would be in all clusters, so they don't go into the cluster structure.
+// Instead, they are stored first in the light buffer.
+#define URP_FP_DIRECTIONAL_LIGHTS_COUNT ((uint)_FPParams0.w)
+
+// Scale from screen-space UV [0, 1] to tile coordinates [0, tile resolution].
+#define URP_FP_TILE_SCALE ((float2)_FPParams1.xy)
+#define URP_FP_TILE_COUNT_X ((uint)_FPParams1.z)
+#define URP_FP_WORDS_PER_TILE ((uint)_FPParams1.w)
 
 #endif
 

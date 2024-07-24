@@ -2,6 +2,8 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
+using System;
+using UnityEngine;
 
 [BurstCompile(FloatMode = FloatMode.Fast, DisableSafetyChecks = true, OptimizeFor = OptimizeFor.Performance)]
 struct ZBinningJob : IJobFor
@@ -51,15 +53,14 @@ struct ZBinningJob : IJobFor
         var emptyHeader = EncodeHeader(ushort.MaxValue, ushort.MinValue);
         for (var binIndex = binStart; binIndex <= binEnd; binIndex++)
         {
-            bins[binIndex * (headerLength + wordsPerTile) + 0] = emptyHeader;
-            bins[binIndex * (headerLength + wordsPerTile) + 1] = emptyHeader;
+            bins[binIndex * (headerLength + wordsPerTile)] = emptyHeader;
         }
 
         // Fill ZBins for lights.
-        FillZBins(binStart, binEnd, 0, lightCount, 0);
+        FillZBins(binStart, binEnd, 0, lightCount);
     }
 
-    void FillZBins(int binStart, int binEnd, int itemStart, int itemEnd, int headerIndex)
+    void FillZBins(int binStart, int binEnd, int itemStart, int itemEnd)
     {
         for (var index = itemStart; index < itemEnd; index++)
         {
@@ -73,10 +74,10 @@ struct ZBinningJob : IJobFor
             for (int binIndex = minBin; binIndex <= maxBin; binIndex++)
             {
                 var baseIndex = binIndex * (headerLength + wordsPerTile);
-                var (minIndex, maxIndex) = DecodeHeader(bins[baseIndex + headerIndex]);
+                var (minIndex, maxIndex) = DecodeHeader(bins[baseIndex]);
                 minIndex = math.min(minIndex, (uint)index);
                 maxIndex = math.max(maxIndex, (uint)index);
-                bins[baseIndex + headerIndex] = EncodeHeader(minIndex, maxIndex);
+                bins[baseIndex] = EncodeHeader(minIndex, maxIndex);
                 bins[baseIndex + headerLength + wordIndex] |= bitMask;
             }
         }

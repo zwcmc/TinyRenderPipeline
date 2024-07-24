@@ -78,6 +78,12 @@ float4 unity_OrthoParams;
 // z = far plane
 // w = 1/far plane
 float4 _ProjectionParams;
+
+// x = width
+// y = height
+// z = 1 + 1.0/width
+// w = 1 + 1.0/height
+float4 _ScreenParams;
 // ------------------------------------------------
 
 // Reflection cube

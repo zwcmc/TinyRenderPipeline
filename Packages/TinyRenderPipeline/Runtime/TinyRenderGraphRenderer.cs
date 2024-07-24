@@ -57,6 +57,9 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         var camera = renderingData.camera;
         var cameraType = camera.cameraType;
 
+        // PreSetup for forward+ rendering path
+        forwardLights.PreSetup(ref renderingData);
+
         // Setup lights data
         forwardLights.SetupRenderGraphLights(renderGraph, ref renderingData);
 

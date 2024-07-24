@@ -1,6 +1,21 @@
 #ifndef TINY_RP_REALTIME_LIGHTS_INCLUDED
 #define TINY_RP_REALTIME_LIGHTS_INCLUDED
 
+#include "Packages/com.tiny.render-pipeline/ShaderLibrary/Clustering.hlsl"
+
+#ifdef _FORWARD_PLUS
+    #define LIGHT_LOOP_BEGIN(lightCount) { \
+    uint lightIndex; \
+    ClusterIterator _urp_internal_clusterIterator = ClusterInit(inputData.normalizedScreenSpaceUV, inputData.positionWS, 0); \
+    [loop] while (ClusterNext(_urp_internal_clusterIterator, lightIndex)) { \
+        lightIndex += URP_FP_DIRECTIONAL_LIGHTS_COUNT;
+    #define LIGHT_LOOP_END } }
+#else
+    #define LIGHT_LOOP_BEGIN(lightCount) \
+    for (uint lightIndex = 0u; lightIndex < lightCount; ++lightIndex) {
+    #define LIGHT_LOOP_END }
+#endif
+
 struct Light
 {
     half3  direction;
@@ -36,7 +51,11 @@ Light GetMainLight()
     Light light;
     light.direction = half3(_MainLightPosition.xyz);
     light.color = _MainLightColor.rgb;
+#ifdef _FORWARD_PLUS
+    light.distanceAttenuation = 1.0;
+#else
     light.distanceAttenuation = unity_LightData.z; // unity_LightData.z is 1 when not culled by the culling mask, otherwise 0.
+#endif
     light.shadowAttenuation = 1.0;
     light.layerMask = _MainLightLayerMask;
 
@@ -52,7 +71,11 @@ Light GetMainLight(InputData inputData)
 
 int GetAdditionalLightsCount()
 {
+#ifdef _FORWARD_PLUS
+    return 0;
+#else
     return int(min(_AdditionalLightsCount.x, unity_LightData.y));
+#endif
 }
 
 int GetPerObjectLightIndex(uint index)
@@ -89,7 +112,11 @@ Light GetAdditionalPerObjectLight(int perObjectLightIndex, float3 positionWS)
 
 Light GetAdditionalLight(uint i, float3 positionWS)
 {
+#ifdef _FORWARD_PLUS
+    int lightIndex = i;
+#else
     int lightIndex = GetPerObjectLightIndex(i);
+#endif
     Light light = GetAdditionalPerObjectLight(lightIndex, positionWS);
     light.shadowAttenuation = AdditionalLightShadow(lightIndex, positionWS, light.direction);
     return light;

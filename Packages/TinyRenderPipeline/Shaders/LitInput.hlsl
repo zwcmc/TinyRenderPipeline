@@ -1,8 +1,7 @@
 #ifndef TINY_RP_LIT_INPUT_INCLUDED
 #define TINY_RP_LIT_INPUT_INCLUDED
 
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/Input.hlsl"
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/ShaderVariablesFunctions.hlsl"
+#include "Packages/com.tiny.render-pipeline/ShaderLibrary/Core.hlsl"
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/SurfaceData.hlsl"
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/BRDF.hlsl"
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/Shadows.hlsl"

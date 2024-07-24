@@ -116,6 +116,7 @@ public class ForwardLights
 
             var screenResolution = math.int2(camera.pixelWidth, camera.pixelHeight);
 
+            // 遍历所有的可见光源，过滤出主光源和额外方向光源，因为方向光源是对场景内所有物体生效的，所以不需要做 Tiled 计算，所以后续所说的额外光源指的就是额外的点光源和射灯光源
             m_LightCount = renderingData.cullResults.visibleLights.Length;
             var lightOffset = 0;
             while (lightOffset < m_LightCount && renderingData.cullResults.visibleLights[lightOffset].lightType == LightType.Directional)
@@ -123,21 +124,33 @@ public class ForwardLights
                 lightOffset++;
             }
             m_LightCount -= lightOffset;
-
             m_DirectionalLightCount = lightOffset;
 
             if (renderingData.mainLightIndex != -1 && m_DirectionalLightCount != 0) m_DirectionalLightCount -= 1;
 
-            var visibleLights = renderingData.cullResults.visibleLights.GetSubArray(lightOffset, m_LightCount);
-            var itemsPerTile = visibleLights.Length;
-            m_WordsPerTile = (itemsPerTile + 31) / 32;
+            // 到此，m_LightCount存储的是额外光源的总数量，m_DirectionalLightCount存储的是额外方向光源的数量
 
-            m_ActualTileWidth = 8 >> 1;
-            do
+            // 所有额外光源
+            var visibleLights = renderingData.cullResults.visibleLights.GetSubArray(lightOffset, m_LightCount);
+
+            // 额外光源的数量
+            var itemsPerTile = visibleLights.Length;
+
+            // 世界空间到相机空间的转换矩阵
+            var worldToView = camera.worldToCameraMatrix;
+
+            // 计算每个额外光源在相机空间下的最小和最大深度
+            var minMaxZs = new NativeArray<float2>(itemsPerTile, Allocator.TempJob);
+            var lightMinMaxZJob = new LightMinMaxZJob
             {
-                m_ActualTileWidth <<= 1;
-                m_TileResolution = (screenResolution + m_ActualTileWidth - 1) / m_ActualTileWidth;
-            } while ((m_TileResolution.x * m_TileResolution.y * m_WordsPerTile) > TinyRenderPipeline.maxTileWords);
+                worldToView =  worldToView,
+                lights = visibleLights,
+                minMaxZs = minMaxZs
+            };
+            // Innerloop batch count of 32 is not special, just a handwavy amount to not have too much scheduling overhead nor too little parallelism.
+            var lightMinMaxZHandle = lightMinMaxZJob.ScheduleParallel(m_LightCount, 32, new JobHandle());
+
+            m_WordsPerTile = (itemsPerTile + 31) / 32;
 
             if (!camera.orthographic)
             {
@@ -153,19 +166,6 @@ public class ForwardLights
                 m_ZBinOffset = -camera.nearClipPlane * m_ZBinScale;
                 m_BinCount = (int)(camera.farClipPlane * m_ZBinScale + m_ZBinOffset);
             }
-
-            var worldToView = camera.worldToCameraMatrix;
-            var viewToClip = camera.projectionMatrix;
-
-            var minMaxZs = new NativeArray<float2>(itemsPerTile, Allocator.TempJob);
-            var lightMinMaxZJob = new LightMinMaxZJob
-            {
-                worldToView =  worldToView,
-                lights = visibleLights,
-                minMaxZs = minMaxZs
-            };
-            // Innerloop batch count of 32 is not special, just a handwavy amount to not have too much scheduling overhead nor too little parallelism.
-            var lightMinMaxZHandle = lightMinMaxZJob.ScheduleParallel(m_LightCount, 32, new JobHandle());
 
             var zBinningBatchCount = (m_BinCount + ZBinningJob.batchSize - 1) / ZBinningJob.batchSize;
             var zBinningJob = new ZBinningJob
@@ -184,7 +184,15 @@ public class ForwardLights
 
             lightMinMaxZHandle.Complete();
 
+            var viewToClip = camera.projectionMatrix;
             GetViewParams(camera, viewToClip, out float viewPlaneBottom0, out float viewPlaneTop0, out float4 viewToViewportScaleBias0);
+
+            m_ActualTileWidth = 8 >> 1;
+            do
+            {
+                m_ActualTileWidth <<= 1;
+                m_TileResolution = (screenResolution + m_ActualTileWidth - 1) / m_ActualTileWidth;
+            } while ((m_TileResolution.x * m_TileResolution.y * m_WordsPerTile) > TinyRenderPipeline.maxTileWords);
 
             // Each light needs 1 range for Y, and a range per row. Align to 128-bytes to avoid false sharing.
             var rangesPerItem = AlignByteCount((1 + m_TileResolution.y) * UnsafeUtility.SizeOf<InclusiveRange>(), 128) / UnsafeUtility.SizeOf<InclusiveRange>();
@@ -265,13 +273,12 @@ public class ForwardLights
                 {
                     m_ZBinsBuffer.SetData(m_ZBins.Reinterpret<float4>(UnsafeUtility.SizeOf<uint>()));
                     m_TileMasksBuffer.SetData(m_TileMasks.Reinterpret<float4>(UnsafeUtility.SizeOf<uint>()));
-                    cmd.SetGlobalConstantBuffer(m_ZBinsBuffer, "_ZBinBuffer", 0, TinyRenderPipeline.maxZBinWords * 4);
-                    cmd.SetGlobalConstantBuffer(m_TileMasksBuffer, "_TileBuffer", 0, TinyRenderPipeline.maxTileWords * 4);
+                    cmd.SetGlobalConstantBuffer(m_ZBinsBuffer, "trp_ZBinBuffer", 0, TinyRenderPipeline.maxZBinWords * 4);
+                    cmd.SetGlobalConstantBuffer(m_TileMasksBuffer, "trp_TileBuffer", 0, TinyRenderPipeline.maxTileWords * 4);
                 }
 
                 cmd.SetGlobalVector("_FPParams0", math.float4(m_ZBinScale, m_ZBinOffset, m_LightCount, m_DirectionalLightCount));
                 cmd.SetGlobalVector("_FPParams1", math.float4(renderingData.camera.pixelRect.size / m_ActualTileWidth, m_TileResolution.x, m_WordsPerTile));
-                cmd.SetGlobalVector("_FPParams2", math.float4(m_BinCount, m_TileResolution.x * m_TileResolution.y, 0, 0));
             }
 
             SetupShaderLightConstants(cmd, ref renderingData);
@@ -291,7 +298,7 @@ public class ForwardLights
 
             builder.SetRenderFunc((SetupLightsPassData data, LowLevelGraphContext lowLevelGraphContext) =>
             {
-                data.forwardLights.SetupShaderLightConstants(lowLevelGraphContext.legacyCmd, ref data.renderingData);
+                data.forwardLights.SetupLights(lowLevelGraphContext.legacyCmd, ref data.renderingData);
             });
         }
     }
@@ -301,6 +308,12 @@ public class ForwardLights
         if (m_UseForwardPlus)
         {
             m_CullingHandle.Complete();
+            m_ZBins.Dispose();
+            m_TileMasks.Dispose();
+            m_ZBinsBuffer.Dispose();
+            m_ZBinsBuffer = null;
+            m_TileMasksBuffer.Dispose();
+            m_TileMasksBuffer = null;
         }
     }
 

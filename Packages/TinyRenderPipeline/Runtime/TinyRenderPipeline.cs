@@ -141,7 +141,6 @@ public class TinyRenderPipeline : RenderPipeline
                 s_TinyRenderGraphRenderer.RecordAndExecuteRenderGraph(s_RenderGraph, ref renderingData);
             else
             {
-                s_TinyRenderer.Setup(ref renderingData);
                 s_TinyRenderer.Execute(ref renderingData);
             }
         }

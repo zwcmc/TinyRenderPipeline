@@ -41,14 +41,37 @@ half4 FragmentPBR(InputData inputData, SurfaceData surfaceData)
 
     half3 additionalLightsColor = 0.0;
     uint additionalLightCount = GetAdditionalLightsCount();
-    for (uint i = 0u; i < additionalLightCount; ++i)
+#if _FORWARD_PLUS
+    for (uint lightIndex = 0; lightIndex < min(URP_FP_DIRECTIONAL_LIGHTS_COUNT, MAX_VISIBLE_LIGHTS); lightIndex++)
     {
-        Light light = GetAdditionalLight(i, inputData.positionWS);
+        Light light = GetAdditionalLight(lightIndex, inputData.positionWS);
         if (IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
         {
             additionalLightsColor += LightingPBR(brdfData, light, inputData.normalWS, inputData.viewDirectionWS);
         }
     }
+#endif
+
+    LIGHT_LOOP_BEGIN(additionalLightCount)
+        Light light = GetAdditionalLight(lightIndex, inputData.positionWS);
+        if (IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
+        {
+            additionalLightsColor += LightingPBR(brdfData, light, inputData.normalWS, inputData.viewDirectionWS);
+        }
+    LIGHT_LOOP_END
+
+
+    // uint additionalLightCount = GetAdditionalLightsCount();
+    // for (uint i = 0u; i < additionalLightCount; ++i)
+    // {
+    //     Light light = GetAdditionalLight(i, inputData.positionWS);
+    //     if (IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
+    //     {
+    //         additionalLightsColor += LightingPBR(brdfData, light, inputData.normalWS, inputData.viewDirectionWS);
+    //     }
+    // }
+
+
     lightingColor += additionalLightsColor;
 
 #if defined(REAL_IS_HALF)

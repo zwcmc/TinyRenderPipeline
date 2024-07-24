@@ -134,6 +134,6 @@ public static class ShaderPropertyId
     public static readonly int zBufferParams = Shader.PropertyToID("_ZBufferParams");
     public static readonly int orthoParams = Shader.PropertyToID("unity_OrthoParams");
     public static readonly int projectionParams = Shader.PropertyToID("_ProjectionParams");
-
+    public static readonly int screenParams = Shader.PropertyToID("_ScreenParams");
     public static readonly int sourceSize = Shader.PropertyToID("_SourceSize");
 }

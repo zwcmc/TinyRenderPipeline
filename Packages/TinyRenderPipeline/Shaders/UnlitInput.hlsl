@@ -1,8 +1,7 @@
 #ifndef TINY_RP_UNLIT_INPUT_INCLUDED
 #define TINY_RP_UNLIT_INPUT_INCLUDED
 
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/Input.hlsl"
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/ShaderVariablesFunctions.hlsl"
+#include "Packages/com.tiny.render-pipeline/ShaderLibrary/Core.hlsl"
 
 CBUFFER_START(UnityPerMaterial)
 float4 _BaseMap_ST;
