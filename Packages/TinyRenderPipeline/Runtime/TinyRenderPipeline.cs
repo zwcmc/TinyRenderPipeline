@@ -40,8 +40,12 @@ public class TinyRenderPipeline : RenderPipeline
     // These limits have to match same limits in Input.hlsl
     private const int k_MaxVisibleAdditionalLights = 8;
 
+    // 8 point lights, 6 * 8 = 48 shadow slices max
+    private const int k_MaxShadowSliceCount = 48;
+
     // For forward rendering path
     public static int maxVisibleAdditionalLights => k_MaxVisibleAdditionalLights;
+    public static int maxShadowSlicesCount => k_MaxShadowSliceCount;
 
     // For forward+ rendering path
     public static int maxTileWords => 1024 * 4;

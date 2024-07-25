@@ -7,6 +7,7 @@
 
 // Max visible additional lights count
 #define MAX_VISIBLE_LIGHTS 8
+#define MAX_SHADOW_SLICE_COUNT 48
 
 struct InputData
 {

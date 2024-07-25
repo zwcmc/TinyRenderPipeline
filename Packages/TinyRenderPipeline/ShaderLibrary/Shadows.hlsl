@@ -25,7 +25,7 @@ float4   _CascadesParams; // (x: cascades count, y: 0.0, z: 0.0, w: 0.0)
 
 float4   _AdditionalShadowFadeParams; // x: additional light fade scale, y: additional light fade bias, z: 0.0, w: 0.0)
 float4   _AdditionalShadowParams[MAX_VISIBLE_LIGHTS];         // Per-light data
-float4x4 _AdditionalLightsWorldToShadow[MAX_VISIBLE_LIGHTS];  // Per-shadow-slice-data
+float4x4 _AdditionalLightsWorldToShadow[MAX_SHADOW_SLICE_COUNT];  // Per-shadow-slice-data
 #ifndef SHADER_API_GLES3
 CBUFFER_END
 #endif

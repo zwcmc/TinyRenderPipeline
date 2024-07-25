@@ -78,8 +78,9 @@ public class AdditionalLightsShadowPass
         m_AdditionalLightsShadowmapID = Shader.PropertyToID(k_AdditionalLightsShadowmapTextureName);
 
         int maxAdditionalLightsCount = TinyRenderPipeline.maxVisibleAdditionalLights;
+        int maxShadowSliceCount = TinyRenderPipeline.maxShadowSlicesCount;
         m_AdditionalLightIndexToShadowParams = new Vector4[maxAdditionalLightsCount];
-        m_AdditionalLightShadowSliceIndexTo_WorldShadowMatrix = new Matrix4x4[maxAdditionalLightsCount];
+        m_AdditionalLightShadowSliceIndexTo_WorldShadowMatrix = new Matrix4x4[maxShadowSliceCount];
         m_AdditionalLightIndexToVisibleLightIndex = new int[maxAdditionalLightsCount];
 
         m_EmptyAdditionalLightsShadowmapHandle = ShadowUtils.AllocShadowRT(1, 1, k_ShadowmapBufferBits, name: "_EmptyAdditionalLightShadowmapTexture");
@@ -120,8 +121,8 @@ public class AdditionalLightsShadowPass
         if (m_AdditionalLightsShadowSlices == null || m_AdditionalLightsShadowSlices.Length < totalShadowSliceCount)
             m_AdditionalLightsShadowSlices = new ShadowSliceData[totalShadowSliceCount];
 
-        if (m_AdditionalLightShadowSliceIndexTo_WorldShadowMatrix == null || m_AdditionalLightShadowSliceIndexTo_WorldShadowMatrix.Length < totalShadowSliceCount)
-            m_AdditionalLightShadowSliceIndexTo_WorldShadowMatrix = new Matrix4x4[totalShadowSliceCount];
+        if (m_AdditionalLightShadowSliceIndexTo_WorldShadowMatrix == null)
+            m_AdditionalLightShadowSliceIndexTo_WorldShadowMatrix = new Matrix4x4[TinyRenderPipeline.maxShadowSlicesCount];
 
         // Initialize shadow params
         for (int i = 0; i < maxAdditionalLightShadowParams; ++i)
@@ -149,9 +150,7 @@ public class AdditionalLightsShadowPass
 
             int additionalLightIndex = additionalLightCount++;
             if (additionalLightIndex >= m_AdditionalLightIndexToVisibleLightIndex.Length)
-            {
                 continue;
-            }
 
             // map additional light index to visible light index
             m_AdditionalLightIndexToVisibleLightIndex[additionalLightIndex] = visibleLightIndex;
@@ -395,6 +394,9 @@ public class AdditionalLightsShadowPass
     private void Clear()
     {
         m_ShadowSliceToAdditionalLightIndex.Clear();
+
+        for (int i = 0; i < m_AdditionalLightShadowSliceIndexTo_WorldShadowMatrix.Length; ++i)
+            m_AdditionalLightShadowSliceIndexTo_WorldShadowMatrix[i] = Matrix4x4.identity;
     }
 
     private bool SetupForEmptyRendering(ref RenderingData renderingData)
@@ -406,6 +408,9 @@ public class AdditionalLightsShadowPass
         // initialize default _AdditionalShadowParams
         for (int i = 0; i < m_AdditionalLightIndexToShadowParams.Length; ++i)
             m_AdditionalLightIndexToShadowParams[i] = s_DefaultShadowParams;
+
+        for (int i = 0; i < m_AdditionalLightShadowSliceIndexTo_WorldShadowMatrix.Length; ++i)
+            m_AdditionalLightShadowSliceIndexTo_WorldShadowMatrix[i] = Matrix4x4.identity;
 
         return true;
     }
