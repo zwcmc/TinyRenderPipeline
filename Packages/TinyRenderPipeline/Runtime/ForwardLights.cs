@@ -116,7 +116,8 @@ public class ForwardLights
 
             var screenResolution = math.int2(camera.pixelWidth, camera.pixelHeight);
 
-            // 遍历所有的可见光源，过滤出主光源和额外方向光源，因为方向光源是对场景内所有物体生效的，所以不需要做 Tiled 计算，所以后续所说的额外光源指的就是额外的点光源和射灯光源
+            // 遍历所有的可见光源，过滤出主光源和额外方向光源，因为方向光源是对场景内所有物体生效的，所以不需要做 Tiled 计算，
+            // 所以后续所说的额外光源指的就是额外的点光源和聚光灯光源
             m_LightCount = renderingData.cullResults.visibleLights.Length;
             var lightOffset = 0;
             while (lightOffset < m_LightCount && renderingData.cullResults.visibleLights[lightOffset].lightType == LightType.Directional)
@@ -128,7 +129,7 @@ public class ForwardLights
 
             if (renderingData.mainLightIndex != -1 && m_DirectionalLightCount != 0) m_DirectionalLightCount -= 1;
 
-            // 到此，m_LightCount存储的是额外光源的总数量，m_DirectionalLightCount存储的是额外方向光源的数量
+            // 到此，m_LightCount 存储的是额外光源的总数量，m_DirectionalLightCount 存储的是额外方向光源的数量
 
             // 所有额外光源
             var visibleLights = renderingData.cullResults.visibleLights.GetSubArray(lightOffset, m_LightCount);
@@ -136,10 +137,10 @@ public class ForwardLights
             // 额外光源的数量
             var itemsPerTile = visibleLights.Length;
 
-            // 世界空间到相机空间的转换矩阵
+            // 世界空间到观察空间的转换矩阵
             var worldToView = camera.worldToCameraMatrix;
 
-            // 计算每个额外光源在相机空间下的最小和最大深度
+            // 1. 此Job用以多线程计算每个额外光源在相机空间下的最小和最大深度
             var minMaxZs = new NativeArray<float2>(itemsPerTile, Allocator.TempJob);
             var lightMinMaxZJob = new LightMinMaxZJob
             {
@@ -390,13 +391,22 @@ public class ForwardLights
         var lightLocalToWorld = visibleLight.localToWorldMatrix;
         var lightType = visibleLight.lightType;
 
+        // For directional light, lightPos is a direction, and in light's local space, it's forward direction in local space is (0,0,1),
+        // after is multiplied by light's localToWorld matrix:
+        // localToWorldMatrix * (0,0,1,0), a direction has 0 in homogeneous coordinate;
+        // it returns the column 2 of the light's localToWorld matrix, and in lighting calculation in Shader,
+        // the light directional vector needs to point to light, so negative the direction here
         if (lightType == LightType.Directional)
         {
-            Vector4 dir = -lightLocalToWorld.GetColumn(2);
-            lightPos = new Vector4(dir.x, dir.y, dir.z, 0.0f);
+            Vector4 dir = lightLocalToWorld.GetColumn(2);
+            lightPos = new Vector4(-dir.x, -dir.y, -dir.z, 0.0f);
         }
         else
         {
+            // For point light and spot light, lightPos is a position in world space, it's original position in local space is (0,0,0),
+            // after is multiplied by light's localToWorld matrix:
+            // localToWorldMatrix * (0,0,0,1), a position has 1 in homogeneous coordinate;
+            // it returns the column 3 of the light's localToWorld matrix
             Vector4 pos = lightLocalToWorld.GetColumn(3);
             lightPos = new Vector4(pos.x, pos.y, pos.z, 1.0f);
 
@@ -510,6 +520,11 @@ public class ForwardLights
 
     private static void GetSpotDirection(ref Matrix4x4 lightLocalToWorldMatrix, out Vector4 lightSpotDir)
     {
+        // For spot light's direction, and in light's local space, it's forward direction in local space is (0,0,1),
+        // after is multiplied by light's localToWorld matrix:
+        // localToWorldMatrix * (0,0,1,0), a direction has 0 in homogeneous coordinate;
+        // it returns the column 2 of the light's localToWorld matrix, and in lighting calculation in Shader,
+        // the spot directional vector needs to point to light, so negative the direction here
         Vector4 dir = lightLocalToWorldMatrix.GetColumn(2);
         lightSpotDir = new Vector4(-dir.x, -dir.y, -dir.z, 0.0f);
     }
