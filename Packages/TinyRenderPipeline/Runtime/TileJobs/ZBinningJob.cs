@@ -11,7 +11,7 @@ struct ZBinningJob : IJobFor
     public const int batchSize = 128;
 
     // 每个 ZBin 起始 2 个 uint 的 header0 和 header1
-    public const int headerLength = 2;
+    public const int headerLength = 1;
 
     // 长度为 TinyRenderPipeline.maxZBinWords 的输出 bins
     [NativeDisableParallelForRestriction]

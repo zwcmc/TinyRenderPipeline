@@ -170,14 +170,14 @@ public class ForwardLights
             if (!camera.orthographic)
             {
                 // Use to calculate binIndex = log2(z) * zBinScale + zBinOffset
-                m_ZBinScale = (TinyRenderPipeline.maxZBinWords) / ((math.log2(camera.farClipPlane) - math.log2(camera.nearClipPlane)) * (2 + m_WordsPerTile));
+                m_ZBinScale = (TinyRenderPipeline.maxZBinWords) / ((math.log2(camera.farClipPlane) - math.log2(camera.nearClipPlane)) * (1 + m_WordsPerTile));
                 m_ZBinOffset = -math.log2(camera.nearClipPlane) * m_ZBinScale;
                 m_BinCount = (int)(math.log2(camera.farClipPlane) * m_ZBinScale + m_ZBinOffset);
             }
             else
             {
                 // Use to calculate binIndex = z * zBinScale + zBinOffset
-                m_ZBinScale = (TinyRenderPipeline.maxZBinWords) / ((camera.farClipPlane - camera.nearClipPlane) * (2 + m_WordsPerTile));
+                m_ZBinScale = (TinyRenderPipeline.maxZBinWords) / ((camera.farClipPlane - camera.nearClipPlane) * (1 + m_WordsPerTile));
                 m_ZBinOffset = -camera.nearClipPlane * m_ZBinScale;
                 m_BinCount = (int)(camera.farClipPlane * m_ZBinScale + m_ZBinOffset);
             }

@@ -36,11 +36,11 @@ ClusterIterator ClusterInit(float2 normalizedScreenSpaceUV, float3 positionWS, i
     // The total length of this buffer is `4*MAX_ZBIN_VEC4S`. `zBinBaseIndex` should
     // always point to the `header 0` of a ZBin, so we clamp it accordingly, to
     // avoid out-of-bounds indexing of the ZBin buffer.
-    zBinBaseIndex = zBinBaseIndex * (2 + URP_FP_WORDS_PER_TILE);
-    zBinBaseIndex = min(zBinBaseIndex, 4 * MAX_ZBIN_VEC4S - (2 + URP_FP_WORDS_PER_TILE));
+    zBinBaseIndex = zBinBaseIndex * (1 + URP_FP_WORDS_PER_TILE);
+    zBinBaseIndex = min(zBinBaseIndex, 4 * MAX_ZBIN_VEC4S - (1 + URP_FP_WORDS_PER_TILE));
 
     uint zBinHeaderIndex = zBinBaseIndex + headerIndex;
-    state.zBinOffset = zBinBaseIndex + 2;
+    state.zBinOffset = zBinBaseIndex + 1;
 
     uint header = Select4(asuint(urp_ZBins[zBinHeaderIndex / 4]), zBinHeaderIndex % 4);
     uint tileIndex = state.tileOffset;
