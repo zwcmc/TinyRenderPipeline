@@ -140,7 +140,7 @@ public class ForwardLights
             // 世界空间到观察空间的转换矩阵
             var worldToView = camera.worldToCameraMatrix;
 
-            // 1. 此Job用以多线程计算每个额外光源在相机空间下的最小和最大深度
+            // 此Job用以多线程计算每个额外光源在观察空间下的最小和最大深度
             var minMaxZs = new NativeArray<float2>(itemsPerTile, Allocator.TempJob);
             var lightMinMaxZJob = new LightMinMaxZJob
             {
@@ -151,8 +151,22 @@ public class ForwardLights
             // Innerloop batch count of 32 is not special, just a handwavy amount to not have too much scheduling overhead nor too little parallelism.
             var lightMinMaxZHandle = lightMinMaxZJob.ScheduleParallel(m_LightCount, 32, new JobHandle());
 
+            // 这段代码计算了在给定的 itemsPerTile 项目数下，需要多少个 "Word"（一个 "Word" 有 32 项） 来容纳这些项目。它通过加上 31 并进行整数除法来实现向上取整的效果，从而确保即使有 1 个项目也会被正确计算；
+            // 其中，一个 "Word" 有 32 项，而这 32 项代表的是一个 32 位的无符号整数（uint），也就是说一个 "Word" 代表的是一个无符号整数（uint）
             m_WordsPerTile = (itemsPerTile + 31) / 32;
 
+            // 在上面根据额外光源数量，计算了每个 ZBin 一共需要 m_WordsPerTile 个无符号整数，而每一个 ZBin 还包含 2 个无符号整数的 header，每个 ZBin 的结构如下：
+            //                          ZBin 0                                      ZBin 1
+            //  .-------------------------^------------------------. .----------------^-------
+            // | header0 | header1 | word 1 | word 2 | ... | word N | header0 | header 1 | ...
+            //                     `----------------v--------------'
+            //                                m_WordsPerTile
+            //
+
+            // 而申请的 m_ZBins 的长度为 TinyRenderPipeline.maxZBinWords ，也就是 TinyRenderPipeline.maxZBinWords 个 uint
+            // 一共有 TinyRenderPipeline.maxZBinWords 个 uint，而每个 ZBin 需要 (2 + m_WordsPerTile) 个 uint，所以一共有 TinyRenderPipeline.maxZBinWords / (2 + m_WordsPerTile) 个 ZBin
+            // 下面的逻辑是根据相机的 nearZ 和 farZ 将所有的 ZBin 均匀的分配在 nearZ -> farZ，根据距离相机原点的距离 z 就可以算出处于哪个 ZBin，zBinIndex = z * zBinScale + zBinOffset;
+            // 如果是透视相机，则使用 log2(z) 来计算。
             if (!camera.orthographic)
             {
                 // Use to calculate binIndex = log2(z) * zBinScale + zBinOffset
@@ -168,6 +182,7 @@ public class ForwardLights
                 m_BinCount = (int)(camera.farClipPlane * m_ZBinScale + m_ZBinOffset);
             }
 
+            // 计算批处理的次数，具体来说是将 m_BinCount 个项目分成若干批次，每个批次的大小为 ZBinningJob.batchSize。为了确保所有项目都被包含进去，即使最后一个批次可能没有完全填满，这里使用了向上取整的方法。
             var zBinningBatchCount = (m_BinCount + ZBinningJob.batchSize - 1) / ZBinningJob.batchSize;
             var zBinningJob = new ZBinningJob
             {

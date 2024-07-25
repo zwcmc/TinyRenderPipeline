@@ -15,7 +15,6 @@ struct ClusterIterator
     uint entityIndexNextMax;
 };
 
-// internal
 ClusterIterator ClusterInit(float2 normalizedScreenSpaceUV, float3 positionWS, int headerIndex)
 {
     ClusterIterator state = (ClusterIterator)0;
