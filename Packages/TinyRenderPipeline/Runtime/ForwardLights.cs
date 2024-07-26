@@ -140,7 +140,7 @@ public class ForwardLights
             // 世界空间到观察空间的转换矩阵
             var worldToView = camera.worldToCameraMatrix;
 
-            // 此Job用以多线程计算每个额外光源在观察空间下的最小和最大深度
+            // 此 Job 用以多线程计算每个额外光源在观察空间下的最小和最大深度
             var minMaxZs = new NativeArray<float2>(itemsPerTile, Allocator.TempJob);
             var lightMinMaxZJob = new LightMinMaxZJob
             {
@@ -151,20 +151,21 @@ public class ForwardLights
             // Innerloop batch count of 32 is not special, just a handwavy amount to not have too much scheduling overhead nor too little parallelism.
             var lightMinMaxZHandle = lightMinMaxZJob.ScheduleParallel(m_LightCount, 32, new JobHandle());
 
-            // 这段代码计算了在给定的 itemsPerTile 项目数下，需要多少个 "Word"（一个 "Word" 有 32 项） 来容纳这些项目。它通过加上 31 并进行整数除法来实现向上取整的效果，从而确保即使有 1 个项目也会被正确计算；
-            // 其中，一个 "Word" 有 32 项，而这 32 项代表的是一个 32 位的无符号整数（uint），也就是说一个 "Word" 代表的是一个无符号整数（uint）
+            // 这段代码计算了在给定的额外光源数量下，需要多少个 "Word"（一个 "Word" 有 32 项） 来容纳这些光源。它通过加上 31 并进行整数除法来实现向上取整的效果，从而确保即使有 1 个光源也会被正确计算；
+            // 其中，一个 "Word" 有 32 项，代表的是一个 32 位的无符号整数（uint），也就是说这里计算的是在一共有 itemsPerTile 个额外光源的情况下，需要多个 32 位的无符号整数（uint）“Word” 来存储，
+            // 每个 “Word” 的 32 位分别可以存储一个额外光源的索引
             m_WordsPerTile = (itemsPerTile + 31) / 32;
 
-            // 在上面根据额外光源数量，计算了每个 ZBin 一共需要 m_WordsPerTile 个无符号整数，而每一个 ZBin 还包含 2 个无符号整数的 header，每个 ZBin 的结构如下：
-            //                          ZBin 0                                      ZBin 1
-            //  .-------------------------^------------------------. .----------------^-------
-            // | header0 | header1 | word 1 | word 2 | ... | word N | header0 | header 1 | ...
-            //                     `----------------v--------------'
-            //                                m_WordsPerTile
+            // 在上面根据额外光源数量，计算了每个 ZBin 一共需要 m_WordsPerTile 个无符号整数，而每一个 ZBin 还包含 1 个无符号整数的 header，每个 ZBin 的结构如下：
+            //                         ZBin 0                             ZBin 1
+            // .-------------------------^---------------. .----------------^-------
+            // | header | word 1 | word 2 | ... | word N | header | word 1 | ...
+            //          `----------------v--------------'
+            //                     m_WordsPerTile
             //
 
-            // 而申请的 m_ZBins 的长度为 TinyRenderPipeline.maxZBinWords ，也就是 TinyRenderPipeline.maxZBinWords 个 uint
-            // 一共有 TinyRenderPipeline.maxZBinWords 个 uint，而每个 ZBin 需要 (2 + m_WordsPerTile) 个 uint，所以一共有 TinyRenderPipeline.maxZBinWords / (2 + m_WordsPerTile) 个 ZBin
+            // 而申请的 m_ZBins 的长度为 TinyRenderPipeline.maxZBinWords ，也就是 TinyRenderPipeline.maxZBinWords 个无符号整数（uint）
+            // 一共有 TinyRenderPipeline.maxZBinWords 个无符号整数（uint），而每个 ZBin 需要 (1 + m_WordsPerTile) 个无符号整数（uint），所以一共有 TinyRenderPipeline.maxZBinWords / (1 + m_WordsPerTile) 个 ZBin
             // 下面的逻辑是根据相机的 nearZ 和 farZ 将所有的 ZBin 均匀的分配在 nearZ -> farZ，根据距离相机原点的距离 z 就可以算出处于哪个 ZBin，zBinIndex = z * zBinScale + zBinOffset;
             // 如果是透视相机，则使用 log2(z) 来计算。
             if (!camera.orthographic)
@@ -184,6 +185,12 @@ public class ForwardLights
 
             // 计算批处理的次数，具体来说是将 m_BinCount 个项目分成若干批次，每个批次的大小为 ZBinningJob.batchSize。为了确保所有项目都被包含进去，即使最后一个批次可能没有完全填满，这里使用了向上取整的方法。
             var zBinningBatchCount = (m_BinCount + ZBinningJob.batchSize - 1) / ZBinningJob.batchSize;
+
+            // 此 Job 用以计算每个 zBin 被哪些额外光源包含，其中 32 位无符号整数 header 的高 16 位记录的是这些额外光源的最小索引，低 16 位记录的是这些额外光源的最大索引
+            // 每个 32 位无符号整数 “Word” 记录的是有哪些额外光源被记录（光源的索引对应 32 位中的 1 位，被记录，此位被设置为 1），例子：
+            //    1. 当只有 lightIndex = 0 的光源被记录，则 wordIndex = 0 的 word1 的第 1 个位（从右往左数，索引从0开始）设置为 1， word1 = 00000000 00000000 00000000 00000001
+            //    2. 而当 lightIndex = 0 和 lightIndex = 2 的光源都被记录呢？则 wordIndex = 0 的 word1 的第 3 个位（从右往左数，索引从0开始）设置为 1，此时 word1 = 00000000 00000000 00000000 00000101
+            //    3. 如果只有 lightIndex = 33 的光源被记录，则 wordIndex = 0 的 word1 所有位都为 0，word1 = 00000000 00000000 00000000 00000000，而 wordIndex = 1 的 word2 的第 1 个位（从右往左数，索引从0开始）设置为 1，即：word2 = 00000000 00000000 00000000 00000001
             var zBinningJob = new ZBinningJob
             {
                 bins = m_ZBins,
@@ -200,9 +207,15 @@ public class ForwardLights
 
             lightMinMaxZHandle.Complete();
 
-            var viewToClip = camera.projectionMatrix;
-            GetViewParams(camera, viewToClip, out float viewPlaneBottom0, out float viewPlaneTop0, out float4 viewToViewportScaleBias0);
+            // 以上，在观察空间把场景从近平面到远平面把场景分成了一个个的 ZBin，每个 ZBin 包含一个 32 位无符号整数（uint）的 header，它存储的是当前 ZBin 被哪些额外光源包围的所有光源的最小索引和最大索引
+            // 除了一个 32 位无符号整数（uint），还有 N 个 32 位无符号整数 “Word”，N 的数量取决与额外光源的数量，每个 “Word” 的 32 位用来存储当前 ZBin 被哪些额外光源包围的光源的索引。
 
+            // ----------------
+            // 在深度上场景已经被分割成了一个个的 ZBin，下面要做的就是在屏幕空间也要把场景分割成一个个的 Tile
+            // ----------------
+
+            // 在最大 TinyRenderPipeline.maxTileWords 个 Tile 的限制下，计算出每个 Tile 最适合的宽度
+            // 最终每个 Tile 的尺寸为：m_ActualTileWidth x m_ActualTileWidth，屏幕在 X 轴上被分为 m_TileResolution.x 列，在 Y 轴上被分位 m_TileResolution.y 行
             m_ActualTileWidth = 8 >> 1;
             do
             {
@@ -210,21 +223,44 @@ public class ForwardLights
                 m_TileResolution = (screenResolution + m_ActualTileWidth - 1) / m_ActualTileWidth;
             } while ((m_TileResolution.x * m_TileResolution.y * m_WordsPerTile) > TinyRenderPipeline.maxTileWords);
 
+            // 投影矩阵
+            var viewToClip = camera.projectionMatrix;
+
+            // 计算
+            GetViewParams(camera, viewToClip, out float viewPlaneBottom, out float viewPlaneTop, out float4 viewToViewportScaleBias);
+
             // Each light needs 1 range for Y, and a range per row. Align to 128-bytes to avoid false sharing.
-            var rangesPerItem = AlignByteCount((1 + m_TileResolution.y) * UnsafeUtility.SizeOf<InclusiveRange>(), 128) / UnsafeUtility.SizeOf<InclusiveRange>();
-            var tileRanges = new NativeArray<InclusiveRange>(rangesPerItem * itemsPerTile, Allocator.TempJob);
+            // 首先，InclusiveRange 结构体包含 2 个 short 类型的变量，分别存储的是一个范围的最小值和最大值，用来表示一个范围，一个 InclusiveRange 结构体占 2 + 2 = 4 字节数
+            // 每个光源需在 Y 轴方向上，需要一个 InclusiveRange 结构体来存储它在 Y 轴上覆盖的 Tile 范围数据（范围值[0, m_TileResolution.y - 1]），对于在 Y 轴上的覆盖的每一行 Tiles ，都额外需要一个 InclusiveRange 结构体来存储它在 X 轴上覆盖的 Tile 范围数据（范围值[0, m_TileResolution.x - 1]）
+            // 所以对于每一个额外光源，它一共需要 (1 + m_TileResolution.y) 个 InclusiveRange 结构体。
+            // 总共需要的字节数是：(1 + m_TileResolution.y) * UnsafeUtility.SizeOf<InclusiveRange>()，通过 AlignByteCount 方法将总的字节数对齐到 128 字节的最小倍数，这样做看注释是为了：Align to 128-bytes to avoid false sharing. ？？？，
+            // 最后除以每个 InclusiveRange 结构体所占的字节数计算出每个光源需要存储所有范围的 InclusiveRange 结构体数
+            var rangesPerLight = AlignByteCount((1 + m_TileResolution.y) * UnsafeUtility.SizeOf<InclusiveRange>(), 128) / UnsafeUtility.SizeOf<InclusiveRange>();
+
+            // 存储所有额外光源的所有范围的数组
+            var tileRanges = new NativeArray<InclusiveRange>(rangesPerLight * itemsPerTile, Allocator.TempJob);
+
+            // tileRanges 的结构如下：
+            //                                      Light Ranges 0                                    Light Ranges 1
+            // .----------------------------------------^----------------------------------. .----------------^-------
+            // | yRange | xRange at yRange.min | xRange at yRange.min+1 | ... | yRange.max | yRange | word 1 | ...
+            //          `-------------------------------v---------------------------------'
+            //                             [yRange.min, yRange.max]
+            //
+
+            // 此 JOB 用以计算每一个额外光源在屏幕上覆盖 Tile 的数据，其中在 Y 轴有一个范围，对于在 Y 轴上的覆盖的每一行，都额外有个范围用以记录覆盖的 X 轴范围
             var tilingJob = new TilingJob
             {
                 lights = visibleLights,
                 tileRanges = tileRanges,
                 itemsPerTile = itemsPerTile,
-                rangesPerItem = rangesPerItem,
+                rangesPerLight = rangesPerLight,
                 worldToView = worldToView,
                 tileScale = (float2)screenResolution / m_ActualTileWidth,
                 tileScaleInv = m_ActualTileWidth / (float2)screenResolution,
-                viewPlaneBottom = viewPlaneBottom0,
-                viewPlaneTop = viewPlaneTop0,
-                viewToViewportScaleBias = viewToViewportScaleBias0,
+                viewPlaneBottom = viewPlaneBottom,
+                viewPlaneTop = viewPlaneTop,
+                viewToViewportScaleBias = viewToViewportScaleBias,
                 tileCount = m_TileResolution,
                 near = camera.nearClipPlane,
                 isOrthographic = camera.orthographic
@@ -235,7 +271,7 @@ public class ForwardLights
             {
                 tileRanges = tileRanges,
                 tileMasks = m_TileMasks,
-                rangesPerItem = rangesPerItem,
+                rangesPerLight = rangesPerLight,
                 itemsPerTile = itemsPerTile,
                 wordsPerTile = m_WordsPerTile,
                 tileResolution = m_TileResolution

@@ -13,7 +13,7 @@ struct TileRangeExpansionJob : IJobFor
     [NativeDisableParallelForRestriction]
     public NativeArray<uint> tileMasks;
 
-    public int rangesPerItem;
+    public int rangesPerLight;
     public int itemsPerTile;
     public int wordsPerTile;
     public int2 tileResolution;
@@ -28,7 +28,7 @@ struct TileRangeExpansionJob : IJobFor
         // Compact the light ranges for the current row.
         for (var itemIndex = 0; itemIndex < itemsPerTile; itemIndex++)
         {
-            var range = tileRanges[itemIndex * rangesPerItem + 1 + rowIndex];
+            var range = tileRanges[itemIndex * rangesPerLight + 1 + rowIndex];
             if (!range.isEmpty)
             {
                 itemIndices[compactCount] = (short)itemIndex;
@@ -44,8 +44,10 @@ struct TileRangeExpansionJob : IJobFor
             for (var i = 0; i < compactCount; i++)
             {
                 var itemIndex = (int)itemIndices[i];
+
                 var wordIndex = itemIndex / 32;
                 var itemMask = 1u << (itemIndex % 32);
+
                 var range = itemRanges[i];
                 if (range.Contains((short)tileIndex))
                 {

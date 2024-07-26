@@ -8,15 +8,20 @@ using UnityEngine.Rendering;
 [BurstCompile(FloatMode = FloatMode.Default, DisableSafetyChecks = true, OptimizeFor = OptimizeFor.Performance)]
 struct TilingJob : IJobFor
 {
+    // 所有额外光源
     [ReadOnly]
     public NativeArray<VisibleLight> lights;
 
+    // 所有额外光源的范围
     [NativeDisableParallelForRestriction]
     public NativeArray<InclusiveRange> tileRanges;
 
+    // 额外光源数量
     public int itemsPerTile;
-    public int rangesPerItem;
+    // 每个光源拥有的范围数量
+    public int rangesPerLight;
 
+    // 世界空间到观察空间的转换矩阵
     public float4x4 worldToView;
 
     public float2 tileScale;
@@ -25,32 +30,38 @@ struct TilingJob : IJobFor
     public float viewPlaneTop;
     public float4 viewToViewportScaleBias;
 
+    // x，y分别存储的是屏幕
     public int2 tileCount;
+    // 相机的近平面
     public float near;
+    // 相机是正交相机还是透视相机
     public bool isOrthographic;
 
-    InclusiveRange m_TileYRange;
-    int m_Offset;
-    float2 m_CenterOffset;
+    // 当前光源在屏幕 Y 轴方向覆盖的 Tile 范围
+    private InclusiveRange m_TileYRange;
+    // 当前光源在 tileRanges 中的起始索引
+    private int m_Offset;
 
     public void Execute(int jobIndex)
     {
+        // 额外光源的索引
         var index = jobIndex % itemsPerTile;
-        m_Offset = jobIndex * rangesPerItem;
 
-        for (int i = 0; i < rangesPerItem; i++)
+        // 根据额外光源的索引计算出此光源在 tileRanges 中的起始索引
+        m_Offset = jobIndex * rangesPerLight;
+
+        // 初始化所有范围数据
+        m_TileYRange = new InclusiveRange(short.MaxValue, short.MinValue);
+        for (int i = 0; i < rangesPerLight; i++)
         {
             tileRanges[m_Offset + i] = new InclusiveRange(short.MaxValue, short.MinValue);
         }
 
+        // 根据相机是正交相机还是透视相机分开处理每个光源
         if (isOrthographic)
-        {
             TileLightOrthographic(index);
-        }
         else
-        {
             TileLight(index);
-        }
     }
 
     /// <summary>
@@ -66,7 +77,6 @@ struct TilingJob : IJobFor
     /// </summary>
     void ExpandOrthographic(float3 positionVS)
     {
-        // var positionTS = math.clamp(ViewToTileSpace(positionVS), 0, tileCount - 1);
         var positionTS = ViewToTileSpaceOrthographic(positionVS);
         var tileY = (int)positionTS.y;
         var tileX = (int)positionTS.x;
@@ -88,11 +98,16 @@ struct TilingJob : IJobFor
 
     private void TileLightOrthographic(int lightIndex)
     {
+        // 当前光源
         var light = lights[lightIndex];
+        // 将当前光源原点转换到观察空间
         var lightToWorld = (float4x4)light.localToWorldMatrix;
         var lightPosVS = math.mul(worldToView, math.float4(lightToWorld.c3.xyz, 1)).xyz;
         lightPosVS.z *= -1;
+
+
         ExpandOrthographic(lightPosVS);
+
         var lightDirVS = math.mul(worldToView, math.float4(lightToWorld.c2.xyz, 0)).xyz;
         lightDirVS.z *= -1;
         lightDirVS = math.normalize(lightDirVS);
@@ -106,8 +121,7 @@ struct TilingJob : IJobFor
         var coneHeightInv = 1f / coneHeight;
         var coneHeightInvSq = square(coneHeightInv);
 
-        bool SpherePointIsValid(float3 p) => light.lightType == LightType.Point ||
-            math.dot(math.normalize(p - lightPosVS), lightDirVS) >= cosHalfAngle;
+        bool SpherePointIsValid(float3 p) => light.lightType == LightType.Point || math.dot(math.normalize(p - lightPosVS), lightDirVS) >= cosHalfAngle;
 
         var sphereBoundY0 = lightPosVS - math.float3(0, range, 0);
         var sphereBoundY1 = lightPosVS + math.float3(0, range, 0);
