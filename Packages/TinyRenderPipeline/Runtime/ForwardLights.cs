@@ -248,7 +248,7 @@ public class ForwardLights
             //                             [yRange.min, yRange.max]
             //
 
-            // 此 JOB 用以计算每一个额外光源在屏幕上覆盖 Tile 的数据，其中在 Y 轴有一个范围，对于在 Y 轴上的覆盖的每一行，都额外有个范围用以记录覆盖的 X 轴范围
+            // 此 JOB 用以计算每一个额外光源在屏幕上覆盖 Tile 的数据，其中有一个范围用来表示在 Y 轴上覆盖的 Tile，对于在 Y 轴上的覆盖的每一行，都额外有个范围用以记录覆盖的 X 轴范围
             var tilingJob = new TilingJob
             {
                 lights = visibleLights,
