@@ -110,16 +110,19 @@ struct TilingJob : IJobFor
         if (SpherePointIsValid(sphereBoundX0)) ExpandOrthographic(sphereBoundX0);
         if (SpherePointIsValid(sphereBoundX1)) ExpandOrthographic(sphereBoundX1);
 
-        // 聚光灯锥体底面圆的圆心在观察空间坐标
+        // 聚光灯锥体底面圆的圆心在观察空间的坐标
         var circleCenter = lightPosVS + lightDirVS * coneHeight;
         // 底面圆的半径
         var circleRadius = math.sqrt(rangeSq - coneHeightSq);
         var circleRadiusSq = square(circleRadius);
+        // 计算底面圆上向上 +Y 的单位向量，单位向量 lightDirVS 乘以 lightDirVS.y 这个暂时不理解？？？
         var circleUp = math.normalize(math.float3(0, 1, 0) - lightDirVS * lightDirVS.y);
+        // 计算底面圆上向右 +X 的单位向量，单位向量 lightDirVS 乘以 lightDirVS.x 这个暂时不理解？？？
         var circleRight = math.normalize(math.float3(1, 0, 0) - lightDirVS * lightDirVS.x);
+
+        // 计算底面圆上的 4 个点属于哪一个 Tile
         var circleBoundY0 = circleCenter - circleUp * circleRadius;
         var circleBoundY1 = circleCenter + circleUp * circleRadius;
-
         if (light.lightType == LightType.Spot)
         {
             var circleBoundX0 = circleCenter - circleRight * circleRadius;
@@ -137,10 +140,18 @@ struct TilingJob : IJobFor
         if (light.lightType == LightType.Spot)
         {
             // Distance from light position to and radius of sphere fitted to the end of the cone.
-            var sphereDistance = coneHeight + circleRadiusSq * coneHeightInv;
+            // 计算底面圆到聚光灯锥体的距离，聚光灯侧面看是一个扇形
+            var toConeEndDistance = circleRadiusSq * coneHeightInv;
+            var sphereDistance = coneHeight + toConeEndDistance;
             var sphereRadius = math.sqrt(square(circleRadiusSq) * coneHeightInvSq + circleRadiusSq);
+
+            // 聚光灯方向在 X - Y 轴上的长度
             var directionXYSqInv = math.rcp(math.lengthsq(lightDirVS.xy));
-            var polarIntersection = -circleRadiusSq * coneHeightInv * directionXYSqInv * lightDirVS.xy;
+
+            // 归一化 X - Y 轴上的方向，计算出聚光灯方向上，从底面圆圆心到锥体底部边缘相交的向量
+            var polarIntersection = -toConeEndDistance * (directionXYSqInv * lightDirVS.xy);
+
+            // ？？？
             var polarDir = math.sqrt((square(sphereRadius) - math.lengthsq(polarIntersection)) * directionXYSqInv) * math.float2(lightDirVS.y, -lightDirVS.x);
             var conePBase = lightPosVS.xy + sphereDistance * lightDirVS.xy + polarIntersection;
             var coneP0 = conePBase - polarDir;
@@ -152,22 +163,29 @@ struct TilingJob : IJobFor
             coneDir1YInv = math.rcp(coneP1.y - lightPosVS.y);
         }
 
-        // Tile plane ranges
+        // 遍历覆盖的每一行，计算每一行在 X 轴覆盖的 Tiles 范围
         for (var planeIndex = m_TileYRange.start + 1; planeIndex <= m_TileYRange.end; planeIndex++)
         {
             var planeRange = InclusiveRange.empty;
 
             // Sphere
+            // 点光源时，它的光源范围投影到屏幕是一个圆形
+            // 当前行在剪裁空间近平面的 Y 坐标
             var planeY = math.lerp(viewPlaneBottom, viewPlaneTop, planeIndex * tileScaleInv.y);
+            // 计算以此 Y 坐标的点为原点，光源范围为半径的的圆的半径
             var sphereX = math.sqrt(rangeSq - square(planeY - lightPosVS.y));
+            // 以此 Y 坐标为原点，向 +X 和 -X 方向的圆形边上的 2 个点
             var sphereX0 = math.float3(lightPosVS.x - sphereX, planeY, lightPosVS.z);
             var sphereX1 = math.float3(lightPosVS.x + sphereX, planeY, lightPosVS.z);
+            // 计算在 X 轴上覆盖的 Tiles
             if (SpherePointIsValid(sphereX0)) { ExpandRangeOrthographic(ref planeRange, sphereX0.x); }
             if (SpherePointIsValid(sphereX1)) { ExpandRangeOrthographic(ref planeRange, sphereX1.x); }
 
+            // 如果是聚光灯光源
             if (light.lightType == LightType.Spot)
             {
                 // Circle
+                // 计算底面圆在 X 轴上覆盖的 Tiles 范围
                 if (planeY >= circleBoundY0.y && planeY <= circleBoundY1.y)
                 {
                     var intersectionDistance = (planeY - circleCenter.y) / circleUp.y;
@@ -181,6 +199,7 @@ struct TilingJob : IJobFor
                 }
 
                 // Cone
+                // 计算锥体在 X 轴上覆盖的 Tiles 的范围
                 var deltaY = planeY - lightPosVS.y;
                 var coneT0 = deltaY * coneDir0YInv;
                 var coneT1 = deltaY * coneDir1YInv;
