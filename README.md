@@ -2,31 +2,32 @@
 
 ## Description
 
-A customized SRP for learning Unity SRP.
+A customized render pipeline based on Unity SRP.
 
 Unity Version: 2023.2.16f1c1
 
-## Features
+## Feature
 
 - [x] Physically-based shading
 - [x] Light layers
 - [x] Cascaded shadowmap for main directional light (Hard shadows)
 - [x] Additional realtime directional light / spot light / point light shadows (Hard shadows)
-- [x] Bloom, Color Grading with LUT and Tonemapping post-processing effects
+- [x] Bloom
+- [x] Color Grading with LUT
+- [x] Tonemapping post-processing effects
 - [x] FXAA
 - [x] Soft particles
 - [x] Render Graph API
 
-## Planned Features
+## To-do List
 
 - [ ] Soft shadows
-- [ ] Forward+ render path
 - [ ] Deferred render path
 - [ ] TAA
 - [ ] SSAO
-- [ ] MSAA
+- [ ] Forward+ render path
 
-## References
+## Reference
 
 - [SRP Core Documentation](https://docs.unity3d.com/Packages/com.unity.render-pipelines.core@latest)
 - [Custom SRP by Catlike Coding](https://catlikecoding.com/unity/tutorials/custom-srp/)
