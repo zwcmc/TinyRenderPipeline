@@ -6,6 +6,8 @@ A customized render pipeline based on Unity SRP.
 
 Unity Version: 2023.2.16f1c1
 
+![TinyRenderPipeline](TinyRenderPipeline.jpeg)
+
 ## Feature
 
 - [x] Physically-based shading
