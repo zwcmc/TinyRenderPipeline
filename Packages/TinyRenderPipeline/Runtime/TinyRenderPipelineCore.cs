@@ -12,21 +12,11 @@ public enum ShadowResolution
     _4096 = 4096
 }
 
-/// <summary>
-/// Rendering path
-/// </summary>
-public enum RenderPath
+public enum SoftShadows
 {
-    /// <summary>
-    /// Forward rendering path: Render all objects and lighting in one pass, with a hard limit on the number of lights that can be applied on an object.
-    /// </summary>
-    Forward,
-
-    /// <summary>
-    /// Forward+ rendering path: Render all objects and lighting in one pass using a clustered data structure to access lighting data.
-    /// </summary>
-    [InspectorName("Forward+")]
-    ForwardPlus,
+    NONE = 0,
+    PCF = 1,
+    PCSS = 2
 }
 
 public struct ShadowData
@@ -40,6 +30,8 @@ public struct ShadowData
     public float maxShadowDistance;
     // Main light last cascade shadow fade border
     public float mainLightShadowCascadeBorder;
+
+    public SoftShadows softShadows;
 
     public bool additionalLightsShadowEnabled;
     public int additionalLightsShadowmapWidth;
@@ -126,6 +118,10 @@ public static class ShaderKeywordStrings
     /// Keyword used for calculating Look Up Table Color Grading in uber post.
     /// </summary>
     public const string HDRColorGrading = "_HDR_COLORGRADING";
+
+    public const string ShadowPCF = "_SHADOWS_PCF";
+
+    public const string ShadowPCSS = "_SHADOWS_PCSS";
 }
 
 public static class ShaderPropertyId

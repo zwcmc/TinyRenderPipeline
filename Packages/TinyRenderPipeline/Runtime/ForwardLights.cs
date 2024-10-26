@@ -335,7 +335,7 @@ public class ForwardLights
 
             SetupShaderLightConstants(cmd, ref renderingData);
 
-            CoreUtils.SetKeyword(cmd, "_FORWARD_PLUS", m_UseForwardPlus);
+            // CoreUtils.SetKeyword(cmd, "_FORWARD_PLUS", m_UseForwardPlus);
         }
     }
 

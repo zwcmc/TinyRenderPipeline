@@ -37,7 +37,7 @@ public class TinyBaseRenderer : IDisposable
             m_CopyDepthMaterial = CoreUtils.CreateEngineMaterial(asset.shaders.copyDepthShader);
         }
 
-        forwardLights = new ForwardLights(asset.renderPath == RenderPath.ForwardPlus);
+        forwardLights = new ForwardLights();
 
         mainLightShadowPass = new MainLightShadowPass();
         additionalLightsShadowPass = new AdditionalLightsShadowPass();

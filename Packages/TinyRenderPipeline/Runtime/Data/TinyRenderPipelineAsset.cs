@@ -18,6 +18,8 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
 
         [Range(0.0f, 1.0f)]
         public float cascadeRatio1 = 0.067f, cascadeRatio2 = 0.2f, cascadeRatio3 = 0.467f;
+
+        public SoftShadows softShadows = SoftShadows.NONE;
     }
 
     [Serializable]
@@ -57,16 +59,10 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     private ShaderResources m_Shaders;
 
     [SerializeField]
-    private bool m_UseSRPBatcher = true;
-
-    [SerializeField]
     private bool m_RequireDepthTexture = false;
 
     [SerializeField]
     private bool m_RequireColorTexture;
-
-    [SerializeField]
-    private bool m_SupportsHDR = true;
 
     [SerializeField]
     private Shadows m_Shadows = default;
@@ -85,15 +81,6 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     [SerializeField]
     private bool m_UseRenderGraph = false;
 
-    [SerializeField]
-    private RenderPath m_RenderPath = RenderPath.Forward;
-
-    public bool useSRPBatcher
-    {
-        get { return m_UseSRPBatcher; }
-        set { m_UseSRPBatcher = value; }
-    }
-
     public bool requireDepthTexture
     {
         get { return m_RequireDepthTexture; }
@@ -104,12 +91,6 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     {
         get { return m_RequireColorTexture; }
         set { m_RequireColorTexture = value; }
-    }
-
-    public bool supportsHDR
-    {
-        get { return m_SupportsHDR; }
-        set { m_SupportsHDR = value; }
     }
 
     public float shadowDistance
@@ -146,6 +127,8 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
         get { return m_Shadows.cascadeBorder; }
     }
 
+    public SoftShadows softShadows => m_Shadows.mainLightShadow.softShadows;
+
     public int additionalLightsShadowmapResolution
     {
         get { return (int)m_Shadows.additionalLightsShadow.shadowResolution; }
@@ -168,12 +151,6 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     {
         get { return m_UseRenderGraph; }
         set { m_UseRenderGraph = value; }
-    }
-
-    public RenderPath renderPath
-    {
-        get { return m_RenderPath; }
-        set { m_RenderPath = (RenderPath)value; }
     }
 
     public ShaderResources shaders

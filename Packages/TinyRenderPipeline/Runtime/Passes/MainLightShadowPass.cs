@@ -276,6 +276,9 @@ public class MainLightShadowPass
             Vector4 shadowBias = ShadowUtils.GetShadowBias(shadowLight, shadowLightIndex, shadowCascadeData.projectionMatrix, shadowCascadeData.resolution);
             ShadowUtils.SetupShadowCasterConstantBuffer(cmd, shadowLight, shadowBias);
 
+            CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.ShadowPCF, renderingData.shadowData.softShadows == SoftShadows.PCF);
+            CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.ShadowPCSS, renderingData.shadowData.softShadows == SoftShadows.PCSS);
+
             cmd.SetViewport(new Rect(shadowCascadeData.offsetX, shadowCascadeData.offsetY, shadowCascadeData.resolution, shadowCascadeData.resolution));
             cmd.SetViewProjectionMatrices(shadowCascadeData.viewMatrix, shadowCascadeData.projectionMatrix);
 

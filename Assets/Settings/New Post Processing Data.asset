@@ -36,4 +36,4 @@ MonoBehaviour:
   whiteBalance:
     temperature: 0
     tint: 0
-  antialiasingMode: 1
+  antialiasingMode: 0

@@ -58,7 +58,7 @@ public class TinyRenderPipeline : RenderPipeline
         pipelineAsset = asset;
 
         // Enable SRP batcher
-        GraphicsSettings.useScriptableRenderPipelineBatching = asset.useSRPBatcher;
+        GraphicsSettings.useScriptableRenderPipelineBatching = true;
         // Light intensity in linear space
         GraphicsSettings.lightsUseLinearIntensity = true;
 
@@ -201,7 +201,8 @@ public class TinyRenderPipeline : RenderPipeline
         bool disableRenderScale = Mathf.Abs(1.0f - asset.renderScale) < kRenderScaleThreshold || isScenePreviewOrReflectionCamera;
         renderingData.renderScale = disableRenderScale ? 1.0f : asset.renderScale;
 
-        renderingData.isHdrEnabled = camera.allowHDR && asset.supportsHDR;
+        // Enable HDR
+        renderingData.isHdrEnabled = camera.allowHDR;
         renderingData.defaultFormat = renderingData.isHdrEnabled ? SystemInfo.GetGraphicsFormat(DefaultFormat.HDR) : SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
         renderingData.cameraTargetDescriptor = RenderingUtils.CreateRenderTextureDescriptor(renderingData.camera, renderingData.defaultFormat, renderingData.isHdrEnabled, renderingData.renderScale);
 
@@ -247,10 +248,12 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.shadowData.maxShadowDistance = asset.shadowDistance;
         renderingData.shadowData.mainLightShadowCascadeBorder = asset.cascadeBorder;
 
+        renderingData.shadowData.softShadows = asset.softShadows;
+
         renderingData.shadowData.additionalLightsShadowEnabled = SystemInfo.supportsShadows && additionalLightsCastShadows;
         renderingData.shadowData.additionalLightsShadowmapWidth = renderingData.shadowData.additionalLightsShadowmapHeight = asset.additionalLightsShadowmapResolution;
 
-        renderingData.perObjectData = GetPerObjectLightFlags(renderingData.additionalLightsCount, asset.renderPath == RenderPath.ForwardPlus);
+        renderingData.perObjectData = GetPerObjectLightFlags(renderingData.additionalLightsCount);
 
         renderingData.postProcessingData = asset.postProcessingData;
 
@@ -260,7 +263,7 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.copyColorTexture = asset.requireColorTexture;
     }
 
-    private static PerObjectData GetPerObjectLightFlags(int additionalLightsCount, bool isForwardPlus)
+    private static PerObjectData GetPerObjectLightFlags(int additionalLightsCount, bool isForwardPlus = false)
     {
         var configuration = PerObjectData.LightProbe | PerObjectData.ReflectionProbes | PerObjectData.LightData;
         if (additionalLightsCount > 0 && !isForwardPlus)

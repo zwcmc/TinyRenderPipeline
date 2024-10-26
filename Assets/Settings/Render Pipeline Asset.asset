@@ -16,10 +16,8 @@ MonoBehaviour:
     blitShader: {fileID: 4800000, guid: b55e0dfe20f783c44ade43d516eeed7d, type: 3}
     copyDepthShader: {fileID: 4800000, guid: 3e35b7cb52944b941bb7dd70c63e6b4a, type: 3}
     fallbackErrorShader: {fileID: 4800000, guid: ec7dfa6c6c073404894a71413089b925, type: 3}
-  m_UseSRPBatcher: 1
   m_RequireDepthTexture: 1
   m_RequireColorTexture: 1
-  m_SupportsHDR: 1
   m_Shadows:
     shadowDistance: 50
     cascadeBorder: 0.2
@@ -29,10 +27,10 @@ MonoBehaviour:
       cascadeRatio1: 0.067
       cascadeRatio2: 0.2
       cascadeRatio3: 0.467
+      softShadows: 1
     additionalLightsShadow:
       shadowResolution: 2048
   m_PostProcessingData: {fileID: 11400000, guid: 90ac35e882f8867438b6345c4c8a746c, type: 2}
   m_ColorGradingLutSize: 32
   m_RenderScale: 1
   m_UseRenderGraph: 1
-  m_RenderPath: 1
