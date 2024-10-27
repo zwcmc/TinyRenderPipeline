@@ -18,11 +18,11 @@ MonoBehaviour:
     lutBuilderShader: {fileID: 4800000, guid: c4e352c13ccd11b4f8d6b745cfa2bd24, type: 3}
     fxaaShader: {fileID: 4800000, guid: c3a51ddabd49faa43a0e890f453e8ba6, type: 3}
   bloom:
-    threshold: 0.5
+    threshold: 1
     intensity: 1
-    scatter: 0.7
+    scatter: 0.705
     clamp: 65472
-    maxIterations: 6
+    maxIterations: 8
     highQualityFiltering: 0
   tonemapping:
     mode: 2
