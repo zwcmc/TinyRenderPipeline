@@ -73,10 +73,6 @@ public struct RenderingData
     /// The size of the color grading Look Up Table (LUT)
     /// </summary>
     public int lutSize;
-
-    public bool copyDepthTexture;
-
-    public bool copyColorTexture;
 }
 
 public struct ShadowSliceData

@@ -19,9 +19,9 @@ public class FXAAPass
         public RenderingData renderingData;
     }
 
-    public void Record(RenderGraph renderGraph, TextureHandle source, TextureHandle target, PostProcessingData postProcessingData, ref RenderingData renderingData)
+    public void Record(RenderGraph renderGraph, TextureHandle source, TextureHandle target, ref RenderingData renderingData)
     {
-        m_PostProcessingData = postProcessingData;
+        m_PostProcessingData = renderingData.postProcessingData;
         if (m_PostProcessingData == null)
         {
             Debug.LogError("FXAA Pass: post-processing data is null.");

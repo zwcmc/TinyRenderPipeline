@@ -28,19 +28,6 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
         public ShadowResolution shadowResolution = ShadowResolution._2048;
     }
 
-    [Serializable, ReloadGroup]
-    public class ShaderResources
-    {
-        [Reload("Shaders/Utils/Blit.shader")]
-        public Shader blitShader;
-
-        [Reload("Shaders/Utils/CopyDepth.shader")]
-        public Shader copyDepthShader;
-
-        [Reload("Shaders/Utils/FallbackError.shader")]
-        public Shader fallbackErrorShader;
-    }
-
     // Shadows
     [Serializable]
     private class Shadows
@@ -56,15 +43,6 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
     }
 
     [SerializeField]
-    private ShaderResources m_Shaders;
-
-    [SerializeField]
-    private bool m_RequireDepthTexture = false;
-
-    [SerializeField]
-    private bool m_RequireColorTexture;
-
-    [SerializeField]
     private Shadows m_Shadows = default;
 
     [SerializeField]
@@ -77,18 +55,6 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
     [SerializeField]
     [Range(0.1f, 2f)]
     private float m_RenderScale = 1f;
-
-    public bool requireDepthTexture
-    {
-        get { return m_RequireDepthTexture; }
-        set { m_RequireDepthTexture = value; }
-    }
-
-    public bool requireColorTexture
-    {
-        get { return m_RequireColorTexture; }
-        set { m_RequireColorTexture = value; }
-    }
 
     public float shadowDistance
     {
@@ -142,11 +108,6 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
     {
         get { return m_RenderScale; }
         set { m_RenderScale = Mathf.Clamp(value, 0.1f, 2f); }
-    }
-
-    public ShaderResources shaders
-    {
-        get { return m_Shaders; }
     }
 
     public PostProcessingData postProcessingData

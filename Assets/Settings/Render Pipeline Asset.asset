@@ -12,17 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3f18393676273f643b1da85cc6337e93, type: 3}
   m_Name: Render Pipeline Asset
   m_EditorClassIdentifier: 
-  m_Shaders:
-    blitShader: {fileID: 4800000, guid: b55e0dfe20f783c44ade43d516eeed7d, type: 3}
-    copyDepthShader: {fileID: 4800000, guid: 3e35b7cb52944b941bb7dd70c63e6b4a, type: 3}
-    fallbackErrorShader: {fileID: 4800000, guid: ec7dfa6c6c073404894a71413089b925, type: 3}
-  m_RequireDepthTexture: 1
-  m_RequireColorTexture: 1
   m_Shadows:
     shadowDistance: 50
     cascadeBorder: 0.2
     mainLightShadow:
-      shadowResolution: 2048
+      shadowResolution: 4096
       cascadeCount: 4
       cascadeRatio1: 0.067
       cascadeRatio2: 0.2
@@ -33,4 +27,3 @@ MonoBehaviour:
   m_PostProcessingData: {fileID: 11400000, guid: 90ac35e882f8867438b6345c4c8a746c, type: 2}
   m_ColorGradingLutSize: 32
   m_RenderScale: 1
-  m_UseRenderGraph: 1

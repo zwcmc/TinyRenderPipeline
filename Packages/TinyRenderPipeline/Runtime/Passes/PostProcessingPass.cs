@@ -107,9 +107,9 @@ public class PostProcessingPass
         }
     }
 
-    public void Record(RenderGraph renderGraph, in TextureHandle source, TextureHandle colorLut, TextureHandle target, PostProcessingData postProcessingData, ref RenderingData renderingData)
+    public void Record(RenderGraph renderGraph, in TextureHandle source, TextureHandle colorLut, TextureHandle target, ref RenderingData renderingData)
     {
-        m_PostProcessingData = postProcessingData;
+        m_PostProcessingData = renderingData.postProcessingData;
 
         if (m_PostProcessingData == null)
         {

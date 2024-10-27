@@ -12,7 +12,7 @@ public class TinyRenderPipeline : RenderPipeline
 
     public static RTHandleResourcePool s_RTHandlePool;
 
-    private static TinyRenderGraphRenderer s_TinyRenderGraphRenderer;
+    private static TinyRenderer s_TinyRenderer;
     private static RenderGraph s_RenderGraph;
 
     public static class Profiling
@@ -63,7 +63,7 @@ public class TinyRenderPipeline : RenderPipeline
         s_RenderGraph = new RenderGraph("TRRenderGraph");
         s_RenderGraph.NativeRenderPassesEnabled = true;
 
-        s_TinyRenderGraphRenderer = new TinyRenderGraphRenderer();
+        s_TinyRenderer = new TinyRenderer();
     }
 
     protected override void Render(ScriptableRenderContext context, Camera[] cameras)
@@ -93,13 +93,13 @@ public class TinyRenderPipeline : RenderPipeline
         s_RenderGraph.Cleanup();
         s_RenderGraph = null;
 
-        s_TinyRenderGraphRenderer?.Dispose();
-        s_TinyRenderGraphRenderer = null;
+        s_TinyRenderer?.Dispose();
+        s_TinyRenderer = null;
     }
 
     private void RenderSingleCamera(ScriptableRenderContext context, Camera camera)
     {
-        if (s_TinyRenderGraphRenderer == null)
+        if (s_TinyRenderer == null)
             return;
 
         if (!TryGetCullingParameters(camera, out var cullingParameters))
@@ -130,7 +130,7 @@ public class TinyRenderPipeline : RenderPipeline
             InitializeRenderingData(pipelineAsset, ref cullResults, context, cmd, camera, out var renderingData);
 
             // Rendering
-            s_TinyRenderGraphRenderer.RecordAndExecuteRenderGraph(s_RenderGraph, ref renderingData);
+            s_TinyRenderer.RecordAndExecuteRenderGraph(s_RenderGraph, ref renderingData, sampler.name);
         }
 
         // Execute command buffer
@@ -240,9 +240,6 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.postProcessingData = asset.postProcessingData;
 
         renderingData.lutSize = asset.colorGradingLutSize;
-
-        renderingData.copyDepthTexture = asset.requireDepthTexture;
-        renderingData.copyColorTexture = asset.requireColorTexture;
     }
 
     private static PerObjectData GetPerObjectLightFlags(int additionalLightsCount, bool isForwardPlus = false)
