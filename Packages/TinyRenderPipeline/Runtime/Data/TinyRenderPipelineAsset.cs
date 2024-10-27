@@ -6,7 +6,7 @@ using System;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-public class TinyRenderPipelineAsset : RenderPipelineAsset
+public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
 {
     [Serializable]
     private class MainLightShadow
@@ -78,9 +78,6 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     [Range(0.1f, 2f)]
     private float m_RenderScale = 1f;
 
-    [SerializeField]
-    private bool m_UseRenderGraph = false;
-
     public bool requireDepthTexture
     {
         get { return m_RequireDepthTexture; }
@@ -147,12 +144,6 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
         set { m_RenderScale = Mathf.Clamp(value, 0.1f, 2f); }
     }
 
-    public bool useRenderGraph
-    {
-        get { return m_UseRenderGraph; }
-        set { m_UseRenderGraph = value; }
-    }
-
     public ShaderResources shaders
     {
         get { return m_Shaders; }
@@ -162,10 +153,6 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
     {
         get { return m_PostProcessingData; }
     }
-
-    public TinyRenderPipeline renderPipeline;
-
-    public override Type pipelineType => renderPipeline.GetType();
 
     public static readonly string packagePath = "Packages/com.tiny.render-pipeline";
 
@@ -206,7 +193,7 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset
 
     protected override RenderPipeline CreatePipeline()
     {
-        renderPipeline = new TinyRenderPipeline(this);
+        var renderPipeline = new TinyRenderPipeline(this);
         return renderPipeline;
     }
 }

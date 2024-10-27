@@ -29,13 +29,10 @@ public class TinyBaseRenderer : IDisposable
     protected CopyDepthPass finalDepthCopyPass;
 #endif
 
-    protected TinyBaseRenderer(TinyRenderPipelineAsset asset)
+    protected TinyBaseRenderer()
     {
-        if (asset.shaders != null)
-        {
-            m_BlitMaterial = CoreUtils.CreateEngineMaterial(asset.shaders.blitShader);
-            m_CopyDepthMaterial = CoreUtils.CreateEngineMaterial(asset.shaders.copyDepthShader);
-        }
+        m_BlitMaterial = CoreUtils.CreateEngineMaterial("Hidden/Tiny Render Pipeline/Blit");
+        m_CopyDepthMaterial = CoreUtils.CreateEngineMaterial("Hidden/Tiny Render Pipeline/CopyDepth");
 
         forwardLights = new ForwardLights();
 

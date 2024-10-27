@@ -10,14 +10,10 @@ public class TinyRenderPipeline : RenderPipeline
 {
     private readonly TinyRenderPipelineAsset pipelineAsset;
 
-    private static TinyRenderer s_TinyRenderer;
     public static RTHandleResourcePool s_RTHandlePool;
 
     private static TinyRenderGraphRenderer s_TinyRenderGraphRenderer;
     private static RenderGraph s_RenderGraph;
-
-    // Enable or disable render graph
-    private static bool s_UseRenderGraph;
 
     public static class Profiling
     {
@@ -67,11 +63,7 @@ public class TinyRenderPipeline : RenderPipeline
         s_RenderGraph = new RenderGraph("TRRenderGraph");
         s_RenderGraph.NativeRenderPassesEnabled = true;
 
-        s_UseRenderGraph = asset.useRenderGraph;
-        if (s_UseRenderGraph)
-            s_TinyRenderGraphRenderer = new TinyRenderGraphRenderer(pipelineAsset);
-        else
-            s_TinyRenderer = new TinyRenderer(pipelineAsset);
+        s_TinyRenderGraphRenderer = new TinyRenderGraphRenderer();
     }
 
     protected override void Render(ScriptableRenderContext context, Camera[] cameras)
@@ -95,9 +87,6 @@ public class TinyRenderPipeline : RenderPipeline
     {
         base.Dispose(disposing);
 
-        s_TinyRenderer?.Dispose();
-        s_TinyRenderer = null;
-
         s_RTHandlePool.Cleanup();
         s_RTHandlePool = null;
 
@@ -110,7 +99,7 @@ public class TinyRenderPipeline : RenderPipeline
 
     private void RenderSingleCamera(ScriptableRenderContext context, Camera camera)
     {
-        if ((!s_UseRenderGraph && s_TinyRenderer == null) || (s_UseRenderGraph && (s_TinyRenderGraphRenderer == null)))
+        if (s_TinyRenderGraphRenderer == null)
             return;
 
         if (!TryGetCullingParameters(camera, out var cullingParameters))
@@ -141,12 +130,7 @@ public class TinyRenderPipeline : RenderPipeline
             InitializeRenderingData(pipelineAsset, ref cullResults, context, cmd, camera, out var renderingData);
 
             // Rendering
-            if (s_UseRenderGraph)
-                s_TinyRenderGraphRenderer.RecordAndExecuteRenderGraph(s_RenderGraph, ref renderingData);
-            else
-            {
-                s_TinyRenderer.Execute(ref renderingData);
-            }
+            s_TinyRenderGraphRenderer.RecordAndExecuteRenderGraph(s_RenderGraph, ref renderingData);
         }
 
         // Execute command buffer
@@ -188,8 +172,6 @@ public class TinyRenderPipeline : RenderPipeline
     {
         renderingData.renderContext = context;
         renderingData.commandBuffer = cmd;
-
-        renderingData.renderer = s_TinyRenderer;
 
         renderingData.camera = camera;
 

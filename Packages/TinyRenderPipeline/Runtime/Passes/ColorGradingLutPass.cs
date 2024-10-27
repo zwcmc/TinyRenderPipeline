@@ -31,52 +31,6 @@ public class ColorGradingLutPass
         public PostProcessingData postProcessingData;
     }
 
-    private PassData m_PassData;
-
-    public ColorGradingLutPass()
-    {
-        m_PassData = new PassData();
-    }
-
-    public void Render(ScriptableRenderContext context, in RTHandle colorGradingLut, PostProcessingData postProcessingData, ref RenderingData renderingData)
-    {
-        m_PostProcessingData = postProcessingData;
-        if (m_PostProcessingData == null)
-        {
-            Debug.LogError("Color Grading Lut Pass: post-processing data is null.");
-            return;
-        }
-
-        if (m_LutBuilderMaterial == null && m_PostProcessingData != null)
-        {
-            m_LutBuilderMaterial = CoreUtils.CreateEngineMaterial(m_PostProcessingData.shaders.lutBuilderShader);
-        }
-        if (m_LutBuilderMaterial == null)
-        {
-            Debug.LogError("Color Grading Lut Pass: lut builder material is null.");
-            return;
-        }
-
-        m_ColorGradingLut = colorGradingLut;
-
-        var cmd = renderingData.commandBuffer;
-
-        // Set render target
-        cmd.SetRenderTarget(m_ColorGradingLut, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
-
-        using (new ProfilingScope(cmd, s_ProfilingSampler))
-        {
-            context.ExecuteCommandBuffer(cmd);
-            cmd.Clear();
-
-            m_PassData.lutBuilderMaterial = m_LutBuilderMaterial;
-            m_PassData.renderingData = renderingData;
-            m_PassData.postProcessingData = m_PostProcessingData;
-
-            ExecutePass(CommandBufferHelpers.GetRasterCommandBuffer(cmd), m_ColorGradingLut, m_PassData);
-        }
-    }
-
     public void Record(RenderGraph renderGraph, out TextureHandle lutTarget, PostProcessingData postProcessingData, ref RenderingData renderingData)
     {
         m_PostProcessingData = postProcessingData;
@@ -160,8 +114,6 @@ public class ColorGradingLutPass
                 break;
             case PostProcessingData.TonemappingMode.ACES:
                 material.EnableKeyword(ShaderKeywordStrings.TonemapACES);
-                break;
-            default:
                 break;
         }
 

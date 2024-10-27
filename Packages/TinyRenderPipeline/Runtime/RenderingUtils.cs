@@ -172,31 +172,6 @@ public static class RenderingUtils
         return false;
     }
 
-    public static void FinalBlit(
-        CommandBuffer cmd,
-        Camera camera,
-        RTHandle source,
-        RTHandle destination,
-        RenderBufferLoadAction loadAction,
-        RenderBufferStoreAction storeAction,
-        Material material, int passIndex)
-    {
-        var cameraType = camera.cameraType;
-        bool isRenderToBackBufferTarget = cameraType != CameraType.SceneView;
-
-        // We y-flip if
-        // 1) we are blitting from render texture to back buffer(UV starts at bottom) and
-        // 2) renderTexture starts UV at top
-        bool yFlip = isRenderToBackBufferTarget && camera.targetTexture == null && SystemInfo.graphicsUVStartsAtTop;
-        Vector4 scaleBias = yFlip ? new Vector4(1, -1, 0, 1) : new Vector4(1, 1, 0, 0);
-
-        CoreUtils.SetRenderTarget(cmd, destination, loadAction, storeAction, ClearFlag.None, Color.clear);
-        if (isRenderToBackBufferTarget)
-            cmd.SetViewport(camera.pixelRect);
-
-        Blitter.BlitTexture(cmd, source, scaleBias, material, passIndex);
-    }
-
     public static bool IsHandleYFlipped(RTHandle handle, Camera camera)
     {
         if (!SystemInfo.graphicsUVStartsAtTop)
@@ -253,13 +228,6 @@ public static class RenderingUtils
         param = new RendererListParams(renderingData.cullResults, drawingSettings, fs);
     }
 
-    public static void CreateRendererList(ScriptableRenderContext context, ref RenderingData renderingData, FilteringSettings fs, SortingCriteria sortingCriteria, ref RendererList rl)
-    {
-        RendererListParams param = new RendererListParams();
-        CreateRendererParamsObjects(ref renderingData, fs, sortingCriteria, ref param);
-        rl = context.CreateRendererList(ref param);
-    }
-
     public static void CreateRendererListHandle(RenderGraph renderGraph, ref RenderingData renderingData, FilteringSettings fs, SortingCriteria sortingCriteria, ref RendererListHandle rl)
     {
         RendererListParams param = new RendererListParams();
@@ -283,20 +251,6 @@ public static class RenderingUtils
         }
 
         param = new RendererListParams(cullResults, errorSettings, fs);
-    }
-
-    [Conditional("DEVELOPMENT_BUILD"), Conditional("UNITY_EDITOR")]
-    public static void CreateRendererListWithLegacyShaderPassNames(ScriptableRenderContext context, ref RenderingData renderingData, FilteringSettings fs, SortingCriteria sortingCriteria, ref RendererList rl)
-    {
-        if (errorMaterial == null)
-        {
-            rl = RendererList.nullRendererList;
-            return;
-        }
-
-        RendererListParams param = new RendererListParams();
-        CreateRendererParamsObjectsWithLegacyShaderPassNames(ref renderingData.cullResults, renderingData.camera, fs, sortingCriteria, ref param);
-        rl = context.CreateRendererList(ref param);
     }
 
     [Conditional("DEVELOPMENT_BUILD"), Conditional("UNITY_EDITOR")]

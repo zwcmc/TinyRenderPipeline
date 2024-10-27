@@ -43,8 +43,6 @@ public struct RenderingData
     public ScriptableRenderContext renderContext;
     public CommandBuffer commandBuffer;
 
-    public TinyRenderer renderer;
-
     public Camera camera;
 
     public float renderScale;

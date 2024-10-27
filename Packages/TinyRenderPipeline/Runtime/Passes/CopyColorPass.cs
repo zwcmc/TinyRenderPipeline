@@ -17,31 +17,9 @@ public class CopyColorPass
         public Material blitMaterial;
     }
 
-    private PassData m_PassData;
-
     public CopyColorPass(Material copyColorMaterial)
     {
         m_CopyColorMaterial = copyColorMaterial;
-        m_PassData = new PassData();
-    }
-
-    public void Render(ScriptableRenderContext context, RTHandle source, RTHandle destination, ref RenderingData renderingData)
-    {
-        m_Source = source;
-        m_Destination = destination;
-
-        var cmd = renderingData.commandBuffer;
-        using (new ProfilingScope(cmd, s_ProfilingSampler))
-        {
-            context.ExecuteCommandBuffer(cmd);
-            cmd.Clear();
-
-            CoreUtils.SetRenderTarget(cmd, m_Destination, RenderBufferLoadAction.Load, RenderBufferStoreAction.Store, ClearFlag.None, Color.black);
-
-            m_PassData.blitMaterial = m_CopyColorMaterial;
-
-            ExecutePass(CommandBufferHelpers.GetRasterCommandBuffer(cmd), ref m_PassData, m_Source);
-        }
     }
 
     public void Record(RenderGraph renderGraph, TextureHandle source, TextureHandle destination, ref RenderingData renderingData)

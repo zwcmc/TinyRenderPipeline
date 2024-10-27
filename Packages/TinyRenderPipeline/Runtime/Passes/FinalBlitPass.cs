@@ -18,38 +18,9 @@ public class FinalBlitPass
         public Material blitMaterial;
     }
 
-    private PassData m_PassData;
-
     public FinalBlitPass(Material blitMaterial)
     {
         m_BlitMaterial = blitMaterial;
-        m_PassData = new PassData();
-    }
-
-    public void Render(ScriptableRenderContext context, in RTHandle colorHandle, ref RenderingData renderingData)
-    {
-        if (m_BlitMaterial == null)
-        {
-            Debug.LogError("Final Blit: Blit Material is null.");
-            return;
-        }
-
-        m_Source = colorHandle;
-
-        var cmd = renderingData.commandBuffer;
-
-        using (new ProfilingScope(cmd, s_ProfilingSampler))
-        {
-            context.ExecuteCommandBuffer(cmd);
-            cmd.Clear();
-
-            CoreUtils.SetRenderTarget(cmd, TinyRenderPipeline.k_CameraTarget, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, ClearFlag.None, Color.clear);
-
-            m_PassData.blitMaterial = m_BlitMaterial;
-            m_PassData.renderingData = renderingData;
-
-            ExecutePass(CommandBufferHelpers.GetRasterCommandBuffer(cmd), ref m_PassData, m_Source);
-        }
     }
 
     public void Record(RenderGraph renderGraph, TextureHandle source, TextureHandle destination, ref RenderingData renderingData)

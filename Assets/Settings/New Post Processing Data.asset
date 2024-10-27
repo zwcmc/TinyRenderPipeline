@@ -20,10 +20,9 @@ MonoBehaviour:
   bloom:
     threshold: 1
     intensity: 1
-    scatter: 0.7
+    scatter: 1
     clamp: 65472
     maxIterations: 6
-    downscale: 0
     highQualityFiltering: 0
   tonemapping:
     mode: 2
@@ -36,4 +35,4 @@ MonoBehaviour:
   whiteBalance:
     temperature: 0
     tint: 0
-  antialiasingMode: 0
+  antialiasingMode: 1

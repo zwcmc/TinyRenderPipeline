@@ -11,3 +11,4 @@ connectwebgl.zip
 *.DS_Store
 .idea/
 obj/
+*.user

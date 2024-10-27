@@ -10,22 +10,6 @@ using UnityEngine.Rendering;
 public class PostProcessingData : ScriptableObject
 {
     /// <summary>
-    /// This controls the size of the bloom texture.
-    /// </summary>
-    public enum BloomDownscaleMode
-    {
-        /// <summary>
-        /// Use this to select half size as the starting resolution.
-        /// </summary>
-        Half,
-
-        /// <summary>
-        /// Use this to select quarter size as the starting resolution.
-        /// </summary>
-        Quarter
-    }
-
-    /// <summary>
     /// Tonemapping algorithms
     /// </summary>
     public enum TonemappingMode
@@ -107,8 +91,6 @@ public class PostProcessingData : ScriptableObject
 
         [Range(2, 8)]
         public int maxIterations = 6;
-
-        public BloomDownscaleMode downscale = BloomDownscaleMode.Half;
 
         public bool highQualityFiltering = false;
 

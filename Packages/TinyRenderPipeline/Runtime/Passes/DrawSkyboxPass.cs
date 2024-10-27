@@ -11,20 +11,6 @@ public class DrawSkyboxPass
         public RendererList rendererList;
     }
 
-    public void Render(ScriptableRenderContext context, ref RenderingData renderingData)
-    {
-        var cmd = renderingData.commandBuffer;
-        using (new ProfilingScope(cmd, s_ProfilingSampler))
-        {
-            context.ExecuteCommandBuffer(cmd);
-            cmd.Clear();
-
-            var rendererList = context.CreateSkyboxRendererList(renderingData.camera);
-
-            ExecutePass(CommandBufferHelpers.GetRasterCommandBuffer(cmd), rendererList);
-        }
-    }
-
     public void DrawRenderGraphSkybox(RenderGraph renderGraph, TextureHandle colorTarget, TextureHandle depthTarget, ref RenderingData renderingData)
     {
         using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_ProfilingSampler.name, out var passData, s_ProfilingSampler))

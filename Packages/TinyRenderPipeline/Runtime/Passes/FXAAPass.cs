@@ -19,41 +19,6 @@ public class FXAAPass
         public RenderingData renderingData;
     }
 
-    public void Render(ScriptableRenderContext context, in RTHandle source, PostProcessingData postProcessingData, ref RenderingData renderingData)
-    {
-        m_PostProcessingData = postProcessingData;
-        if (m_PostProcessingData == null)
-        {
-            Debug.LogError("FXAA Pass: post-processing data is null.");
-            return;
-        }
-
-        if (m_FXAAMaterial == null && m_PostProcessingData != null)
-        {
-            m_FXAAMaterial = CoreUtils.CreateEngineMaterial(m_PostProcessingData.shaders.fxaaShader);
-        }
-
-        if (m_FXAAMaterial == null)
-        {
-            Debug.LogError("FXAA Pass: material is null");
-            return;
-        }
-
-        m_Source = source;
-
-        var cmd = renderingData.commandBuffer;
-        using (new ProfilingScope(cmd, s_ProfilingSampler))
-        {
-            context.ExecuteCommandBuffer(cmd);
-            cmd.Clear();
-
-            SetSourceSize(CommandBufferHelpers.GetRasterCommandBuffer(cmd), m_Source);
-
-            RenderingUtils.FinalBlit(cmd, renderingData.camera, m_Source, TinyRenderPipeline.k_CameraTarget, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
-                m_FXAAMaterial, 0);
-        }
-    }
-
     public void Record(RenderGraph renderGraph, TextureHandle source, TextureHandle target, PostProcessingData postProcessingData, ref RenderingData renderingData)
     {
         m_PostProcessingData = postProcessingData;

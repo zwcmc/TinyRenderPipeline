@@ -47,7 +47,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
 
     private bool m_IsActiveTargetBackBuffer;
 
-    public TinyRenderGraphRenderer(TinyRenderPipelineAsset asset) : base(asset)
+    public TinyRenderGraphRenderer()
     {
         m_IsActiveTargetBackBuffer = true;
     }
@@ -56,9 +56,6 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
     {
         var camera = renderingData.camera;
         var cameraType = camera.cameraType;
-
-        // PreSetup for forward+ rendering path
-        forwardLights.PreSetup(ref renderingData);
 
         // Setup lights data
         forwardLights.SetupRenderGraphLights(renderGraph, ref renderingData);
@@ -160,10 +157,10 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
             // if FXAA is enabled, blit final target to another intermediate render texture
             var target = resolvePostProcessingToCameraTarget ? m_BackBufferColor : nextRenderGraphCameraColorHandle;
 
-            postProcessingPass.Record(renderGraph, in m_ActiveRenderGraphCameraColorHandle, m_ColorGradingLutTextureHdl, target, resolvePostProcessingToCameraTarget, postProcessingData, ref renderingData);
+            postProcessingPass.Record(renderGraph, in m_ActiveRenderGraphCameraColorHandle, m_ColorGradingLutTextureHdl, target, postProcessingData, ref renderingData);
 
             // Camera color handle has resolved to camera target, set active camera color handle to camera color target;
-            // If not resolved to camera target, set active camera color handle to another intermediate render texture handle, just like swap RenderTargetBufferSystem in TinyRenderer(not using Render Graph);
+            // If not resolved to camera target, set active camera color handle to another intermediate render texture handle.
             if (resolvePostProcessingToCameraTarget)
             {
                 m_ActiveRenderGraphCameraColorHandle = m_BackBufferColor;
@@ -238,7 +235,7 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
         }
 
         RenderTargetInfo importInfo = new RenderTargetInfo();
-        RenderTargetInfo importInfoDepth = new RenderTargetInfo();
+        RenderTargetInfo importInfoDepth;
         if (isBuiltInTexture)
         {
             importInfo.width = Screen.width;
@@ -411,7 +408,6 @@ public class TinyRenderGraphRenderer : TinyBaseRenderer
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
-
 
         m_CameraColorHandles[0]?.Release();
         m_CameraColorHandles[1]?.Release();

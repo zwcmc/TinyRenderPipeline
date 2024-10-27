@@ -21,44 +21,10 @@ public class CopyDepthPass
         public RenderingData renderingData;
     }
 
-    private PassData m_PassData;
-
     public CopyDepthPass(Material copyDepthMaterial, bool copyToDepthTexture = false)
     {
         m_CopyDepthMaterial = copyDepthMaterial;
         m_CopyToDepthTexture = copyToDepthTexture;
-
-        m_PassData = new PassData();
-    }
-
-    public void Render(ScriptableRenderContext context, RTHandle source, RTHandle destination, ref RenderingData renderingData)
-    {
-        if (m_CopyDepthMaterial == null)
-        {
-            Debug.LogError("Copy Depth Pass: Copy Depth Material is null.");
-            return;
-        }
-
-        m_Source = source;
-        m_Destination = destination;
-
-        var cmd = renderingData.commandBuffer;
-
-        cmd.SetGlobalTexture("_CameraDepthAttachment", m_Source.nameID);
-
-        using (new ProfilingScope(cmd, s_ProfilingSampler))
-        {
-            context.ExecuteCommandBuffer(cmd);
-            cmd.Clear();
-
-            CoreUtils.SetRenderTarget(cmd, m_Destination, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, ClearFlag.None, Color.black);
-
-            m_PassData.copyDepthMaterial = m_CopyDepthMaterial;
-            m_PassData.copyToDepth = m_CopyToDepthTexture;
-            m_PassData.renderingData = renderingData;
-
-            ExecutePass(CommandBufferHelpers.GetRasterCommandBuffer(cmd), ref m_PassData, m_Source, m_Destination);
-        }
     }
 
     public void Record(RenderGraph renderGraph, TextureHandle source, TextureHandle destination, TextureHandle activeColorTexture, ref RenderingData renderingData, bool bindAsCameraDepth = false, string passName = "CopyDepthPass")

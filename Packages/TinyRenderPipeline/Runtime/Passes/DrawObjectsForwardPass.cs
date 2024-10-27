@@ -11,39 +11,14 @@ public class DrawObjectsForwardPass
 
     private class PassData
     {
-        public RendererList rendererList;
         public RendererListHandle rendererListHandle;
-
         // Unsupported built-in shaders
-        public RendererList legacyRendererList;
         public RendererListHandle legacyRendererListHandle;
     }
-
-    private PassData m_PassData;
 
     public DrawObjectsForwardPass(bool isOpaque = false)
     {
         m_IsOpaque = isOpaque;
-        m_PassData = new PassData();
-    }
-
-    public void Render(ScriptableRenderContext context, ref RenderingData renderingData)
-    {
-        var cmd = renderingData.commandBuffer;
-        var sampler = m_IsOpaque ? s_DrawOpaqueObjectsSampler : s_DrawTransparentObjectsSampler;
-        using (new ProfilingScope(cmd, sampler))
-        {
-            context.ExecuteCommandBuffer(cmd);
-            cmd.Clear();
-
-            var filteringSettings = m_IsOpaque ? new FilteringSettings(RenderQueueRange.opaque) : new FilteringSettings(RenderQueueRange.transparent);
-            var sortingCriteria = m_IsOpaque ? SortingCriteria.CommonOpaque : SortingCriteria.CommonTransparent;
-
-            RenderingUtils.CreateRendererList(context, ref renderingData, filteringSettings, sortingCriteria, ref m_PassData.rendererList);
-            RenderingUtils.CreateRendererListWithLegacyShaderPassNames(context, ref renderingData, filteringSettings, sortingCriteria, ref m_PassData.legacyRendererList);
-
-            ExecutePass(CommandBufferHelpers.GetRasterCommandBuffer(cmd), m_PassData.rendererList, m_PassData.legacyRendererList);
-        }
     }
 
     public void Record(RenderGraph renderGraph, TextureHandle colorTarget, TextureHandle depthTarget, TextureHandle mainShadowsTexture, TextureHandle additionalLightsShadowmap, ref RenderingData renderingData)
