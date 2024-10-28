@@ -59,7 +59,7 @@ Shader "Tiny Render Pipeline/Lit"
             #pragma shader_feature_local_fragment _METALLICGLOSSMAP
             #pragma shader_feature_local_fragment _OCCLUSIONMAP
 
-            #pragma multi_compile_fragment _ _SHADOWS_PCF
+            #pragma multi_compile_fragment _ _SHADOWS_PCF _SHADOWS_PCSS
 
             #include "Packages/com.tiny.render-pipeline/Shaders/LitInput.hlsl"
             #include "Packages/com.tiny.render-pipeline/Shaders/LitForwardPass.hlsl"

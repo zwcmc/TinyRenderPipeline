@@ -12,9 +12,10 @@
 struct InputData
 {
     float3 positionWS;
-    float3 normalWS;
+    half3 normalWS;
     half3 viewDirectionWS;
     float4 shadowCoord;
+    float2 normalizedScreenSpaceUV;
 };
 
 // Main light

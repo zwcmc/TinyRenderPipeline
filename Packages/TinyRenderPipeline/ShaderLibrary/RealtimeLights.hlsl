@@ -48,7 +48,7 @@ Light GetMainLight()
 Light GetMainLight(InputData inputData)
 {
     Light light = GetMainLight();
-    light.shadowAttenuation = MainLightShadow(inputData.shadowCoord, inputData.positionWS);
+    light.shadowAttenuation = MainLightShadow(inputData.shadowCoord, inputData.positionWS, inputData.normalizedScreenSpaceUV);
     return light;
 }
 

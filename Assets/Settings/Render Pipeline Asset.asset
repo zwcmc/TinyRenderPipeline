@@ -17,11 +17,11 @@ MonoBehaviour:
     cascadeBorder: 0.2
     mainLightShadow:
       shadowResolution: 2048
-      cascadeCount: 4
+      cascadeCount: 2
       cascadeRatio1: 0.067
       cascadeRatio2: 0.2
       cascadeRatio3: 0.467
-      softShadows: 1
+      softShadows: 2
     additionalLightsShadow:
       shadowResolution: 2048
   m_PostProcessingData: {fileID: 11400000, guid: 90ac35e882f8867438b6345c4c8a746c, type: 2}

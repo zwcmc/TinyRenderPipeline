@@ -22,6 +22,8 @@ public class MainLightShadowPass
     private Matrix4x4[] m_MainLightShadowMatrices;
     private Vector4[] m_CascadesSplitDistance;
 
+    private Vector4[] m_CascadeOffsetScales;
+
     private float m_CascadeBorder;
     private float m_MaxShadowDistanceSq;
     private int m_ShadowCasterCascadesCount;
@@ -30,13 +32,18 @@ public class MainLightShadowPass
 
     private static class MainLightShadowConstantBuffer
     {
-        public static int _WorldToShadow;
-        public static int _ShadowParams;
-        public static int _CascadeShadowSplitSpheres0;
-        public static int _CascadeShadowSplitSpheres1;
-        public static int _CascadeShadowSplitSpheres2;
-        public static int _CascadeShadowSplitSpheres3;
-        public static int _CascadesParams;
+        public static readonly int _MainLightWorldToShadow = Shader.PropertyToID("_MainLightWorldToShadow");
+        public static readonly int _ShadowParams = Shader.PropertyToID("_MainLightShadowParams");
+        public static readonly int _CascadeShadowSplitSpheres0 = Shader.PropertyToID("_CascadeShadowSplitSpheres0");
+        public static readonly int _CascadeShadowSplitSpheres1 = Shader.PropertyToID("_CascadeShadowSplitSpheres1");
+        public static readonly int _CascadeShadowSplitSpheres2 = Shader.PropertyToID("_CascadeShadowSplitSpheres2");
+        public static readonly int _CascadeShadowSplitSpheres3 = Shader.PropertyToID("_CascadeShadowSplitSpheres3");
+        public static readonly int _CascadesParams = Shader.PropertyToID("_CascadesParams");
+
+        public static readonly int _CascadeOffsetScales = Shader.PropertyToID("_CascadeOffsetScales");
+        public static readonly int _DirLightPCSSParams0 = Shader.PropertyToID("_DirLightPCSSParams0");
+        public static readonly int _DirLightPCSSParams1 = Shader.PropertyToID("_DirLightPCSSParams1");
+        public static readonly int _DirLightPCSSProjs = Shader.PropertyToID("_DirLightPCSSProjs");
     }
 
     private class PassData
@@ -52,18 +59,38 @@ public class MainLightShadowPass
         public RendererListHandle[] shadowRendererListHandle = new RendererListHandle[k_MaxCascades];
     }
 
+    // private struct PcssCascadeData
+    // {
+    //     public Vector4 dirLightPcssParams0;
+    //     public Vector4 dirLightPcssParams1;
+    // }
+    //
+    // private PcssCascadeData[] m_PcssCascadeDatas;
+
+    private Vector4[] m_DirLightPCSSParams0;
+    private Vector4[] m_DirLightPCSSParams1;
+
+    private static class PCSSLightParams
+    {
+        public static float dirLightAngularDiameter = 1.23f;
+        public static float dirLightPcssBlockerSearchAngularDiameter = 12;
+        public static float dirLightPcssMinFilterMaxAngularDiameter = 10;
+        public static float dirLightPcssMaxPenumbraSize = 0.56f;
+        public static float dirLightPcssMaxSamplingDistance = 0.5f;
+        public static float dirLightPcssMinFilterSizeTexels = 1.5f;
+        public static float dirLightPcssBlockerSamplingClumpExponent = 2f;
+    }
+
+    private Vector4[] m_DeviceProjectionVectors;
+
     public MainLightShadowPass()
     {
         m_MainLightShadowMatrices = new Matrix4x4[k_MaxCascades + 1];
         m_CascadesSplitDistance = new Vector4[k_MaxCascades];
-
-        MainLightShadowConstantBuffer._WorldToShadow = Shader.PropertyToID("_MainLightWorldToShadow");
-        MainLightShadowConstantBuffer._ShadowParams = Shader.PropertyToID("_MainLightShadowParams");
-        MainLightShadowConstantBuffer._CascadeShadowSplitSpheres0 = Shader.PropertyToID("_CascadeShadowSplitSpheres0");
-        MainLightShadowConstantBuffer._CascadeShadowSplitSpheres1 = Shader.PropertyToID("_CascadeShadowSplitSpheres1");
-        MainLightShadowConstantBuffer._CascadeShadowSplitSpheres2 = Shader.PropertyToID("_CascadeShadowSplitSpheres2");
-        MainLightShadowConstantBuffer._CascadeShadowSplitSpheres3 = Shader.PropertyToID("_CascadeShadowSplitSpheres3");
-        MainLightShadowConstantBuffer._CascadesParams = Shader.PropertyToID("_CascadesParams");
+        m_CascadeOffsetScales = new Vector4[k_MaxCascades + 1];
+        m_DirLightPCSSParams0 = new Vector4[k_MaxCascades + 1];
+        m_DirLightPCSSParams1 = new Vector4[k_MaxCascades + 1];
+        m_DeviceProjectionVectors = new Vector4[k_MaxCascades + 1];
 
         m_MainLightShadowmapID = Shader.PropertyToID(k_ShadowmapTextureName);
 
@@ -218,6 +245,15 @@ public class MainLightShadowPass
         Vector3 cascadesSplit = renderingData.shadowData.cascadesSplit;
         int cascadeResolution = ShadowUtils.GetMaxTileResolutionInAtlas(renderingData.shadowData.mainLightShadowmapWidth, renderingData.shadowData.mainLightShadowmapHeight, m_ShadowCasterCascadesCount);
 
+        // PCSS
+        float invShadowmapWidth = 1.0f / m_RenderTargetWidth;
+        float invShadowmapHeight = 1.0f / m_RenderTargetHeight;
+        float lightAngularDiameter = PCSSLightParams.dirLightAngularDiameter;
+        float dirLightDepth2Radius = Mathf.Tan(0.5f * Mathf.Deg2Rad * lightAngularDiameter);
+        float minFilterAngularDiameter = Mathf.Max(PCSSLightParams.dirLightPcssBlockerSearchAngularDiameter, PCSSLightParams.dirLightPcssMinFilterMaxAngularDiameter);
+        float halfMinFilterAngularDiameterTangent = Mathf.Tan(0.5f * Mathf.Deg2Rad * Mathf.Max(minFilterAngularDiameter, lightAngularDiameter));
+        float halfBlockerSearchAngularDiameterTangent = Mathf.Tan(0.5f * Mathf.Deg2Rad * Mathf.Max(PCSSLightParams.dirLightPcssBlockerSearchAngularDiameter, lightAngularDiameter));
+
         for (int cascadeIndex = 0; cascadeIndex < m_ShadowCasterCascadesCount; ++cascadeIndex)
         {
             bool success = ShadowUtils.ExtractDirectionalLightMatrix(ref cullResults, shadowLightIndex, cascadeIndex, m_ShadowCasterCascadesCount, cascadesSplit,
@@ -233,6 +269,9 @@ public class MainLightShadowPass
             CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.ShadowPCF, renderingData.shadowData.softShadows == SoftShadows.PCF);
             CoreUtils.SetKeyword(cmd, ShaderKeywordStrings.ShadowPCSS, renderingData.shadowData.softShadows == SoftShadows.PCSS);
 
+            // Set slope-scale depth bias
+            cmd.SetGlobalDepthBias(1.1f, 2.2f);
+
             cmd.SetViewport(new Rect(shadowCascadeData.offsetX, shadowCascadeData.offsetY, shadowCascadeData.resolution, shadowCascadeData.resolution));
             cmd.SetViewProjectionMatrices(shadowCascadeData.viewMatrix, shadowCascadeData.projectionMatrix);
 
@@ -240,10 +279,37 @@ public class MainLightShadowPass
             if (shadowRendererList.isValid)
                 cmd.DrawRendererList(shadowRendererList);
 
+            // Reset slope-scale depth bias
+            cmd.SetGlobalDepthBias(0.0f, 0.0f);
+
             m_MainLightShadowMatrices[cascadeIndex] = shadowCascadeData.shadowTransform;
             Vector4 cullingSphere = shadowCascadeData.splitData.cullingSphere;
             cullingSphere.w *= cullingSphere.w;
             m_CascadesSplitDistance[cascadeIndex] = cullingSphere;
+
+            if (renderingData.shadowData.softShadows == SoftShadows.PCSS)
+            {
+                m_CascadeOffsetScales[cascadeIndex] = new Vector4(shadowCascadeData.offsetX * invShadowmapWidth, shadowCascadeData.offsetY * invShadowmapHeight, shadowCascadeData.resolution * invShadowmapWidth, shadowCascadeData.resolution * invShadowmapHeight);
+
+                Matrix4x4 deviceProjectionMatrix = GL.GetGPUProjectionMatrix(shadowCascadeData.projectionMatrix, false);
+                m_DeviceProjectionVectors[cascadeIndex] = new Vector4(deviceProjectionMatrix.m00, deviceProjectionMatrix.m11, deviceProjectionMatrix.m22, deviceProjectionMatrix.m23);
+
+                float shadowmapDepth2RadialScale = Mathf.Abs(deviceProjectionMatrix.m00 / deviceProjectionMatrix.m22);
+
+                m_DirLightPCSSParams0[cascadeIndex] = new Vector4(
+                    dirLightDepth2Radius * shadowmapDepth2RadialScale,  // depth2RadialScale
+                    1.0f / (dirLightDepth2Radius * shadowmapDepth2RadialScale),  // radial2DepthScale
+                    PCSSLightParams.dirLightPcssMaxPenumbraSize / (2.0f * halfMinFilterAngularDiameterTangent),  // maxBlockerDistance
+                    PCSSLightParams.dirLightPcssMaxSamplingDistance  // maxSamplingDistance
+                );
+
+                m_DirLightPCSSParams1[cascadeIndex] = new Vector4(
+                    PCSSLightParams.dirLightPcssMinFilterSizeTexels,  // minFilterRadius(in texel size)
+                    1.0f / (halfMinFilterAngularDiameterTangent * shadowmapDepth2RadialScale),  // minFilterRadial2DepthScale
+                    1.0f / (halfBlockerSearchAngularDiameterTangent * shadowmapDepth2RadialScale),  // blockerRadial2DepthScale
+                    0.5f * PCSSLightParams.dirLightPcssBlockerSamplingClumpExponent  // blockerClumpSampleExponent
+                );
+            }
         }
 
         // We setup and additional a no-op WorldToShadow matrix in the last index
@@ -252,11 +318,18 @@ public class MainLightShadowPass
         Matrix4x4 noOpShadowMatrix = Matrix4x4.zero;
         noOpShadowMatrix.m22 = (SystemInfo.usesReversedZBuffer) ? 1.0f : 0.0f;
         for (int i = m_ShadowCasterCascadesCount; i <= k_MaxCascades; ++i)
+        {
             m_MainLightShadowMatrices[i] = noOpShadowMatrix;
+
+            m_CascadeOffsetScales[i] = new Vector4(0.0f, 0.0f, 1.0f, 1.0f);
+            m_DeviceProjectionVectors[i] = Vector4.one;
+            m_DirLightPCSSParams0[i] = Vector4.zero;
+            m_DirLightPCSSParams1[i] = Vector4.zero;
+        }
 
         ShadowUtils.GetScaleAndBiasForLinearDistanceFade(m_MaxShadowDistanceSq, m_CascadeBorder, out float shadowFadeScale, out float shadowFadeBias);
 
-        cmd.SetGlobalMatrixArray(MainLightShadowConstantBuffer._WorldToShadow, m_MainLightShadowMatrices);
+        cmd.SetGlobalMatrixArray(MainLightShadowConstantBuffer._MainLightWorldToShadow, m_MainLightShadowMatrices);
         cmd.SetGlobalVector(MainLightShadowConstantBuffer._ShadowParams, new Vector4(shadowLight.light.shadowStrength, 0.0f, shadowFadeScale, shadowFadeBias));
         cmd.SetGlobalVector(MainLightShadowConstantBuffer._CascadesParams, new Vector4((float)m_ShadowCasterCascadesCount, 0.0f, 0.0f, 0.0f));
 
@@ -266,6 +339,14 @@ public class MainLightShadowPass
             cmd.SetGlobalVector(MainLightShadowConstantBuffer._CascadeShadowSplitSpheres1, m_CascadesSplitDistance[1]);
             cmd.SetGlobalVector(MainLightShadowConstantBuffer._CascadeShadowSplitSpheres2, m_CascadesSplitDistance[2]);
             cmd.SetGlobalVector(MainLightShadowConstantBuffer._CascadeShadowSplitSpheres3, m_CascadesSplitDistance[3]);
+        }
+
+        if (renderingData.shadowData.softShadows == SoftShadows.PCSS)
+        {
+            cmd.SetGlobalVectorArray(MainLightShadowConstantBuffer._CascadeOffsetScales, m_CascadeOffsetScales);
+            cmd.SetGlobalVectorArray(MainLightShadowConstantBuffer._DirLightPCSSParams0, m_DirLightPCSSParams0);
+            cmd.SetGlobalVectorArray(MainLightShadowConstantBuffer._DirLightPCSSParams1, m_DirLightPCSSParams1);
+            cmd.SetGlobalVectorArray(MainLightShadowConstantBuffer._DirLightPCSSProjs, m_DeviceProjectionVectors);
         }
     }
 
@@ -291,5 +372,19 @@ public class MainLightShadowPass
 
         for (int i = 0; i < m_CascadesSplitDistance.Length; ++i)
             m_CascadesSplitDistance[i] = Vector4.zero;
+
+        for (int i = 0; i < m_CascadeOffsetScales.Length; ++i)
+            m_CascadeOffsetScales[i] = Vector4.zero;
+
+        for (int i = 0; i < m_DirLightPCSSParams0.Length; ++i)
+        {
+            m_DirLightPCSSParams0[i] = Vector4.zero;
+            m_DirLightPCSSParams1[i] = Vector4.zero;
+        }
+
+        for (int i = 0; i < m_DeviceProjectionVectors.Length; ++i)
+        {
+            m_DeviceProjectionVectors[i] = Vector4.zero;
+        }
     }
 }

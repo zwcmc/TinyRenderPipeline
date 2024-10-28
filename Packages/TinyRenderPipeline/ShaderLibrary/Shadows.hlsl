@@ -27,6 +27,12 @@ float4   _CascadeShadowSplitSpheres2;
 float4   _CascadeShadowSplitSpheres3;
 float4   _CascadesParams; // (x: cascades count, y: 0.0, z: 0.0, w: 0.0)
 
+// PCSS
+float4   _CascadeOffsetScales[MAX_SHADOW_CASCADES + 1];
+float4   _DirLightPCSSParams0[MAX_SHADOW_CASCADES + 1];
+float4   _DirLightPCSSParams1[MAX_SHADOW_CASCADES + 1];
+float4   _DirLightPCSSProjs[MAX_SHADOW_CASCADES + 1];
+
 float4   _AdditionalShadowFadeParams; // x: additional light fade scale, y: additional light fade bias, z: 0.0, w: 0.0)
 float4   _AdditionalShadowParams[MAX_VISIBLE_LIGHTS];         // Per-light data
 float4x4 _AdditionalLightsWorldToShadow[MAX_SHADOW_SLICE_COUNT];  // Per-shadow-slice-data
@@ -35,6 +41,8 @@ CBUFFER_END
 #endif
 
 float4 _ShadowBias; // x: depth bias, y: normal bias
+
+#include "Packages/com.tiny.render-pipeline/ShaderLibrary/PCSS.hlsl"
 
 float3 ApplyShadowBias(float3 positionWS, float3 normalWS, float3 lightDirection)
 {
@@ -73,7 +81,7 @@ float4 TransformWorldToShadowCoord(float3 positionWS)
 {
     half cascadeIndex = _CascadesParams.x > 1.0 ? ComputeCascadeIndex(positionWS) : 0.0;
     float4 shadowCoord = mul(_MainLightWorldToShadow[cascadeIndex], float4(positionWS, 1.0));
-    return float4(shadowCoord.xyz, 0.0);
+    return float4(shadowCoord.xyz, cascadeIndex);  // xyz: shadow coord, w: cascade index
 }
 
 // 1 tap bilinear PCF 2x2
@@ -145,7 +153,7 @@ real SampleShadow_PCF_Tent_5x5(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowM
     return shadow;
 }
 
-real SampleShadowmap(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowMap), float4 shadowCoord, half4 shadowParams, bool isPerspectiveProjection = true)
+half SampleShadowmap(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowMap), float4 shadowCoord, half4 shadowParams, float2 positionSS, bool isPerspectiveProjection = true)
 {
     if (isPerspectiveProjection)
         shadowCoord.xyz /= shadowCoord.w;
@@ -154,9 +162,9 @@ real SampleShadowmap(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowMap), float
     real attenuation;
 
 #if defined(_SHADOWS_PCF)
-    attenuation = real(SampleShadow_PCF_Tent_5x5(TEXTURE2D_SHADOW_ARGS(shadowMap, sampler_shadowMap), shadowCoord.xyz));
+    attenuation = SampleShadow_PCF_Tent_5x5(TEXTURE2D_SHADOW_ARGS(shadowMap, sampler_shadowMap), shadowCoord.xyz);
 #elif defined(_SHADOWS_PCSS)
-    attenuation = real(SampleShadow_PCF_Bilinear(TEXTURE2D_SHADOW_ARGS(shadowMap, sampler_shadowMap), shadowCoord.xyz));
+    attenuation = SampleShadow_PCSS(TEXTURE2D_SHADOW_ARGS(shadowMap, sampler_shadowMap), shadowCoord, _MainLightShadowmapTexture_TexelSize, positionSS);
 #else
     attenuation = SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, shadowCoord.xyz);
 #endif
@@ -166,9 +174,9 @@ real SampleShadowmap(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowMap), float
     return BEYOND_SHADOW_FAR(shadowCoord) ? 1.0 : attenuation;
 }
 
-half MainLightShadow(float4 shadowCoord, float3 positionWS)
+half MainLightShadow(float4 shadowCoord, float3 positionWS, float2 positionSS)
 {
-    half realtimeShadow = SampleShadowmap(TEXTURE2D_SHADOW_ARGS(_MainLightShadowmapTexture, sampler_MainLightShadowmapTexture), shadowCoord, _MainLightShadowParams, false);
+    half realtimeShadow = SampleShadowmap(TEXTURE2D_SHADOW_ARGS(_MainLightShadowmapTexture, sampler_MainLightShadowmapTexture), shadowCoord, _MainLightShadowParams, positionSS, false);
     half shadowFade = GetMainLightShadowFade(positionWS);
     return lerp(realtimeShadow, 1.0, shadowFade);
 }

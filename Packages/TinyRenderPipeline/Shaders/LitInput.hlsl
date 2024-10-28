@@ -76,7 +76,7 @@ half3 SampleEmission(float2 uv, half3 emissionColor, TEXTURE2D_PARAM(emissionMap
 #endif
 }
 
-inline void InitializeSurfaceData(float2 uv, out SurfaceData outSurfaceData)
+void InitializeSurfaceData(float2 uv, out SurfaceData outSurfaceData)
 {
     half4 albedoAlpha = SampleAlbedoAlpha(uv, TEXTURE2D_ARGS(_BaseMap, sampler_BaseMap));
     outSurfaceData.alpha = albedoAlpha.a * _BaseColor.a;

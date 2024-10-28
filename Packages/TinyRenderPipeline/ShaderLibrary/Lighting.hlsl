@@ -3,71 +3,69 @@
 
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/RealtimeLights.hlsl"
 
-float3 ShadingLit(Light light, BRDFData brdfData, InputData inputData)
+half3 ShadingLit(Light light, BRDFData brdfData, InputData inputData)
 {
-    float3 N = inputData.normalWS;
-    float3 V = inputData.viewDirectionWS;
-    float3 L = normalize(light.direction);
-    float3 H = normalize(L + V);
+    half3 N = inputData.normalWS;
+    half3 V = inputData.viewDirectionWS;
+    half3 L = normalize(light.direction);
+    half3 H = normalize(L + V);
 
-    float NoL = saturate(dot(N, L));
-    float NoV = saturate(dot(N, V));
+    half NoL = saturate(dot(N, L));
+    half NoV = saturate(dot(N, V));
     float NoH = saturate(dot(N, H));
-    float LoH = saturate(dot(L, H));
+    half LoH = saturate(dot(L, H));
 
-    float roughness = brdfData.roughness;
+    half roughness = brdfData.roughness;
 
-    float3 radiance = light.color * light.distanceAttenuation * light.shadowAttenuation * NoL;
+    half3 radiance = light.color * light.distanceAttenuation * light.shadowAttenuation * NoL;
 
-    float3 diffuseColor = brdfData.diffuseColor;
-    float3 f0 = brdfData.f0;
+    half3 diffuseColor = brdfData.diffuseColor;
+    half3 f0 = brdfData.f0;
 
-    float3 Fd = diffuseColor * Fd_Burley(roughness, NoV, NoL, LoH);
+    half3 Fd = diffuseColor * Fd_Burley(roughness, NoV, NoL, LoH);
 
     float D = D_GGX(roughness, NoH);
-    float Vis = V_SmithGGXCorrelated(roughness, NoV, NoL);
-    float3 F = F_Schlick(f0, LoH);
-    float3 Fr = (D * Vis) * F;
+    half G = V_SmithGGXCorrelated(roughness, NoV, NoL);
+    half3 F = F_Schlick(f0, LoH);
+    half3 Fr = (D * G) * F;
 
     return (Fd + Fr) * radiance;
 }
 
-float3 ShadingIndirect(BRDFData brdfData, InputData inputData)
+half3 ShadingIndirect(BRDFData brdfData, InputData inputData)
 {
-    float3 N = inputData.normalWS;
-    float3 V = inputData.viewDirectionWS;
+    half3 N = inputData.normalWS;
+    half3 V = inputData.viewDirectionWS;
 
     float NoV = saturate(dot(N, V));
-
     float roughness = brdfData.roughness;
 
-    // IBL
-    float3 diffuseIrradiance = Irradiance_SphericalHarmonics(N);
+    half3 diffuseIrradiance = Irradiance_SphericalHarmonics(N);
 
     float3 r = reflect(-V, N);
-    float3 prefilteredRadiance = PrefilteredRadiance(r, roughness);
+    half3 prefilteredRadiance = PrefilteredRadiance(r, roughness);
 
-    float3 dfg = PrefilteredDFG_LUT(NoV, roughness);
-    float3 E = brdfData.f0 * dfg.x + dfg.y;
+    half3 dfg = PrefilteredDFG_LUT(NoV, roughness);
+    half3 E = brdfData.f0 * dfg.x + dfg.y;
 
-    float3 iblFr = E * prefilteredRadiance;
-    float3 iblFd = brdfData.diffuseColor * diffuseIrradiance * (1.0 - E);
+    half3 iblFr = E * prefilteredRadiance;
+    half3 iblFd = brdfData.diffuseColor * diffuseIrradiance * (1.0 - E);
 
     return iblFd + iblFr;
 }
 
-float4 SurfaceShading(InputData inputData, SurfaceData surfaceData)
+half4 SurfaceShading(InputData inputData, SurfaceData surfaceData)
 {
     uint meshRenderingLayers = GetMeshRenderingLayer();
-
-    // Light mainLight = GetMainLight(inputData);
 
     BRDFData brdfData;
     InitializeBRDFData(surfaceData, brdfData);
 
     Light mainLight = GetMainLight(inputData);
 
-    float3 color = 0.0;
+    return mainLight.shadowAttenuation;
+
+    half3 color = 0.0;
     if (IsMatchingLightLayer(mainLight.layerMask, meshRenderingLayers))
     {
         color += ShadingLit(mainLight, brdfData, inputData);
