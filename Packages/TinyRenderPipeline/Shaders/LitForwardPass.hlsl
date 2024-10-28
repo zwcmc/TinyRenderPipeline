@@ -38,10 +38,6 @@ void InitializeInputData(Varyings input, half3 normalTS, out InputData inputData
 
     inputData.viewDirectionWS = GetWorldSpaceNormalizeViewDir(input.positionWS);
     inputData.shadowCoord = TransformWorldToShadowCoord(inputData.positionWS);
-
-    inputData.bakedGI = SampleSH(inputData.normalWS);
-
-    inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(input.positionCS);
 }
 
 Varyings LitVertex(Attributes input)
@@ -74,7 +70,7 @@ half4 LitFragment(Varyings input) : SV_Target
     InputData inputData;
     InitializeInputData(input, surfaceData.normalTS, inputData);
 
-    half4 color = FragmentPBR(inputData, surfaceData);
+    half4 color = SurfaceShading(inputData, surfaceData);
 
     color.a = OutputAlpha(color.a, IsSurfaceTypeTransparent(_Surface));
 

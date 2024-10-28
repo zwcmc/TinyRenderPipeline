@@ -20,6 +20,8 @@ Shader "Tiny Render Pipeline/Lit"
         [HDR] _EmissionColor("Color", Color) = (0,0,0)
         _EmissionMap("Emission", 2D) = "white" {}
 
+        _IBL_DFG("IBL prefiltered DFG term", 2D) = "white" {}
+
         _Surface("__surface", Float) = 0.0
         _Blend("__mode", Float) = 0.0
         _Cull("__cull", Float) = 2.0
@@ -45,13 +47,9 @@ Shader "Tiny Render Pipeline/Lit"
         Pass
         {
             Name "ForwardLit"
-            Tags
-            {
-                "LightMode" = "TinyRPLit"
-            }
+            Tags { "LightMode" = "TinyRPLit" }
 
             HLSLPROGRAM
-            #pragma target 3.5
             #pragma vertex LitVertex
             #pragma fragment LitFragment
 
@@ -78,7 +76,6 @@ Shader "Tiny Render Pipeline/Lit"
             ColorMask 0
 
             HLSLPROGRAM
-            #pragma target 3.5
             #pragma vertex LitShadowVertex
             #pragma fragment LitShadowFragment
 

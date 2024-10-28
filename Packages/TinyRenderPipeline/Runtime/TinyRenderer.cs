@@ -15,10 +15,10 @@ public class TinyRenderer
     private TextureHandle m_BackbufferColorTexture;
     private TextureHandle m_BackbufferDepthTexture;
 
-    private RTHandle[] m_CameraColorHandles = { null, null };
-    private RTHandle m_CameraDepthHandle;
-    private TextureHandle[] m_RenderGraphCameraColorTextures = { TextureHandle.nullHandle, TextureHandle.nullHandle };
-    private TextureHandle m_RenderGraphCameraDepthTexture;
+    private static RTHandle[] m_CameraColorHandles = { null, null };
+    private static RTHandle m_CameraDepthHandle;
+    private static TextureHandle[] m_RenderGraphCameraColorTextures = { TextureHandle.nullHandle, TextureHandle.nullHandle };
+    private static TextureHandle m_RenderGraphCameraDepthTexture;
     private static int m_CurrentColorTexture = 0;
     private TextureHandle currentCameraColorTexture => m_RenderGraphCameraColorTextures[m_CurrentColorTexture];
 
@@ -165,6 +165,7 @@ public class TinyRenderer
         }
 
         CreateRenderGraphCameraRenderTargets(renderGraph, ref renderingData);
+
         if (supportIntermediateRendering)
         {
             m_ActiveCameraColorTexture = currentCameraColorTexture;
@@ -183,22 +184,36 @@ public class TinyRenderer
         m_ForwardOpaqueObjectsPass.Record(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, m_MainLightShadowmapTexture, m_AdditionalLightShadowmapTexture, ref renderingData);
 
         // Copy depth pass
-        var depthDescriptor = renderingData.cameraTargetDescriptor;
-        depthDescriptor.graphicsFormat = GraphicsFormat.R32_SFloat;
-        depthDescriptor.depthStencilFormat = GraphicsFormat.None;
-        depthDescriptor.depthBufferBits = (int)DepthBits.None;
-        m_DepthTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, depthDescriptor, "_CameraDepthTexture", true);
-        m_CopyDepthPass.Record(renderGraph, m_ActiveCameraDepthTexture, m_DepthTexture, TextureHandle.nullHandle, ref renderingData, true);
+        if (supportIntermediateRendering)
+        {
+            var depthDescriptor = renderingData.cameraTargetDescriptor;
+            depthDescriptor.graphicsFormat = GraphicsFormat.R32_SFloat;
+            depthDescriptor.depthStencilFormat = GraphicsFormat.None;
+            depthDescriptor.depthBufferBits = (int)DepthBits.None;
+            m_DepthTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, depthDescriptor, "_CameraDepthTexture", true);
+            m_CopyDepthPass.Record(renderGraph, m_ActiveCameraDepthTexture, m_DepthTexture, TextureHandle.nullHandle, ref renderingData, true);
+        }
+        else
+        {
+            RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_CameraDepthTexture", SystemInfo.usesReversedZBuffer ? renderGraph.defaultResources.blackTexture : renderGraph.defaultResources.whiteTexture, "SetDefaultGlobalCameraDepthTexture");
+        }
 
         // Draw skybox pass
         m_DrawSkyboxPass.DrawRenderGraphSkybox(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, ref renderingData);
 
         // Copy color pass
-        var colorDescriptor = renderingData.cameraTargetDescriptor;
-        colorDescriptor.depthBufferBits = (int)DepthBits.None;
-        colorDescriptor.depthStencilFormat = GraphicsFormat.None;
-        m_CameraColorTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, colorDescriptor, "_CameraOpaqueTexture", true, FilterMode.Bilinear);
-        m_CopyColorPass.Record(renderGraph, m_ActiveCameraColorTexture, m_CameraColorTexture, ref renderingData);
+        if (supportIntermediateRendering)
+        {
+            var colorDescriptor = renderingData.cameraTargetDescriptor;
+            colorDescriptor.depthBufferBits = (int)DepthBits.None;
+            colorDescriptor.depthStencilFormat = GraphicsFormat.None;
+            m_CameraColorTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, colorDescriptor, "_CameraOpaqueTexture", true, FilterMode.Bilinear);
+            m_CopyColorPass.Record(renderGraph, m_ActiveCameraColorTexture, m_CameraColorTexture, ref renderingData);
+        }
+        else
+        {
+            RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_CameraOpaqueTexture", renderGraph.defaultResources.whiteTexture);
+        }
 
         // Draw transparent objects pass
         m_ForwardTransparentObjectsPass.Record(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, TextureHandle.nullHandle, TextureHandle.nullHandle, ref renderingData);

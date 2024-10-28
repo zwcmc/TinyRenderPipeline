@@ -43,12 +43,6 @@ public class TinyRenderPipeline : RenderPipeline
     public static int maxVisibleAdditionalLights => k_MaxVisibleAdditionalLights;
     public static int maxShadowSlicesCount => k_MaxShadowSliceCount;
 
-    // For forward+ rendering path
-    public static int maxTileWords => 1024 * 4;
-    public static int maxZBinWords => 1024 * 4;
-
-    public static RTHandle k_CameraTarget = RTHandles.Alloc(BuiltinRenderTextureType.CameraTarget);
-
     public TinyRenderPipeline(TinyRenderPipelineAsset asset)
     {
         pipelineAsset = asset;
@@ -87,10 +81,10 @@ public class TinyRenderPipeline : RenderPipeline
     {
         base.Dispose(disposing);
 
-        s_RTHandlePool.Cleanup();
+        s_RTHandlePool?.Cleanup();
         s_RTHandlePool = null;
 
-        s_RenderGraph.Cleanup();
+        s_RenderGraph?.Cleanup();
         s_RenderGraph = null;
 
         s_TinyRenderer?.Dispose();
@@ -188,8 +182,8 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.defaultFormat = renderingData.isHdrEnabled ? SystemInfo.GetGraphicsFormat(DefaultFormat.HDR) : SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
         renderingData.cameraTargetDescriptor = RenderingUtils.CreateRenderTextureDescriptor(renderingData.camera, renderingData.defaultFormat, renderingData.isHdrEnabled, renderingData.renderScale);
 
-        var cameraRect = camera.rect;
-        renderingData.isDefaultCameraViewport = !(Math.Abs(cameraRect.x) > 0.0f || Math.Abs(cameraRect.y) > 0.0f || Math.Abs(cameraRect.width) < 1.0f || Math.Abs(cameraRect.height) < 1.0f);
+        // var cameraRect = camera.rect;
+        // renderingData.isDefaultCameraViewport = !(Math.Abs(cameraRect.x) > 0.0f || Math.Abs(cameraRect.y) > 0.0f || Math.Abs(cameraRect.width) < 1.0f || Math.Abs(cameraRect.height) < 1.0f);
         renderingData.cullResults = cullResults;
 
         var visibleLights = cullResults.visibleLights;

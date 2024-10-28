@@ -3,5 +3,6 @@
 
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/Input.hlsl"
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/ShaderVariablesFunctions.hlsl"
+#include "Packages/com.tiny.render-pipeline/ShaderLibrary/CommonMath.hlsl"
 
 #endif

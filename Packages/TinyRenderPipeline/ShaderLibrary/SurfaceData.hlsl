@@ -3,7 +3,7 @@
 
 struct SurfaceData
 {
-    half3 albedo;
+    half3 baseColor;
     half3 normalTS;
     half3 emission;
     half occlusion;

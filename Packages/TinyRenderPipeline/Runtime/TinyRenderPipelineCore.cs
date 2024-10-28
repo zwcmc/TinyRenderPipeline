@@ -56,7 +56,7 @@ public struct RenderingData
 
     public RenderTextureDescriptor cameraTargetDescriptor;
 
-    public bool isDefaultCameraViewport;
+    // public bool isDefaultCameraViewport;
 
     public CullingResults cullResults;
 

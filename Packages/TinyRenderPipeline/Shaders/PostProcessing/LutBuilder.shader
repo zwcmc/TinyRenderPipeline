@@ -8,7 +8,6 @@ Shader "Hidden/Tiny Render Pipeline/LutBuilder"
         ZWrite Off
 
         HLSLINCLUDE
-        #pragma target 3.5
 
         #pragma multi_compile_local _ _TONEMAP_ACES _TONEMAP_NEUTRAL
 

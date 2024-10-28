@@ -10,7 +10,6 @@ public static class RenderingUtils
 {
     private static List<ShaderTagId> m_ShaderPassNames = new List<ShaderTagId>
     {
-        new ShaderTagId("TinyRPUnlit"),
         new ShaderTagId("TinyRPLit"),
         new ShaderTagId("SRPDefaultUnlit")
     };

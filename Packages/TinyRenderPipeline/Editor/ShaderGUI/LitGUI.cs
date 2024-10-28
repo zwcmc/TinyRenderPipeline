@@ -61,6 +61,8 @@ namespace TinyRenderPipeline.CustomShaderGUI
 
             public static readonly GUIContent emissionEnabled = EditorGUIUtility.TrTextContent("Emission", "");
             public static readonly GUIContent emissionMap = EditorGUIUtility.TrTextContent("Emission Map", "");
+
+            public static readonly GUIContent iblDFG = EditorGUIUtility.TrTextContent("IBL DFG Term", "");
         }
 
         private static class Property
@@ -91,6 +93,8 @@ namespace TinyRenderPipeline.CustomShaderGUI
             public static readonly string EmissionEnabled = "_EmissionEnabled";
             public static readonly string EmissionColor = "_EmissionColor";
             public static readonly string EmissionMap = "_EmissionMap";
+
+            public static readonly string _IBL_DFG = "_IBL_DFG";
         }
 
         private static class ShaderKeywordStrings
@@ -130,6 +134,8 @@ namespace TinyRenderPipeline.CustomShaderGUI
         private MaterialProperty emissionColorProp;
         private MaterialProperty emissionMapProp;
 
+        private MaterialProperty _IBL_DFG;
+
         #endregion
 
         private void FindProperties(MaterialProperty[] properties)
@@ -161,6 +167,8 @@ namespace TinyRenderPipeline.CustomShaderGUI
             emissionEnabledProp = FindProperty(Property.EmissionEnabled, properties, false);
             emissionColorProp = FindProperty(Property.EmissionColor, properties, false);
             emissionMapProp = FindProperty(Property.EmissionMap, properties, false);
+
+            _IBL_DFG = FindProperty(Property._IBL_DFG, properties, false);
         }
 
         public override void OnGUI(MaterialEditor materialEditorIn, MaterialProperty[] properties)
@@ -223,6 +231,8 @@ namespace TinyRenderPipeline.CustomShaderGUI
                 materialEditor.TexturePropertyWithHDRColor(Styles.emissionMap, emissionMapProp, emissionColorProp, false);
                 EditorGUI.indentLevel -= 2;
             }
+
+            materialEditor.TexturePropertySingleLine(Styles.iblDFG, _IBL_DFG);
 
             if (baseMapProp != null)
                 materialEditor.TextureScaleOffsetProperty(baseMapProp);

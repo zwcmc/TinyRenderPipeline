@@ -12,8 +12,6 @@ Shader "Hidden/Tiny Render Pipeline/Blit"
             Name "Blit Copy"
 
             HLSLPROGRAM
-            #pragma target 3.5
-
             #pragma vertex Vert
             #pragma fragment Frag
 

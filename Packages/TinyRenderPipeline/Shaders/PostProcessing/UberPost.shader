@@ -12,8 +12,6 @@ Shader "Hidden/Tiny Render Pipeline/Uber Post"
             Name "Uber Post"
 
             HLSLPROGRAM
-            #pragma target 3.5
-
             #pragma vertex Vert
             #pragma fragment FragUberPost
             #pragma multi_compile_local_fragment _ _BLOOM

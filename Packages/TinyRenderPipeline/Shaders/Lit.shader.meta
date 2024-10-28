@@ -2,7 +2,13 @@ fileFormatVersion: 2
 guid: 346322f47f0b847328edd8352c5f0f39
 ShaderImporter:
   externalObjects: {}
-  defaultTextures: []
+  defaultTextures:
+  - _BaseMap: {instanceID: 0}
+  - _MetallicGlossMap: {instanceID: 0}
+  - _BumpMap: {instanceID: 0}
+  - _OcclusionMap: {instanceID: 0}
+  - _EmissionMap: {instanceID: 0}
+  - _IBL_DFG: {fileID: 2800000, guid: b4fccac7ac0664489b91ab8020f00ce8, type: 3}
   nonModifiableTextures: []
   userData: 
   assetBundleName: 

@@ -2,10 +2,6 @@
 #define TINY_RP_LIT_INPUT_INCLUDED
 
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/Core.hlsl"
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/SurfaceData.hlsl"
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/BRDF.hlsl"
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/Shadows.hlsl"
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/Lighting.hlsl"
 
 CBUFFER_START(UnityPerMaterial)
 float4 _BaseMap_ST;
@@ -24,6 +20,13 @@ TEXTURE2D(_MetallicGlossMap);      SAMPLER(sampler_MetallicGlossMap);
 TEXTURE2D(_BumpMap);               SAMPLER(sampler_BumpMap);
 TEXTURE2D(_OcclusionMap);          SAMPLER(sampler_OcclusionMap);
 TEXTURE2D(_EmissionMap);           SAMPLER(sampler_EmissionMap);
+TEXTURE2D(_IBL_DFG);               SAMPLER(sampler_IBL_DFG);
+
+#include "Packages/com.tiny.render-pipeline/ShaderLibrary/SurfaceData.hlsl"
+#include "Packages/com.tiny.render-pipeline/ShaderLibrary/BRDF.hlsl"
+#include "Packages/com.tiny.render-pipeline/ShaderLibrary/IBL.hlsl"
+#include "Packages/com.tiny.render-pipeline/ShaderLibrary/Shadows.hlsl"
+#include "Packages/com.tiny.render-pipeline/ShaderLibrary/Lighting.hlsl"
 
 half4 SampleAlbedoAlpha(float2 uv, TEXTURE2D_PARAM(albedoAlphaMap, sampler_albedoAlphaMap))
 {
@@ -79,7 +82,7 @@ inline void InitializeSurfaceData(float2 uv, out SurfaceData outSurfaceData)
     outSurfaceData.alpha = albedoAlpha.a * _BaseColor.a;
     outSurfaceData.alpha = AlphaDiscard(outSurfaceData.alpha, _Cutoff);
 
-    outSurfaceData.albedo = albedoAlpha.rgb * _BaseColor.rgb;
+    outSurfaceData.baseColor = albedoAlpha.rgb * _BaseColor.rgb;
 
     outSurfaceData.normalTS = SampleNormal(uv, TEXTURE2D_ARGS(_BumpMap, sampler_BumpMap), _BumpScale);
     outSurfaceData.occlusion = SampleOcclusion(uv);
