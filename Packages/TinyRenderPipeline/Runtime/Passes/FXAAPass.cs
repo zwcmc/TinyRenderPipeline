@@ -28,12 +28,9 @@ public class FXAAPass
             return;
         }
 
-        m_FXAAMaterial = CoreUtils.CreateEngineMaterial(m_PostProcessingData.shaders.fxaaShader);
-
         if (m_FXAAMaterial == null)
         {
-            Debug.LogError("FXAA Pass: material is null");
-            return;
+            m_FXAAMaterial = CoreUtils.CreateEngineMaterial(m_PostProcessingData.shaders.fxaaShader);
         }
 
         using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_ProfilingSampler.name, out var passData, s_ProfilingSampler))

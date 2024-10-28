@@ -122,11 +122,9 @@ public class PostProcessingPass
             return;
         }
 
-        m_Materials = new MaterialLibrary(m_PostProcessingData);
         if (m_Materials == null)
         {
-            Debug.LogError("Post Processing Pass: post-processing materials is null.");
-            return;
+            m_Materials = new MaterialLibrary(m_PostProcessingData);
         }
 
         m_Descriptor = renderingData.cameraTargetDescriptor;
@@ -341,7 +339,7 @@ public class PostProcessingPass
     {
         using (var builder = renderGraph.AddRasterRenderPass<UberPassData>(Profiling.s_UberPass.name, out var passData, Profiling.s_UberPass))
         {
-            if (m_Bloom.IsActive())
+            if (m_Bloom.IsActive() && m_RenderGraphBloomMipUp[0].IsValid())
                 builder.UseTexture(m_RenderGraphBloomMipUp[0], IBaseRenderGraphBuilder.AccessFlags.Read);
 
             passData.sourceTextureHdl = builder.UseTexture(source, IBaseRenderGraphBuilder.AccessFlags.Read);

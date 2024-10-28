@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
+using Debug = UnityEngine.Debug;
 
 public class TinyRenderer
 {
@@ -170,6 +171,7 @@ public class TinyRenderer
         {
             m_ActiveCameraColorTexture = currentCameraColorTexture;
             m_ActiveCameraDepthTexture = m_RenderGraphCameraDepthTexture;
+            m_IsActiveTargetBackbuffer = false;
         }
         else
         {
@@ -227,14 +229,10 @@ public class TinyRenderer
             var target = !hasFxaaPass ? m_BackbufferColorTexture : nextCameraColorTexture;
             m_PostProcessingPass.Record(renderGraph, in m_ActiveCameraColorTexture, m_ColorGradingLutTexture, target, ref renderingData);
 
+            m_ActiveCameraColorTexture = target;
             if (!hasFxaaPass)
             {
-                m_ActiveCameraColorTexture = m_BackbufferColorTexture;
                 m_IsActiveTargetBackbuffer = true;
-            }
-            else
-            {
-                m_ActiveCameraColorTexture = target;
             }
         }
 
@@ -245,7 +243,7 @@ public class TinyRenderer
             m_IsActiveTargetBackbuffer = true;
         }
 
-        if (!m_IsActiveTargetBackbuffer)
+        if (supportIntermediateRendering && !m_IsActiveTargetBackbuffer)
         {
             m_FinalBlitPass.Record(renderGraph, m_ActiveCameraColorTexture, m_BackbufferColorTexture, ref renderingData);
             m_ActiveCameraColorTexture = m_BackbufferColorTexture;
