@@ -6,18 +6,18 @@ using UnityEngine.Rendering;
 public class MainLightShadowPass
 {
     private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("MainLightShadowPass");
-    private static readonly ProfilingSampler s_SetMainLightShadowSampler = new ProfilingSampler("SetMainLightShadowmapGlobal");
+    private static readonly ProfilingSampler s_SetMainLightShadowSampler = new ProfilingSampler("SetMainLightShadowMapGlobal");
 
     // This limit matches same limit in Shadows.hlsl
     private const int k_MaxCascades = 4;
-    private const int k_ShadowmapBufferBits = 16;
-    private const string k_ShadowmapTextureName = "_MainLightShadowmapTexture";
+    private const int k_ShadowMapBufferBits = 16;
+    private const string k_ShadowMapTextureName = "_MainLightShadowMapTexture";
 
-    private int m_MainLightShadowmapID;
-    private RTHandle m_MainLightShadowmapTexture;
-    private RTHandle m_EmptyLightShadowmapTexture;
+    private int m_MainLightShadowMapID;
+    private RTHandle m_MainLightShadowMapTexture;
+    private RTHandle m_EmptyLightShadowMapTexture;
 
-    private bool m_CreateEmptyShadowmap;
+    private bool m_CreateEmptyShadowMap;
 
     private Matrix4x4[] m_MainLightShadowMatrices;
     private Vector4[] m_CascadesSplitDistance;
@@ -50,35 +50,26 @@ public class MainLightShadowPass
     {
         public MainLightShadowPass pass;
 
-        public TextureHandle shadowmapTexture;
+        public TextureHandle shadowMapTexture;
         public RenderingData renderingData;
 
-        public int shadowmapID;
-        public bool emptyShadowmap;
+        public int shadowMapID;
+        public bool emptyShadowMap;
 
         public RendererListHandle[] shadowRendererListHandle = new RendererListHandle[k_MaxCascades];
     }
-
-    // private struct PcssCascadeData
-    // {
-    //     public Vector4 dirLightPcssParams0;
-    //     public Vector4 dirLightPcssParams1;
-    // }
-    //
-    // private PcssCascadeData[] m_PcssCascadeDatas;
 
     private Vector4[] m_DirLightPCSSParams0;
     private Vector4[] m_DirLightPCSSParams1;
 
     private static class PCSSLightParams
     {
-        public static float dirLightAngularDiameter = 1.23f;
-        public static float dirLightPcssBlockerSearchAngularDiameter = 12;
-        public static float dirLightPcssMinFilterMaxAngularDiameter = 10;
-        public static float dirLightPcssMaxPenumbraSize = 0.56f;
-        public static float dirLightPcssMaxSamplingDistance = 0.5f;
-        public static float dirLightPcssMinFilterSizeTexels = 1.5f;
-        public static float dirLightPcssBlockerSamplingClumpExponent = 2f;
+        public static float dirLightAngularDiameter = 2.66f;
+        public static float dirLightPCSSBlockerSearchAngularDiameter = 12;
+        public static float dirLightPCSSMinFilterMaxAngularDiameter = 10;
+        public static float dirLightPCSSMaxPenumbraSize = 0.56f;
+        public static float dirLightPCSSMaxSamplingDistance = 0.5f;
+        public static float dirLightPCSSMinFilterSizeTexels = 1.5f;
     }
 
     private Vector4[] m_DeviceProjectionVectors;
@@ -92,9 +83,9 @@ public class MainLightShadowPass
         m_DirLightPCSSParams1 = new Vector4[k_MaxCascades + 1];
         m_DeviceProjectionVectors = new Vector4[k_MaxCascades + 1];
 
-        m_MainLightShadowmapID = Shader.PropertyToID(k_ShadowmapTextureName);
+        m_MainLightShadowMapID = Shader.PropertyToID(k_ShadowMapTextureName);
 
-        m_EmptyLightShadowmapTexture = ShadowUtils.AllocShadowRT(1, 1, k_ShadowmapBufferBits, "_EmptyLightShadowmapTexture");
+        m_EmptyLightShadowMapTexture = ShadowUtils.AllocShadowRT(1, 1, k_ShadowMapBufferBits, "_EmptyLightShadowMapTexture");
     }
 
     public bool Setup(ref RenderingData renderingData)
@@ -135,14 +126,14 @@ public class MainLightShadowPass
 
         ref var shadowData = ref renderingData.shadowData;
         m_ShadowCasterCascadesCount = renderingData.shadowData.cascadesCount;
-        m_RenderTargetWidth = renderingData.shadowData.mainLightShadowmapWidth;
-        m_RenderTargetHeight = (m_ShadowCasterCascadesCount == 2) ? renderingData.shadowData.mainLightShadowmapHeight >> 1 : renderingData.shadowData.mainLightShadowmapHeight;
-        ShadowUtils.ShadowRTReAllocateIfNeeded(ref m_MainLightShadowmapTexture, m_RenderTargetWidth, m_RenderTargetHeight, k_ShadowmapBufferBits, name: k_ShadowmapTextureName);
+        m_RenderTargetWidth = renderingData.shadowData.mainLightShadowMapWidth;
+        m_RenderTargetHeight = (m_ShadowCasterCascadesCount == 2) ? renderingData.shadowData.mainLightShadowMapHeight >> 1 : renderingData.shadowData.mainLightShadowMapHeight;
+        ShadowUtils.ShadowRTReAllocateIfNeeded(ref m_MainLightShadowMapTexture, m_RenderTargetWidth, m_RenderTargetHeight, k_ShadowMapBufferBits, name: k_ShadowMapTextureName);
 
         m_MaxShadowDistanceSq = shadowData.maxShadowDistance * shadowData.maxShadowDistance;
         m_CascadeBorder = shadowData.mainLightShadowCascadeBorder;
 
-        m_CreateEmptyShadowmap = false;
+        m_CreateEmptyShadowMap = false;
 
         return true;
     }
@@ -155,13 +146,13 @@ public class MainLightShadowPass
         {
             InitPassData(renderGraph, ref renderingData, ref passData);
 
-            if (!m_CreateEmptyShadowmap)
+            if (!m_CreateEmptyShadowMap)
             {
                 for (int cascadeIndex = 0; cascadeIndex < m_ShadowCasterCascadesCount; ++cascadeIndex)
                     builder.UseRendererList(passData.shadowRendererListHandle[cascadeIndex]);
 
-                passData.shadowmapTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, m_MainLightShadowmapTexture.rt.descriptor, k_ShadowmapTextureName, true, FilterMode.Bilinear);
-                builder.UseTextureFragmentDepth(passData.shadowmapTexture, IBaseRenderGraphBuilder.AccessFlags.Write);
+                passData.shadowMapTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, m_MainLightShadowMapTexture.rt.descriptor, k_ShadowMapTextureName, true, FilterMode.Bilinear);
+                builder.UseTextureFragmentDepth(passData.shadowMapTexture, IBaseRenderGraphBuilder.AccessFlags.Write);
             }
 
             builder.AllowPassCulling(false);
@@ -169,21 +160,21 @@ public class MainLightShadowPass
 
             builder.SetRenderFunc((PassData data, RasterGraphContext rasterGraphContext) =>
             {
-                if (!data.emptyShadowmap)
-                    data.pass.RenderMainLightCascadeShadowmap(rasterGraphContext.cmd, ref data, ref data.renderingData);
+                if (!data.emptyShadowMap)
+                    data.pass.RenderMainLightCascadeShadowMap(rasterGraphContext.cmd, ref data, ref data.renderingData);
             });
 
-            shadowTexture = passData.shadowmapTexture;
+            shadowTexture = passData.shadowMapTexture;
         }
 
         using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_SetMainLightShadowSampler.name, out var passData, s_SetMainLightShadowSampler))
         {
             passData.pass = this;
-            passData.shadowmapID = m_MainLightShadowmapID;
-            passData.emptyShadowmap = m_CreateEmptyShadowmap;
+            passData.shadowMapID = m_MainLightShadowMapID;
+            passData.emptyShadowMap = m_CreateEmptyShadowMap;
             passData.renderingData = renderingData;
 
-            passData.shadowmapTexture = shadowTexture;
+            passData.shadowMapTexture = shadowTexture;
 
             if (shadowTexture.IsValid())
                 builder.UseTexture(shadowTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
@@ -193,33 +184,33 @@ public class MainLightShadowPass
 
             builder.SetRenderFunc((PassData data, RasterGraphContext rasterGraphContext) =>
             {
-                if (data.emptyShadowmap)
+                if (data.emptyShadowMap)
                 {
-                    data.pass.SetEmptyMainLightCascadeShadowmap(rasterGraphContext.cmd);
-                    data.shadowmapTexture = rasterGraphContext.defaultResources.defaultShadowTexture;
+                    data.pass.SetEmptyMainLightCascadeShadowMap(rasterGraphContext.cmd);
+                    data.shadowMapTexture = rasterGraphContext.defaultResources.defaultShadowTexture;
                 }
 
-                rasterGraphContext.cmd.SetGlobalTexture(data.shadowmapID, data.shadowmapTexture);
+                rasterGraphContext.cmd.SetGlobalTexture(data.shadowMapID, data.shadowMapTexture);
             });
-            return passData.shadowmapTexture;
+            return passData.shadowMapTexture;
         }
     }
 
     public void Dispose()
     {
-        m_MainLightShadowmapTexture?.Release();
-        m_EmptyLightShadowmapTexture?.Release();
+        m_MainLightShadowMapTexture?.Release();
+        m_EmptyLightShadowMapTexture?.Release();
     }
 
     private void InitPassData(RenderGraph renderGraph, ref RenderingData renderingData, ref PassData passData)
     {
         passData.pass = this;
-        passData.emptyShadowmap = m_CreateEmptyShadowmap;
-        passData.shadowmapID = m_MainLightShadowmapID;
+        passData.emptyShadowMap = m_CreateEmptyShadowMap;
+        passData.shadowMapID = m_MainLightShadowMapID;
         passData.renderingData = renderingData;
 
         int shadowLightIndex = renderingData.mainLightIndex;
-        if (!m_CreateEmptyShadowmap && shadowLightIndex != -1)
+        if (!m_CreateEmptyShadowMap && shadowLightIndex != -1)
         {
             var cullResults = renderingData.cullResults;
             var settings = new ShadowDrawingSettings(cullResults, shadowLightIndex);
@@ -231,7 +222,7 @@ public class MainLightShadowPass
         }
     }
 
-    private void RenderMainLightCascadeShadowmap(RasterCommandBuffer cmd, ref PassData data, ref RenderingData renderingData)
+    private void RenderMainLightCascadeShadowMap(RasterCommandBuffer cmd, ref PassData data, ref RenderingData renderingData)
     {
         int shadowLightIndex = renderingData.mainLightIndex;
         if (shadowLightIndex == -1)
@@ -243,16 +234,31 @@ public class MainLightShadowPass
         cmd.SetGlobalVector(ShaderPropertyId.worldSpaceCameraPos, renderingData.camera.transform.position);
 
         Vector3 cascadesSplit = renderingData.shadowData.cascadesSplit;
-        int cascadeResolution = ShadowUtils.GetMaxTileResolutionInAtlas(renderingData.shadowData.mainLightShadowmapWidth, renderingData.shadowData.mainLightShadowmapHeight, m_ShadowCasterCascadesCount);
+        int cascadeResolution = ShadowUtils.GetMaxTileResolutionInAtlas(renderingData.shadowData.mainLightShadowMapWidth, renderingData.shadowData.mainLightShadowMapHeight, m_ShadowCasterCascadesCount);
 
         // PCSS
-        float invShadowmapWidth = 1.0f / m_RenderTargetWidth;
-        float invShadowmapHeight = 1.0f / m_RenderTargetHeight;
-        float lightAngularDiameter = PCSSLightParams.dirLightAngularDiameter;
-        float dirLightDepth2Radius = Mathf.Tan(0.5f * Mathf.Deg2Rad * lightAngularDiameter);
-        float minFilterAngularDiameter = Mathf.Max(PCSSLightParams.dirLightPcssBlockerSearchAngularDiameter, PCSSLightParams.dirLightPcssMinFilterMaxAngularDiameter);
-        float halfMinFilterAngularDiameterTangent = Mathf.Tan(0.5f * Mathf.Deg2Rad * Mathf.Max(minFilterAngularDiameter, lightAngularDiameter));
-        float halfBlockerSearchAngularDiameterTangent = Mathf.Tan(0.5f * Mathf.Deg2Rad * Mathf.Max(PCSSLightParams.dirLightPcssBlockerSearchAngularDiameter, lightAngularDiameter));
+        float invShadowMapWidth = default;
+        float invShadowMapHeight = default;
+        float dirLightDepth2Radius = default;
+        float halfMinFilterAngularDiameterTangent = default;
+        float halfBlockerSearchAngularDiameterTangent = default;
+        if (renderingData.shadowData.softShadows == SoftShadows.PCSS)
+        {
+            // ShadowMapAtlas 中一个纹素的宽度
+            invShadowMapWidth = 1.0f / m_RenderTargetWidth;
+            // ShadowMapAtlas 中一个纹素的高度
+            invShadowMapHeight = 1.0f / m_RenderTargetHeight;
+            // 控制参数：方向光角直径 \delta
+            float lightAngularDiameter = PCSSLightParams.dirLightAngularDiameter;
+            // 根据角直径参数, 计算出光源直径 d 与 距离光源的距离 D 的关系, 即 tan(\delta / 2) = d_{dirLight} / 2D
+            dirLightDepth2Radius = Mathf.Tan(0.5f * Mathf.Deg2Rad * lightAngularDiameter);
+
+            float minFilterAngularDiameter = Mathf.Max(PCSSLightParams.dirLightPCSSBlockerSearchAngularDiameter, PCSSLightParams.dirLightPCSSMinFilterMaxAngularDiameter);
+            // 控制参数：Filtering 时, Filtering 的范围直径 d 与距离光源距离的 D 的关系 , d_{Filtering} / 2D
+            halfMinFilterAngularDiameterTangent = Mathf.Tan(0.5f * Mathf.Deg2Rad * Mathf.Max(minFilterAngularDiameter, lightAngularDiameter));
+            // 控制参数：Blocker 搜索时, 搜索的范围直径 d 与距离光源距离 D 的关系: d_{Blocker} / 2D
+            halfBlockerSearchAngularDiameterTangent = Mathf.Tan(0.5f * Mathf.Deg2Rad * Mathf.Max(PCSSLightParams.dirLightPCSSBlockerSearchAngularDiameter, lightAngularDiameter));
+        }
 
         for (int cascadeIndex = 0; cascadeIndex < m_ShadowCasterCascadesCount; ++cascadeIndex)
         {
@@ -289,25 +295,33 @@ public class MainLightShadowPass
 
             if (renderingData.shadowData.softShadows == SoftShadows.PCSS)
             {
-                m_CascadeOffsetScales[cascadeIndex] = new Vector4(shadowCascadeData.offsetX * invShadowmapWidth, shadowCascadeData.offsetY * invShadowmapHeight, shadowCascadeData.resolution * invShadowmapWidth, shadowCascadeData.resolution * invShadowmapHeight);
+                // 每一个 Cascade 在 ShadowMapAtlas 上的起始 uv 坐标与 uv 范围
+                m_CascadeOffsetScales[cascadeIndex] = new Vector4(shadowCascadeData.offsetX * invShadowMapWidth, shadowCascadeData.offsetY * invShadowMapHeight, shadowCascadeData.resolution * invShadowMapWidth, shadowCascadeData.resolution * invShadowMapHeight);
 
+                // Cascade 的投影矩阵
                 Matrix4x4 deviceProjectionMatrix = GL.GetGPUProjectionMatrix(shadowCascadeData.projectionMatrix, false);
+
+                // x: 光源空间投影矩阵 x 轴的缩放
+                // y: 光源空间投影矩阵 y 轴的缩放
+                // z: 光源空间投影矩阵 z 轴的缩放
+                // w: 光源空间投影矩阵 z 轴的位移
                 m_DeviceProjectionVectors[cascadeIndex] = new Vector4(deviceProjectionMatrix.m00, deviceProjectionMatrix.m11, deviceProjectionMatrix.m22, deviceProjectionMatrix.m23);
 
-                float shadowmapDepth2RadialScale = Mathf.Abs(deviceProjectionMatrix.m00 / deviceProjectionMatrix.m22);
+                // 计算出 Cascade 投影矩阵中的 x 轴和 z 轴的缩放比例, 考虑到光源投影矩阵中 x 轴与 z 轴的非均匀缩放
+                float shadowMapDepth2RadialScale = Mathf.Abs(deviceProjectionMatrix.m00 / deviceProjectionMatrix.m22);
 
                 m_DirLightPCSSParams0[cascadeIndex] = new Vector4(
-                    dirLightDepth2Radius * shadowmapDepth2RadialScale,  // depth2RadialScale
-                    1.0f / (dirLightDepth2Radius * shadowmapDepth2RadialScale),  // radial2DepthScale
-                    PCSSLightParams.dirLightPcssMaxPenumbraSize / (2.0f * halfMinFilterAngularDiameterTangent),  // maxBlockerDistance
-                    PCSSLightParams.dirLightPcssMaxSamplingDistance  // maxSamplingDistance
+                    dirLightDepth2Radius * shadowMapDepth2RadialScale,  // x = depth2RadialScale , 方向光源直角径中, 光源直径 d_{dirLight} 与距离光源距离 D 的比例关系: d_{dirLight} / 2D
+                    0.0f,
+                    PCSSLightParams.dirLightPCSSMaxPenumbraSize / (2.0f * halfMinFilterAngularDiameterTangent),  // z = maxBlockerDistance , 根据自定义参数 PCSSLightParams.dirLightPCSSMaxPenumbraSize , 计算出的最大 Blocker 搜索的深度
+                    PCSSLightParams.dirLightPCSSMaxSamplingDistance  // w = maxSamplingDistance , 自定义参数 最大搜索深度
                 );
 
                 m_DirLightPCSSParams1[cascadeIndex] = new Vector4(
-                    PCSSLightParams.dirLightPcssMinFilterSizeTexels,  // minFilterRadius(in texel size)
-                    1.0f / (halfMinFilterAngularDiameterTangent * shadowmapDepth2RadialScale),  // minFilterRadial2DepthScale
-                    1.0f / (halfBlockerSearchAngularDiameterTangent * shadowmapDepth2RadialScale),  // blockerRadial2DepthScale
-                    0.5f * PCSSLightParams.dirLightPcssBlockerSamplingClumpExponent  // blockerClumpSampleExponent
+                    PCSSLightParams.dirLightPCSSMinFilterSizeTexels,  // x = minFilterRadius(in texel size) , 最小的搜索范围，此范围是相对于纹素宽度的范围 , 默认是 1.5 , 也就是 1.5 个纹素宽度
+                    1.0f / (halfMinFilterAngularDiameterTangent * shadowMapDepth2RadialScale),  // y = minFilterRadial2DepthScale , Filtering 时, 距离光源距离 D 与 Filtering 的范围直径 d 的关系: 2D / d_{Filtering}
+                    1.0f / (halfBlockerSearchAngularDiameterTangent * shadowMapDepth2RadialScale),  // z = blockerRadial2DepthScale , Blocker 搜索时, 距离光源距离 D 与搜索的范围直径 d 的关系: 2D / d_{Blocker}
+                    0.0f
                 );
             }
         }
@@ -350,7 +364,7 @@ public class MainLightShadowPass
         }
     }
 
-    private void SetEmptyMainLightCascadeShadowmap(RasterCommandBuffer cmd)
+    private void SetEmptyMainLightCascadeShadowMap(RasterCommandBuffer cmd)
     {
         cmd.SetGlobalVector(MainLightShadowConstantBuffer._ShadowParams, new Vector4(1, 0, 1, 0));
         cmd.SetGlobalVector(MainLightShadowConstantBuffer._CascadesParams, new Vector4(1, 0, 0, 0));
@@ -358,9 +372,9 @@ public class MainLightShadowPass
 
     private bool SetupForEmptyRendering()
     {
-        m_CreateEmptyShadowmap = true;
+        m_CreateEmptyShadowMap = true;
 
-        ShadowUtils.ShadowRTReAllocateIfNeeded(ref m_EmptyLightShadowmapTexture, 1, 1, k_ShadowmapBufferBits, name: "_EmptyLightShadowmapTexture");
+        ShadowUtils.ShadowRTReAllocateIfNeeded(ref m_EmptyLightShadowMapTexture, 1, 1, k_ShadowMapBufferBits, name: "_EmptyLightShadowMapTexture");
 
         return true;
     }

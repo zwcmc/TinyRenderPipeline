@@ -81,7 +81,7 @@ public static class ShadowUtils
 
         Light light = shadowLight.light;
 
-        // depth and normal bias scale is in shadowmap texel size in world space
+        // depth and normal bias scale is in shadowMap texel size in world space
         float texelSize = frustumSize / shadowResolution;
         float depthBias = -light.shadowBias * texelSize;
         float normalBias = -light.shadowNormalBias * texelSize;
@@ -130,7 +130,7 @@ public static class ShadowUtils
     }
 
     public static bool ExtractDirectionalLightMatrix(ref CullingResults cullResults, int shadowLightIndex, int cascadeIndex, int cascadeCount, Vector3 cascadesSplit,
-        int shadowmapWidth, int shadowmapHeight, int shadowResolution, float shadowNearPlane, out ShadowSliceData shadowCascadeData)
+        int shadowMapWidth, int shadowMapHeight, int shadowResolution, float shadowNearPlane, out ShadowSliceData shadowCascadeData)
     {
         bool success = cullResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(shadowLightIndex, cascadeIndex, cascadeCount,
             cascadesSplit, shadowResolution, shadowNearPlane, out shadowCascadeData.viewMatrix, out shadowCascadeData.projectionMatrix, out shadowCascadeData.splitData);
@@ -145,7 +145,7 @@ public static class ShadowUtils
         shadowCascadeData.splitData.shadowCascadeBlendCullingFactor = 1.0f;
 
         if (cascadeCount > 1)
-            ApplySliceTransform(ref shadowCascadeData, shadowmapWidth, shadowmapHeight);
+            ApplySliceTransform(ref shadowCascadeData, shadowMapWidth, shadowMapHeight);
 
         return success;
     }

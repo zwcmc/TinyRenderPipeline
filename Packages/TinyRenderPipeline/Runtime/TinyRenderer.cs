@@ -35,8 +35,8 @@ public class TinyRenderer
     private TextureHandle m_ActiveCameraColorTexture;
     private TextureHandle m_ActiveCameraDepthTexture;
 
-    private TextureHandle m_MainLightShadowmapTexture;
-    private TextureHandle m_AdditionalLightShadowmapTexture;
+    private TextureHandle m_MainLightShadowMapTexture;
+    private TextureHandle m_AdditionalLightShadowMapTexture;
 
     private TextureHandle m_DepthTexture;
     private TextureHandle m_CameraColorTexture;
@@ -145,13 +145,13 @@ public class TinyRenderer
         // Setup lights data
         m_ForwardLights.SetupRenderGraphLights(renderGraph, ref renderingData);
 
-        // Main light shadowmap pass
+        // Render main light shadow map
         if (m_MainLightShadowPass.Setup(ref renderingData))
-            m_MainLightShadowmapTexture = m_MainLightShadowPass.Record(renderGraph, ref renderingData);
+            m_MainLightShadowMapTexture = m_MainLightShadowPass.Record(renderGraph, ref renderingData);
 
-        // Additional lights shadowmap pass
+        // Render additional lights shadow map
         if (m_AdditionalLightsShadowPass.Setup(ref renderingData))
-            m_AdditionalLightShadowmapTexture = m_AdditionalLightsShadowPass.Record(renderGraph, ref renderingData);
+            m_AdditionalLightShadowMapTexture = m_AdditionalLightsShadowPass.Record(renderGraph, ref renderingData);
 
         bool supportIntermediateRendering = cameraType <= CameraType.SceneView;
         var postProcessingData = renderingData.postProcessingData;
@@ -183,7 +183,7 @@ public class TinyRenderer
         SetupRenderGraphCameraProperties(renderGraph, ref renderingData, m_ActiveCameraColorTexture);
 
         // Draw opaque objects pass
-        m_ForwardOpaqueObjectsPass.Record(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, m_MainLightShadowmapTexture, m_AdditionalLightShadowmapTexture, ref renderingData);
+        m_ForwardOpaqueObjectsPass.Record(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, m_MainLightShadowMapTexture, m_AdditionalLightShadowMapTexture, ref renderingData);
 
         // Copy depth pass
         if (supportIntermediateRendering)

@@ -19,7 +19,7 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
         [Range(0.0f, 1.0f)]
         public float cascadeRatio1 = 0.067f, cascadeRatio2 = 0.2f, cascadeRatio3 = 0.467f;
 
-        public SoftShadows softShadows = SoftShadows.NONE;
+        public SoftShadows softShadows = SoftShadows.OFF;
     }
 
     [Serializable]
@@ -62,7 +62,7 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
         set { m_Shadows.shadowDistance = Mathf.Max(0.0f, value); }
     }
 
-    public int mainLightShadowmapResolution
+    public int mainLightShadowMapResolution
     {
         get { return (int)m_Shadows.mainLightShadow.shadowResolution; }
         set { m_Shadows.mainLightShadow.shadowResolution = (ShadowResolution)value; }
@@ -92,7 +92,7 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
 
     public SoftShadows softShadows => m_Shadows.mainLightShadow.softShadows;
 
-    public int additionalLightsShadowmapResolution
+    public int additionalLightsShadowMapResolution
     {
         get { return (int)m_Shadows.additionalLightsShadow.shadowResolution; }
         set { m_Shadows.additionalLightsShadow.shadowResolution = (ShadowResolution)value; }

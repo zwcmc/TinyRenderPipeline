@@ -20,7 +20,7 @@ Shader "Tiny Render Pipeline/Lit"
         [HDR] _EmissionColor("Color", Color) = (0,0,0)
         _EmissionMap("Emission", 2D) = "white" {}
 
-        _IBL_DFG("IBL prefiltered DFG term", 2D) = "white" {}
+        _IBL_DFG("IBL prefiltered DFG term", 2D) = "black" {}
 
         _Surface("__surface", Float) = 0.0
         _Blend("__mode", Float) = 0.0

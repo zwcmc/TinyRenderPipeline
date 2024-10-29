@@ -14,7 +14,7 @@ public enum ShadowResolution
 
 public enum SoftShadows
 {
-    NONE = 0,
+    OFF = 0,
     PCF = 1,
     PCSS = 2
 }
@@ -22,8 +22,8 @@ public enum SoftShadows
 public struct ShadowData
 {
     public bool mainLightShadowsEnabled;
-    public int mainLightShadowmapWidth;
-    public int mainLightShadowmapHeight;
+    public int mainLightShadowMapWidth;
+    public int mainLightShadowMapHeight;
     public int cascadesCount;
     public Vector3 cascadesSplit;
     // max shadowing distance
@@ -34,8 +34,8 @@ public struct ShadowData
     public SoftShadows softShadows;
 
     public bool additionalLightsShadowEnabled;
-    public int additionalLightsShadowmapWidth;
-    public int additionalLightsShadowmapHeight;
+    public int additionalLightsShadowMapWidth;
+    public int additionalLightsShadowMapHeight;
 }
 
 public struct RenderingData

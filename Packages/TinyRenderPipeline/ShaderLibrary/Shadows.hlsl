@@ -8,12 +8,12 @@
 
 #define BEYOND_SHADOW_FAR(shadowCoord) shadowCoord.z <= 0.0 || shadowCoord.z >= 1.0
 
-TEXTURE2D_SHADOW(_MainLightShadowmapTexture);
-SAMPLER_CMP(sampler_MainLightShadowmapTexture);
-TEXTURE2D_SHADOW(_AdditionalLightsShadowmapTexture);
-SAMPLER_CMP(sampler_AdditionalLightsShadowmapTexture);
+TEXTURE2D_SHADOW(_MainLightShadowMapTexture);
+SAMPLER_CMP(sampler_MainLightShadowMapTexture);
+TEXTURE2D_SHADOW(_AdditionalLightsShadowMapTexture);
+SAMPLER_CMP(sampler_AdditionalLightsShadowMapTexture);
 
-float4 _MainLightShadowmapTexture_TexelSize;
+float4 _MainLightShadowMapTexture_TexelSize;
 
 #ifndef SHADER_API_GLES3
 CBUFFER_START(LightShadows)
@@ -93,7 +93,7 @@ real SampleShadow_PCF_Bilinear(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowM
 // 4 tap bilinear PCF 3x3
 real SampleShadow_PCF_Bilinear_4Tap_3x3(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowMap), float3 coord)
 {
-    float2 offset = _MainLightShadowmapTexture_TexelSize.xy * 0.5;
+    float2 offset = _MainLightShadowMapTexture_TexelSize.xy * 0.5;
 
     real4 result;
     result.x = SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, float3(coord.xy + int2(-1, -1) * offset, coord.z));
@@ -110,7 +110,7 @@ real SampleShadow_PCF_Tent_3x3(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowM
     real fetchesWeights[4];
     real2 fetchesUV[4];
 
-    SampleShadow_ComputeSamples_Tent_3x3(_MainLightShadowmapTexture_TexelSize, coord.xy, fetchesWeights, fetchesUV);
+    SampleShadow_ComputeSamples_Tent_3x3(_MainLightShadowMapTexture_TexelSize, coord.xy, fetchesWeights, fetchesUV);
 
     shadow += fetchesWeights[0] * SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, float3(fetchesUV[0].xy, coord.z));
     shadow += fetchesWeights[1] * SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, float3(fetchesUV[1].xy, coord.z));
@@ -127,7 +127,7 @@ real SampleShadow_PCF_Tent_5x5(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowM
     real fetchesWeights[9];
     real2 fetchesUV[9];
 
-    SampleShadow_ComputeSamples_Tent_5x5(_MainLightShadowmapTexture_TexelSize, coord.xy, fetchesWeights, fetchesUV);
+    SampleShadow_ComputeSamples_Tent_5x5(_MainLightShadowMapTexture_TexelSize, coord.xy, fetchesWeights, fetchesUV);
 
     int i;
     UNITY_LOOP
@@ -153,7 +153,7 @@ real SampleShadow_PCF_Tent_5x5(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowM
     return shadow;
 }
 
-half SampleShadowmap(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowMap), float4 shadowCoord, half4 shadowParams, float2 positionSS, bool isPerspectiveProjection = true)
+half SampleShadowMap(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowMap), float4 shadowCoord, half4 shadowParams, float2 positionSS, bool isPerspectiveProjection = true)
 {
     if (isPerspectiveProjection)
         shadowCoord.xyz /= shadowCoord.w;
@@ -164,7 +164,7 @@ half SampleShadowmap(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowMap), float
 #if defined(_SHADOWS_PCF)
     attenuation = SampleShadow_PCF_Tent_5x5(TEXTURE2D_SHADOW_ARGS(shadowMap, sampler_shadowMap), shadowCoord.xyz);
 #elif defined(_SHADOWS_PCSS)
-    attenuation = SampleShadow_PCSS(TEXTURE2D_SHADOW_ARGS(shadowMap, sampler_shadowMap), shadowCoord, _MainLightShadowmapTexture_TexelSize, positionSS);
+    attenuation = SampleShadow_PCSS(TEXTURE2D_SHADOW_ARGS(shadowMap, sampler_shadowMap), shadowCoord, _MainLightShadowMapTexture_TexelSize, positionSS);
 #else
     attenuation = SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, shadowCoord.xyz);
 #endif
@@ -176,7 +176,7 @@ half SampleShadowmap(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowMap), float
 
 half MainLightShadow(float4 shadowCoord, float3 positionWS, float2 positionSS)
 {
-    half realtimeShadow = SampleShadowmap(TEXTURE2D_SHADOW_ARGS(_MainLightShadowmapTexture, sampler_MainLightShadowmapTexture), shadowCoord, _MainLightShadowParams, positionSS, false);
+    half realtimeShadow = SampleShadowMap(TEXTURE2D_SHADOW_ARGS(_MainLightShadowMapTexture, sampler_MainLightShadowMapTexture), shadowCoord, _MainLightShadowParams, positionSS, false);
     half shadowFade = GetMainLightShadowFade(positionWS);
     return lerp(realtimeShadow, 1.0, shadowFade);
 }
@@ -208,7 +208,7 @@ half AdditionalLightShadow(int lightIndex, float3 positionWS, half3 lightDirecti
     }
 
     float4 shadowCoord = mul(_AdditionalLightsWorldToShadow[shadowSliceIndex], float4(positionWS, 1.0));
-    half realtimeShadow = SampleShadowmap(TEXTURE2D_ARGS(_AdditionalLightsShadowmapTexture, sampler_AdditionalLightsShadowmapTexture), shadowCoord, shadowParams, true);
+    half realtimeShadow = SampleShadowMap(TEXTURE2D_ARGS(_AdditionalLightsShadowMapTexture, sampler_AdditionalLightsShadowMapTexture), shadowCoord, shadowParams, true);
     half shadowFade = GetAdditionalLightShadowFade(positionWS);
     return lerp(realtimeShadow, 1.0, shadowFade);
 }

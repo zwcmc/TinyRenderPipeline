@@ -51,7 +51,7 @@ half3 ShadingIndirect(BRDFData brdfData, InputData inputData)
     half3 iblFr = E * prefilteredRadiance;
     half3 iblFd = brdfData.diffuseColor * diffuseIrradiance * (1.0 - E);
 
-    return iblFd + iblFr;
+    return iblFr + iblFd;
 }
 
 half4 SurfaceShading(InputData inputData, SurfaceData surfaceData)
@@ -62,8 +62,6 @@ half4 SurfaceShading(InputData inputData, SurfaceData surfaceData)
     InitializeBRDFData(surfaceData, brdfData);
 
     Light mainLight = GetMainLight(inputData);
-
-    return mainLight.shadowAttenuation;
 
     half3 color = 0.0;
     if (IsMatchingLightLayer(mainLight.layerMask, meshRenderingLayers))

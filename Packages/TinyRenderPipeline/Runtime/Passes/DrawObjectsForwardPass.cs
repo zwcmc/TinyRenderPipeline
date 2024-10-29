@@ -21,7 +21,7 @@ public class DrawObjectsForwardPass
         m_IsOpaque = isOpaque;
     }
 
-    public void Record(RenderGraph renderGraph, TextureHandle colorTarget, TextureHandle depthTarget, TextureHandle mainShadowsTexture, TextureHandle additionalLightsShadowmap, ref RenderingData renderingData)
+    public void Record(RenderGraph renderGraph, TextureHandle colorTarget, TextureHandle depthTarget, TextureHandle mainShadowsTexture, TextureHandle additionalLightsShadowMap, ref RenderingData renderingData)
     {
         var sampler = m_IsOpaque ? s_DrawOpaqueObjectsSampler : s_DrawTransparentObjectsSampler;
         using (var builder = renderGraph.AddRasterRenderPass<PassData>(sampler.name, out var passData, sampler))
@@ -33,8 +33,8 @@ public class DrawObjectsForwardPass
 
             if (mainShadowsTexture.IsValid())
                 builder.UseTexture(mainShadowsTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
-            if (additionalLightsShadowmap.IsValid())
-                builder.UseTexture(additionalLightsShadowmap, IBaseRenderGraphBuilder.AccessFlags.Read);
+            if (additionalLightsShadowMap.IsValid())
+                builder.UseTexture(additionalLightsShadowMap, IBaseRenderGraphBuilder.AccessFlags.Read);
 
             var filteringSettings = m_IsOpaque ? new FilteringSettings(RenderQueueRange.opaque) : new FilteringSettings(RenderQueueRange.transparent);
             var sortingCriteria = m_IsOpaque ? SortingCriteria.CommonOpaque : SortingCriteria.CommonTransparent;

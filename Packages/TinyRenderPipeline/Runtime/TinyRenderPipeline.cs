@@ -219,7 +219,7 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.shadowData.mainLightShadowsEnabled = SystemInfo.supportsShadows && mainLightCastShadows;
         renderingData.shadowData.cascadesCount = asset.cascadesCount;
         renderingData.shadowData.cascadesSplit = asset.cascadesSplit;
-        renderingData.shadowData.mainLightShadowmapWidth = renderingData.shadowData.mainLightShadowmapHeight = asset.mainLightShadowmapResolution;
+        renderingData.shadowData.mainLightShadowMapWidth = renderingData.shadowData.mainLightShadowMapHeight = asset.mainLightShadowMapResolution;
 
         renderingData.shadowData.maxShadowDistance = asset.shadowDistance;
         renderingData.shadowData.mainLightShadowCascadeBorder = asset.cascadeBorder;
@@ -227,7 +227,7 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.shadowData.softShadows = asset.softShadows;
 
         renderingData.shadowData.additionalLightsShadowEnabled = SystemInfo.supportsShadows && additionalLightsCastShadows;
-        renderingData.shadowData.additionalLightsShadowmapWidth = renderingData.shadowData.additionalLightsShadowmapHeight = asset.additionalLightsShadowmapResolution;
+        renderingData.shadowData.additionalLightsShadowMapWidth = renderingData.shadowData.additionalLightsShadowMapHeight = asset.additionalLightsShadowMapResolution;
 
         renderingData.perObjectData = GetPerObjectLightFlags(renderingData.additionalLightsCount);
 
