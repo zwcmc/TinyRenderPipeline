@@ -23,7 +23,7 @@ Shader "Hidden/Tiny Render Pipeline/Bloom"
         #define Threshold          _BloomParams.z
         #define ThresholdKnee      _BloomParams.w
 
-        half4 FragPrefilter(Varyings input) : SV_Target
+        half4 FragPrefilter(Varyings input) : SV_TARGET
         {
             float2 uv = input.texcoord;
 
@@ -71,7 +71,7 @@ Shader "Hidden/Tiny Render Pipeline/Bloom"
             return half4(color, 1.0);
         }
 
-        half4 FragBlurH(Varyings input) : SV_Target
+        half4 FragBlurH(Varyings input) : SV_TARGET
         {
             float2 texelSize = _BlitTexture_TexelSize.xy * 2.0;
             float2 uv = input.texcoord;
@@ -94,7 +94,7 @@ Shader "Hidden/Tiny Render Pipeline/Bloom"
             return half4(color, 1.0);
         }
 
-        half4 FragBlurV(Varyings input) : SV_Target
+        half4 FragBlurV(Varyings input) : SV_TARGET
         {
             float2 texelSize = _BlitTexture_TexelSize.xy;
             float2 uv = input.texcoord;
@@ -113,7 +113,7 @@ Shader "Hidden/Tiny Render Pipeline/Bloom"
             return half4(color, 1.0);
         }
 
-        half4 FragUpsample(Varyings input) : SV_Target
+        half4 FragUpsample(Varyings input) : SV_TARGET
         {
             float2 uv = input.texcoord;
 

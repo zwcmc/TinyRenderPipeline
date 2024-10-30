@@ -18,7 +18,7 @@ Shader "Hidden/Tiny Render Pipeline/Blit"
             #include "Packages/com.tiny.render-pipeline/ShaderLibrary/BlitVertex.hlsl"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/GlobalSamplers.hlsl"
 
-            half4 Frag(Varyings input) : SV_Target
+            half4 Frag(Varyings input) : SV_TARGET
             {
                 float2 uv = input.texcoord;
                 return SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_LinearClamp, uv, 0.0);

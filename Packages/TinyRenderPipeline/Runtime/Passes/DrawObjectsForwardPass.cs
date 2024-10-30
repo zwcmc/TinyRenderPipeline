@@ -9,6 +9,8 @@ public class DrawObjectsForwardPass
 
     private bool m_IsOpaque;
 
+    private RenderStateBlock m_RenderStateBlock;
+
     private class PassData
     {
         public RendererListHandle rendererListHandle;
@@ -19,6 +21,14 @@ public class DrawObjectsForwardPass
     public DrawObjectsForwardPass(bool isOpaque = false)
     {
         m_IsOpaque = isOpaque;
+
+        // There is a depth prepass, so set depth test to equal for rendering opaque objects
+        m_RenderStateBlock = new RenderStateBlock(RenderStateMask.Nothing);
+        if (isOpaque)
+        {
+            m_RenderStateBlock.depthState = new DepthState(false, CompareFunction.Equal);
+            m_RenderStateBlock.mask |= RenderStateMask.Depth;
+        }
     }
 
     public void Record(RenderGraph renderGraph, TextureHandle colorTarget, TextureHandle depthTarget, TextureHandle mainShadowsTexture, TextureHandle additionalLightsShadowMap, ref RenderingData renderingData)
@@ -28,6 +38,7 @@ public class DrawObjectsForwardPass
         {
             if (colorTarget.IsValid())
                 builder.UseTextureFragment(colorTarget, 0, IBaseRenderGraphBuilder.AccessFlags.Write);
+
             if (depthTarget.IsValid())
                 builder.UseTextureFragmentDepth(depthTarget, IBaseRenderGraphBuilder.AccessFlags.Write);
 
@@ -39,7 +50,7 @@ public class DrawObjectsForwardPass
             var filteringSettings = m_IsOpaque ? new FilteringSettings(RenderQueueRange.opaque) : new FilteringSettings(RenderQueueRange.transparent);
             var sortingCriteria = m_IsOpaque ? SortingCriteria.CommonOpaque : SortingCriteria.CommonTransparent;
 
-            RenderingUtils.CreateRendererListHandle(renderGraph, ref renderingData, filteringSettings, sortingCriteria, ref passData.rendererListHandle);
+            RenderingUtils.CreateRendererListHandleWithRenderStateBlock(renderGraph, ref renderingData, filteringSettings, sortingCriteria, m_RenderStateBlock, ref passData.rendererListHandle);
             RenderingUtils.CreateRendererListHandleWithLegacyShaderPassNames(renderGraph, ref renderingData, filteringSettings, sortingCriteria, ref passData.legacyRendererListHandle);
 
             builder.UseRendererList(passData.rendererListHandle);

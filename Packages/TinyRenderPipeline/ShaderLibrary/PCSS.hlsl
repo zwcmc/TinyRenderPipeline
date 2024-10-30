@@ -118,7 +118,7 @@ float2 ComputeFibonacciSpiralDiskSampleUniform(const in int sampleIndex, const i
     return fibonacciSpiralDirection[sampleIndex] * sampleDistNorm;
 }
 
-bool BlockerSearch(inout float averageBlocker, float filterSize, float3 shadowCoord, float2 shadowMapInAtlasScale, float2 shadowMapInAtlasOffset, float2 sampleJitter, Texture2D shadowMap, SamplerState pointSampler, int sampleCount, float radial2DepthScale, float minFilterRadius, float minFilterRadial2DepthScale)
+bool BlockerSearch(inout float averageBlocker, float filterSize, float4 shadowCoord, float2 shadowMapInAtlasScale, float2 shadowMapInAtlasOffset, float2 sampleJitter, Texture2D shadowMap, SamplerState pointSampler, int sampleCount, float radial2DepthScale, float minFilterRadius, float minFilterRadial2DepthScale)
 {
 
 #if UNITY_REVERSED_Z
@@ -176,7 +176,7 @@ bool BlockerSearch(inout float averageBlocker, float filterSize, float3 shadowCo
         return false;
 }
 
-float PCF_Filter(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowMap), float3 shadowCoord, float filterSize, float2 shadowMapInAtlasScale, float2 shadowMapInAtlasOffset, float2 sampleJitter, int sampleCount, float radial2DepthScale, float maxPCSSOffset, float samplingFilterSize)
+float PCF_Filter(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowMap), float4 shadowCoord, float filterSize, float2 shadowMapInAtlasScale, float2 shadowMapInAtlasOffset, float2 sampleJitter, int sampleCount, float radial2DepthScale, float maxPCSSOffset, float samplingFilterSize)
 {
 
 #if UNITY_REVERSED_Z

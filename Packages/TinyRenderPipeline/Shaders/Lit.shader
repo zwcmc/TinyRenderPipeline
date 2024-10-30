@@ -76,6 +76,25 @@ Shader "Tiny Render Pipeline/Lit"
             #include "Packages/com.tiny.render-pipeline/Shaders/ShadowPass.hlsl"
             ENDHLSL
         }
+
+        Pass
+        {
+            Name "TinyRP Depth"
+            Tags { "LightMode" = "TinyRPDepth" }
+
+            ZWrite On
+            ColorMask R
+            Cull [_Cull]
+
+            HLSLPROGRAM
+
+            #pragma vertex DepthVertex
+            #pragma fragment DepthFragment
+
+            #include "Packages/com.tiny.render-pipeline/Shaders/DepthOnlyPass.hlsl"
+
+            ENDHLSL
+        }
     }
 
     FallBack "Hidden/Tiny Render Pipeline/FallbackError"

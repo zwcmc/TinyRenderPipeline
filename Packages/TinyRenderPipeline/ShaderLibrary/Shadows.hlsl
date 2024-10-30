@@ -141,11 +141,8 @@ real SampleShadow_PCF_Tent_5x5(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowM
     return shadow;
 }
 
-half SampleShadowMap(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowMap), float4 shadowCoord, half4 shadowParams, float2 positionSS, bool isPerspectiveProjection = true)
+half SampleShadowMap(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowMap), float4 shadowCoord, half4 shadowParams, float2 positionSS)
 {
-    if (isPerspectiveProjection)
-        shadowCoord.xyz /= shadowCoord.w;
-
     real shadowStrength = shadowParams.x;
     real attenuation;
 
@@ -162,9 +159,21 @@ half SampleShadowMap(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowMap), float
     return BEYOND_SHADOW_FAR(shadowCoord) ? 1.0 : attenuation;
 }
 
+half SampleShadowMap_AdditionalLights(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowMap), float4 shadowCoord, half4 shadowParams)
+{
+    shadowCoord.xyz /= shadowCoord.w;
+
+    real shadowStrength = shadowParams.x;
+    real attenuation = SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, shadowCoord.xyz);
+
+    attenuation = LerpWhiteTo(attenuation, shadowStrength);
+
+    return BEYOND_SHADOW_FAR(shadowCoord) ? 1.0 : attenuation;
+}
+
 half MainLightShadow(float4 shadowCoord, float3 positionWS, float2 positionSS)
 {
-    half realtimeShadow = SampleShadowMap(TEXTURE2D_SHADOW_ARGS(_MainLightShadowMapTexture, sampler_MainLightShadowMapTexture), shadowCoord, _MainLightShadowParams, positionSS, false);
+    half realtimeShadow = SampleShadowMap(TEXTURE2D_SHADOW_ARGS(_MainLightShadowMapTexture, sampler_MainLightShadowMapTexture), shadowCoord, _MainLightShadowParams, positionSS);
     half shadowFade = GetMainLightShadowFade(positionWS);
     return lerp(realtimeShadow, 1.0, shadowFade);
 }
@@ -196,7 +205,7 @@ half AdditionalLightShadow(int lightIndex, float3 positionWS, half3 lightDirecti
     }
 
     float4 shadowCoord = mul(_AdditionalLightsWorldToShadow[shadowSliceIndex], float4(positionWS, 1.0));
-    half realtimeShadow = SampleShadowMap(TEXTURE2D_ARGS(_AdditionalLightsShadowMapTexture, sampler_AdditionalLightsShadowMapTexture), shadowCoord, shadowParams, true);
+    half realtimeShadow = SampleShadowMap_AdditionalLights(TEXTURE2D_SHADOW_ARGS(_AdditionalLightsShadowMapTexture, sampler_AdditionalLightsShadowMapTexture), shadowCoord, shadowParams);
     half shadowFade = GetAdditionalLightShadowFade(positionWS);
     return lerp(realtimeShadow, 1.0, shadowFade);
 }

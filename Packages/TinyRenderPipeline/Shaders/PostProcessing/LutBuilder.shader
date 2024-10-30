@@ -88,7 +88,7 @@ Shader "Hidden/Tiny Render Pipeline/LutBuilder"
             return colorLinear;
         }
 
-        float4 FragLutBuilder(Varyings input) : SV_Target
+        float4 FragLutBuilder(Varyings input) : SV_TARGET
         {
             // Lut input color in Log C space
             // We use Alexa Log C (El 1000) to store the LUT as it provides a good enough range

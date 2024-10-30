@@ -5,6 +5,7 @@ using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 using System.Diagnostics;
+using Unity.Collections;
 
 public static class RenderingUtils
 {
@@ -207,7 +208,9 @@ public static class RenderingUtils
         return renderGraph.CreateTexture(rgDesc);
     }
 
-    private static void CreateRendererParamsObjects(ref RenderingData renderingData, FilteringSettings fs, SortingCriteria sortingCriteria, ref RendererListParams param)
+    static ShaderTagId[] s_ShaderTagValues = new ShaderTagId[1];
+    static RenderStateBlock[] s_RenderStateBlocks = new RenderStateBlock[1];
+    private static void CreateRendererParamsObjects(ref RenderingData renderingData, FilteringSettings fs, SortingCriteria sortingCriteria, RenderStateBlock renderStateBlock, ref RendererListParams param)
     {
         var camera = renderingData.camera;
         SortingSettings sortingSettings = new SortingSettings(camera) { criteria = sortingCriteria };
@@ -217,20 +220,29 @@ public static class RenderingUtils
             mainLightIndex = renderingData.mainLightIndex,
             // Disable dynamic batching
             enableDynamicBatching = false,
-            // Disable instancing
-            enableInstancing = false
+            // Instancing
+            enableInstancing = camera.cameraType == CameraType.Preview ? false : true
         };
 
         for (int i = 1; i < m_ShaderPassNames.Count; ++i)
             drawingSettings.SetShaderPassName(i, m_ShaderPassNames[i]);
 
-        param = new RendererListParams(renderingData.cullResults, drawingSettings, fs);
+        s_ShaderTagValues[0] = ShaderTagId.none;
+        s_RenderStateBlocks[0] = renderStateBlock;
+        NativeArray<ShaderTagId> tagValues = new NativeArray<ShaderTagId>(s_ShaderTagValues, Allocator.Temp);
+        NativeArray<RenderStateBlock> stateBlocks = new NativeArray<RenderStateBlock>(s_RenderStateBlocks, Allocator.Temp);
+        param = new RendererListParams(renderingData.cullResults, drawingSettings, fs)
+        {
+            tagValues = tagValues,
+            stateBlocks = stateBlocks,
+            isPassTagName = false
+        };
     }
 
-    public static void CreateRendererListHandle(RenderGraph renderGraph, ref RenderingData renderingData, FilteringSettings fs, SortingCriteria sortingCriteria, ref RendererListHandle rl)
+    public static void CreateRendererListHandleWithRenderStateBlock(RenderGraph renderGraph, ref RenderingData renderingData, FilteringSettings fs, SortingCriteria sortingCriteria, RenderStateBlock renderStateBlock, ref RendererListHandle rl)
     {
         RendererListParams param = new RendererListParams();
-        CreateRendererParamsObjects(ref renderingData, fs, sortingCriteria, ref param);
+        CreateRendererParamsObjects(ref renderingData, fs, sortingCriteria, renderStateBlock, ref param);
         rl = renderGraph.CreateRendererList(param);
     }
 
