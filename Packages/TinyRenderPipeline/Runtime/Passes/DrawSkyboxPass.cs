@@ -4,7 +4,7 @@ using UnityEngine.Rendering;
 
 public class DrawSkyboxPass
 {
-    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("DrawSkyboxPass");
+    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("Skybox");
 
     private class PassData
     {

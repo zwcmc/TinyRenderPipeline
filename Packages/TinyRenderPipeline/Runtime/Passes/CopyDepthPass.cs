@@ -5,7 +5,7 @@ using UnityEngine.Rendering;
 
 public class CopyDepthPass
 {
-    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("CopyDepth");
+    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("Copy Depth");
 
     private RTHandle m_Source;
     private RTHandle m_Destination;

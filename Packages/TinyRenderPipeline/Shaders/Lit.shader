@@ -73,7 +73,6 @@ Shader "Tiny Render Pipeline/Lit"
             #pragma vertex ShadowVertex
             #pragma fragment ShadowFragment
 
-            #include "Packages/com.tiny.render-pipeline/Shaders/LitInput.hlsl"
             #include "Packages/com.tiny.render-pipeline/Shaders/ShadowPass.hlsl"
             ENDHLSL
         }

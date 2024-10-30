@@ -5,7 +5,7 @@ using UnityEngine.Rendering;
 
 public class FXAAPass
 {
-    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("ApplyFXAA");
+    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("FXAA");
 
     private PostProcessingData m_PostProcessingData;
     private Material m_FXAAMaterial;

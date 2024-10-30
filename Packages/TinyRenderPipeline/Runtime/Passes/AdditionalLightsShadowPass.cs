@@ -8,7 +8,7 @@ using UnityEngine.Rendering;
 
 public class AdditionalLightsShadowPass
 {
-    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("AdditionalLightsShadowPass");
+    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("AdditionalLights ShadowMap");
     private static readonly ProfilingSampler s_SetAdditionalLightsShadowMapSampler = new ProfilingSampler("SetAdditionalLightsShadowMapGlobal");
 
     private static readonly Vector4 s_DefaultShadowParams = new Vector4(0, 0, 0, -1);

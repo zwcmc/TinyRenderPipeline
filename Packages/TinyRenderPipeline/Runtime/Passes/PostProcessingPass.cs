@@ -8,7 +8,7 @@ public class PostProcessingPass
 {
     private static class Profiling
     {
-        public static readonly ProfilingSampler s_UberPass = new ("Uber Pass");
+        public static readonly ProfilingSampler s_ApplyPostProcessing = new ("Apply Post Processing");
 
         public static readonly ProfilingSampler s_Bloom = new ("Bloom");
         public static readonly ProfilingSampler s_BloomPrefilter = new ProfilingSampler("Bloom Prefilter");
@@ -135,6 +135,11 @@ public class PostProcessingPass
 
         // Reset uber pass keywords
         m_Materials.uberPost.shaderKeywords = null;
+
+        // using (var builder = renderGraph.AddLowLevelPass())
+        // {
+        //
+        // }
 
         // Bloom
         if (m_Bloom.IsActive())
@@ -337,7 +342,7 @@ public class PostProcessingPass
 
     private void RenderGraphRenderUberPass(RenderGraph renderGraph, TextureHandle source, TextureHandle target, Material uberMaterial, ref RenderingData renderingData)
     {
-        using (var builder = renderGraph.AddRasterRenderPass<UberPassData>(Profiling.s_UberPass.name, out var passData, Profiling.s_UberPass))
+        using (var builder = renderGraph.AddRasterRenderPass<UberPassData>(Profiling.s_ApplyPostProcessing.name, out var passData, Profiling.s_ApplyPostProcessing))
         {
             if (m_Bloom.IsActive() && m_RenderGraphBloomMipUp[0].IsValid())
                 builder.UseTexture(m_RenderGraphBloomMipUp[0], IBaseRenderGraphBuilder.AccessFlags.Read);

@@ -5,7 +5,7 @@ using UnityEngine.Rendering;
 
 public class CopyColorPass
 {
-    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("CopyColor");
+    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("Copy Color");
 
     private RTHandle m_Source;
     private RTHandle m_Destination;

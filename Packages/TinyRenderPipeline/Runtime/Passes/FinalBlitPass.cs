@@ -5,7 +5,7 @@ using UnityEngine.Rendering;
 
 public class FinalBlitPass
 {
-    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("FinalBlit");
+    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("Final Blit");
 
     private RTHandle m_Source;
     private Material m_BlitMaterial;

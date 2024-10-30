@@ -1,15 +1,29 @@
 #ifndef TINY_RP_SHADOW_PASS_INCLUDED
 #define TINY_RP_SHADOW_PASS_INCLUDED
 
+#include "Packages/com.tiny.render-pipeline/ShaderLibrary/Core.hlsl"
+
 // For directional light, xyz: light direction, w: 1.0
 // For spot light and point light, xyz: light position, w: 0.0
 float4 _LightDirectionOrPosition;
+
+float4 _ShadowBias; // x: depth bias, y: normal bias
 
 struct Attributes
 {
     float4 positionOS : POSITION;
     float3 normalOS   : NORMAL;
 };
+
+float3 ApplyShadowBias(float3 positionWS, float3 normalWS, float3 lightDirection)
+{
+    float invNdotL = 1.0 - saturate(dot(lightDirection, normalWS));
+    float scale = invNdotL * _ShadowBias.y;
+
+    positionWS = lightDirection * _ShadowBias.xxx + positionWS;
+    positionWS = normalWS * scale.xxx + positionWS;
+    return positionWS;
+}
 
 float4 GetShadowPositionHClip(Attributes input)
 {

@@ -4,8 +4,8 @@ using UnityEngine.Rendering;
 
 public class DrawObjectsForwardPass
 {
-    private static readonly ProfilingSampler s_DrawOpaqueObjectsSampler = new ProfilingSampler("DrawOpaqueObjectsPass");
-    private static readonly ProfilingSampler s_DrawTransparentObjectsSampler = new ProfilingSampler("DrawTransparentObjectsPass");
+    private static readonly ProfilingSampler s_DrawOpaqueObjectsSampler = new ProfilingSampler("Opaque Objects");
+    private static readonly ProfilingSampler s_DrawTransparentObjectsSampler = new ProfilingSampler("Transparent Objects");
 
     private bool m_IsOpaque;
 

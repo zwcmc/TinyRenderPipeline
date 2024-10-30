@@ -5,7 +5,7 @@ using UnityEngine.Rendering;
 
 public class MainLightShadowPass
 {
-    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("MainLightShadowPass");
+    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("MainLight ShadowMap");
     private static readonly ProfilingSampler s_SetMainLightShadowSampler = new ProfilingSampler("SetMainLightShadowMapGlobal");
 
     // This limit matches same limit in Shadows.hlsl

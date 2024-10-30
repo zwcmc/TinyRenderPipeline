@@ -5,7 +5,7 @@ using UnityEngine.Rendering;
 
 public class ColorGradingLutPass
 {
-    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("ColorGradingLUT");
+    private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("ColorGrading LUT");
 
     private Material m_LutBuilderMaterial;
     private PostProcessingData m_PostProcessingData;
