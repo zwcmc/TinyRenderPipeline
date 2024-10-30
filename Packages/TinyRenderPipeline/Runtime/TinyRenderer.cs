@@ -211,6 +211,8 @@ public class TinyRenderer
         // {
         //     RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_CameraOpaqueTexture", renderGraph.defaultResources.whiteTexture);
         // }
+        // Set default camera color texture
+        RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_CameraOpaqueTexture", renderGraph.defaultResources.whiteTexture);
 
         // Draw transparent objects pass
         m_ForwardTransparentObjectsPass.Record(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, TextureHandle.nullHandle, TextureHandle.nullHandle, ref renderingData);
