@@ -9,15 +9,6 @@ struct Attributes
 {
     float4 positionOS : POSITION;
     float3 normalOS   : NORMAL;
-    float2 texcoord   : TEXCOORD0;
-};
-
-struct Varyings
-{
-#ifdef _ALPHATEST_ON
-    float2 uv         : TEXCOORD0;
-#endif
-    float4 positionCS : SV_POSITION;
 };
 
 float4 GetShadowPositionHClip(Attributes input)
@@ -37,22 +28,13 @@ float4 GetShadowPositionHClip(Attributes input)
     return positionCS;
 }
 
-Varyings ShadowVertex(Attributes input)
+float4 ShadowVertex(Attributes input) : SV_POSITION
 {
-    Varyings output = (Varyings)0;
-#ifdef _ALPHATEST_ON
-    output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
-#endif
-    output.positionCS = GetShadowPositionHClip(input);
-    return output;
+    return GetShadowPositionHClip(input);
 }
 
-half4 ShadowFragment(Varyings input) : SV_Target
+half4 ShadowFragment() : SV_Target
 {
-#ifdef _ALPHATEST_ON
-    half4 albedoAlpha = SampleAlbedoAlpha(input.uv, TEXTURE2D_ARGS(_BaseMap, sampler_BaseMap));
-    AlphaDiscard(albedoAlpha.a * _BaseColor.a, _Cutoff);
-#endif
     return 0;
 }
 

@@ -46,13 +46,10 @@ namespace TinyRenderPipeline.CustomShaderGUI
             public static readonly GUIContent blendingMode = EditorGUIUtility.TrTextContent("Blending Mode", "");
             public static readonly GUIContent cullingText = EditorGUIUtility.TrTextContent("Render Face", "");
             public static readonly GUIContent zwriteText = EditorGUIUtility.TrTextContent("Depth Write", "");
-            public static readonly GUIContent alphaClipText = EditorGUIUtility.TrTextContent("Alpha Clipping", "");
-            public static readonly GUIContent alphaClipThresholdText = new GUIContent("Threshold", "");
 
             public static readonly GUIContent baseMap = EditorGUIUtility.TrTextContent("Base Map", "");
 
             public static GUIContent smoothnessText = EditorGUIUtility.TrTextContent("Smoothness", "");
-            public static GUIContent metallicText = EditorGUIUtility.TrTextContent("Metallic", "");
             public static GUIContent metallicMapText = EditorGUIUtility.TrTextContent("Metallic Map", "");
 
             public static GUIContent normalMapText = EditorGUIUtility.TrTextContent("Normal Map", "");
@@ -77,8 +74,6 @@ namespace TinyRenderPipeline.CustomShaderGUI
             public static readonly string CullMode = "_Cull";
             public static readonly string BaseMap = "_BaseMap";
             public static readonly string BaseColor = "_BaseColor";
-            public static readonly string AlphaClip = "_AlphaClip";
-            public static readonly string AlphaCutoff = "_Cutoff";
 
             public static readonly string Smoothness = "_Smoothness";
             public static readonly string Metallic = "_Metallic";
@@ -99,7 +94,6 @@ namespace TinyRenderPipeline.CustomShaderGUI
 
         private static class ShaderKeywordStrings
         {
-            public const string _ALPHATEST_ON = "_ALPHATEST_ON";
             public const string _METALLICGLOSSMAP = "_METALLICGLOSSMAP";
             public const string _NORMALMAP = "_NORMALMAP";
             public const string _OCCLUSIONMAP = "_OCCLUSIONMAP";
@@ -117,8 +111,6 @@ namespace TinyRenderPipeline.CustomShaderGUI
         private MaterialProperty zwriteProp;
         private MaterialProperty baseMapProp;
         private MaterialProperty baseColorProp;
-        private MaterialProperty alphaClipProp;
-        private MaterialProperty alphaCutoffProp;
 
         private MaterialProperty smoothnessProp;
         private MaterialProperty metallicProp;
@@ -148,9 +140,7 @@ namespace TinyRenderPipeline.CustomShaderGUI
             blendModeProp = FindProperty(Property.BlendMode, properties, false);
             cullingProp = FindProperty(Property.CullMode, properties, false);
             zwriteProp = FindProperty(Property.ZWrite, properties, false);
-            alphaClipProp = FindProperty(Property.AlphaClip, properties, false);
 
-            alphaCutoffProp = FindProperty(Property.AlphaCutoff, properties, false);
             baseMapProp = FindProperty(Property.BaseMap, properties, false);
             baseColorProp = FindProperty(Property.BaseColor, properties, false);
 
@@ -203,10 +193,6 @@ namespace TinyRenderPipeline.CustomShaderGUI
             }
             DoPopup(Styles.cullingText, cullingProp, Styles.renderFaceNames);
             DoPopup(Styles.zwriteText, zwriteProp, Styles.zwriteModeNames);
-
-            DrawFloatToggleProperty(Styles.alphaClipText, alphaClipProp);
-            if ((alphaClipProp != null) && (alphaCutoffProp != null) && (alphaClipProp.floatValue == 1))
-                materialEditor.ShaderProperty(alphaCutoffProp, Styles.alphaClipThresholdText, 1);
 
             if (baseMapProp != null && baseColorProp != null)
                 materialEditor.TexturePropertySingleLine(Styles.baseMap, baseMapProp, baseColorProp);
@@ -288,11 +274,6 @@ namespace TinyRenderPipeline.CustomShaderGUI
             if (material == null)
                 throw new ArgumentNullException("material");
 
-            bool alphaClip = false;
-            if (material.HasProperty(Property.AlphaClip))
-                alphaClip = material.GetFloat(Property.AlphaClip) >= 0.5f;
-            CoreUtils.SetKeyword(material, ShaderKeywordStrings._ALPHATEST_ON, alphaClip);
-
             int renderQueue = material.shader.renderQueue;
             material.SetOverrideTag("RenderType", "");
             bool castShadows = true;
@@ -302,16 +283,8 @@ namespace TinyRenderPipeline.CustomShaderGUI
                 bool zwrite = false;
                 if (surfaceType == SurfaceType.Opaque)
                 {
-                    if (alphaClip)
-                    {
-                        renderQueue = (int)RenderQueue.AlphaTest;
-                        material.SetOverrideTag("RenderType", "TransparentCutout");
-                    }
-                    else
-                    {
-                        renderQueue = (int)RenderQueue.Geometry;
-                        material.SetOverrideTag("RenderType", "Opaque");
-                    }
+                    renderQueue = (int)RenderQueue.Geometry;
+                    material.SetOverrideTag("RenderType", "Opaque");
 
                     SetMaterialSrcDstBlendProperties(material, UnityEngine.Rendering.BlendMode.One, UnityEngine.Rendering.BlendMode.Zero);
                     zwrite = true;

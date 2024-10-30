@@ -65,15 +65,6 @@ bool IsSurfaceTypeTransparent(half surfaceType)
     return (surfaceType == kSurfaceTypeTransparent);
 }
 
-real AlphaDiscard(real alpha, real cutoff)
-{
-#ifdef _ALPHATEST_ON
-    alpha = (alpha >= cutoff) ? alpha : 0.0;
-    clip(alpha - 0.0001);
-#endif
-    return alpha;
-}
-
 half OutputAlpha(half alpha, bool isTransparent)
 {
     return isTransparent ? alpha : 1.0;

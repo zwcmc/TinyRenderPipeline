@@ -4,7 +4,6 @@ Shader "Tiny Render Pipeline/Lit"
     {
         [MainTexture] _BaseMap("Texture", 2D) = "white" {}
         [MainColor] _BaseColor("Color", Color) = (0.5, 0.5, 0.5, 1.0)
-        _Cutoff("AlphaCutout", Range(0.0, 1.0)) = 0.5
 
         _Smoothness("Smoothness", Range(0, 1)) = 0.5
         _Metallic("Metallic", Range(0, 1)) = 0.0
@@ -25,7 +24,6 @@ Shader "Tiny Render Pipeline/Lit"
         _Surface("__surface", Float) = 0.0
         _Blend("__mode", Float) = 0.0
         _Cull("__cull", Float) = 2.0
-        [ToggleUI] _AlphaClip("__clip", Float) = 0.0
         [HideInInspector] _SrcBlend("__src", Float) = 1.0
         [HideInInspector] _DstBlend("__dst", Float) = 0.0
         [HideInInspector] _SrcBlendAlpha("__srcA", Float) = 1.0
@@ -54,7 +52,6 @@ Shader "Tiny Render Pipeline/Lit"
             #pragma fragment LitFragment
 
             #pragma shader_feature_local _NORMALMAP
-            #pragma shader_feature_local_fragment _ALPHATEST_ON
             #pragma shader_feature_local_fragment _EMISSION
             #pragma shader_feature_local_fragment _METALLICGLOSSMAP
             #pragma shader_feature_local_fragment _OCCLUSIONMAP
@@ -68,15 +65,13 @@ Shader "Tiny Render Pipeline/Lit"
 
         Pass
         {
-            Name "ShadowCaster"
+            Name "Shadow"
             Tags { "LightMode" = "ShadowCaster" }
             ColorMask 0
 
             HLSLPROGRAM
             #pragma vertex ShadowVertex
             #pragma fragment ShadowFragment
-
-            #pragma shader_feature_local_fragment _ALPHATEST_ON
 
             #include "Packages/com.tiny.render-pipeline/Shaders/LitInput.hlsl"
             #include "Packages/com.tiny.render-pipeline/Shaders/ShadowPass.hlsl"

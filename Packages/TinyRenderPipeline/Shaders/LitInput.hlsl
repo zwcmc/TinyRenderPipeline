@@ -7,7 +7,6 @@ CBUFFER_START(UnityPerMaterial)
 float4 _BaseMap_ST;
 half4 _BaseColor;
 half4 _EmissionColor;
-half _Cutoff;
 half _Smoothness;
 half _Metallic;
 half _BumpScale;
@@ -80,7 +79,6 @@ void InitializeSurfaceData(float2 uv, out SurfaceData outSurfaceData)
 {
     half4 albedoAlpha = SampleAlbedoAlpha(uv, TEXTURE2D_ARGS(_BaseMap, sampler_BaseMap));
     outSurfaceData.alpha = albedoAlpha.a * _BaseColor.a;
-    outSurfaceData.alpha = AlphaDiscard(outSurfaceData.alpha, _Cutoff);
 
     outSurfaceData.baseColor = albedoAlpha.rgb * _BaseColor.rgb;
 
