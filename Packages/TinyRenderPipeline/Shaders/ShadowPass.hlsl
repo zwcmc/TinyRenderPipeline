@@ -1,5 +1,5 @@
-#ifndef TINY_RP_LIT_SHADOW_PASS_INCLUDED
-#define TINY_RP_LIT_SHADOW_PASS_INCLUDED
+#ifndef TINY_RP_SHADOW_PASS_INCLUDED
+#define TINY_RP_SHADOW_PASS_INCLUDED
 
 // For directional light, xyz: light direction, w: 1.0
 // For spot light and point light, xyz: light position, w: 0.0
@@ -37,7 +37,7 @@ float4 GetShadowPositionHClip(Attributes input)
     return positionCS;
 }
 
-Varyings LitShadowVertex(Attributes input)
+Varyings ShadowVertex(Attributes input)
 {
     Varyings output = (Varyings)0;
 #ifdef _ALPHATEST_ON
@@ -47,7 +47,7 @@ Varyings LitShadowVertex(Attributes input)
     return output;
 }
 
-half4 LitShadowFragment(Varyings input) : SV_Target
+half4 ShadowFragment(Varyings input) : SV_Target
 {
 #ifdef _ALPHATEST_ON
     half4 albedoAlpha = SampleAlbedoAlpha(input.uv, TEXTURE2D_ARGS(_BaseMap, sampler_BaseMap));

@@ -70,7 +70,7 @@ half4 SurfaceShading(InputData inputData, SurfaceData surfaceData)
     }
 
     // IBL
-    color += ShadingIndirect(brdfData, inputData);
+    color += ShadingIndirect(brdfData, inputData) * surfaceData.occlusion;
 
     uint additionalLightCount = GetAdditionalLightsCount();
     for (uint lightIndex = 0u; lightIndex < additionalLightCount; ++lightIndex)

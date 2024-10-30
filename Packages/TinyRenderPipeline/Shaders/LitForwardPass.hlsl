@@ -46,21 +46,18 @@ Varyings LitVertex(Attributes input)
 {
     Varyings output = (Varyings)0;
 
-    VertexPositionInputs vertexInput = GetVertexPositionInputs(input.positionOS.xyz);
-
-    VertexNormalInputs normalInput = GetVertexNormalInputs(input.normalOS, input.tangentOS);
-
     output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
 
-    output.positionWS = vertexInput.positionWS;
+    output.positionWS = TransformObjectToWorld(input.positionOS.xyz);
 
-    output.normalWS = normalInput.normalWS;
+    output.normalWS = TransformObjectToWorldNormal(input.normalOS);
 #ifdef _NORMALMAP
     real sign = input.tangentOS.w * GetOddNegativeScale();
-    output.tangentWS = half4(normalInput.tangentWS, sign);
+    float3 tangentWS = TransformObjectToWorldDir(tangentOS.xyz);
+    output.tangentWS = half4(tangentWS, sign);
 #endif
 
-    output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
+    output.positionCS = TransformWorldToHClip(output.positionWS);
     return output;
 }
 

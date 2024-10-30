@@ -46,7 +46,7 @@ Shader "Tiny Render Pipeline/Lit"
 
         Pass
         {
-            Name "ForwardLit"
+            Name "TinyRP Forward Lit"
             Tags { "LightMode" = "TinyRPLit" }
 
             HLSLPROGRAM
@@ -69,20 +69,17 @@ Shader "Tiny Render Pipeline/Lit"
         Pass
         {
             Name "ShadowCaster"
-            Tags
-            {
-                "LightMode"="ShadowCaster"
-            }
+            Tags { "LightMode" = "ShadowCaster" }
             ColorMask 0
 
             HLSLPROGRAM
-            #pragma vertex LitShadowVertex
-            #pragma fragment LitShadowFragment
+            #pragma vertex ShadowVertex
+            #pragma fragment ShadowFragment
 
             #pragma shader_feature_local_fragment _ALPHATEST_ON
 
             #include "Packages/com.tiny.render-pipeline/Shaders/LitInput.hlsl"
-            #include "Packages/com.tiny.render-pipeline/Shaders/LitShadowPass.hlsl"
+            #include "Packages/com.tiny.render-pipeline/Shaders/ShadowPass.hlsl"
             ENDHLSL
         }
     }
