@@ -54,8 +54,6 @@ namespace TinyRenderPipeline.CustomShaderGUI
 
             public static GUIContent normalMapText = EditorGUIUtility.TrTextContent("Normal Map", "");
 
-            public static GUIContent occlusionText = EditorGUIUtility.TrTextContent("Occlusion Map", "");
-
             public static readonly GUIContent emissionEnabled = EditorGUIUtility.TrTextContent("Emission", "");
             public static readonly GUIContent emissionMap = EditorGUIUtility.TrTextContent("Emission Map", "");
 
@@ -82,9 +80,6 @@ namespace TinyRenderPipeline.CustomShaderGUI
             public static readonly string BumpScale = "_BumpScale";
             public static readonly string BumpMap = "_BumpMap";
 
-            public static readonly string OcclusionStrength = "_OcclusionStrength";
-            public static readonly string OcclusionMap = "_OcclusionMap";
-
             public static readonly string EmissionEnabled = "_EmissionEnabled";
             public static readonly string EmissionColor = "_EmissionColor";
             public static readonly string EmissionMap = "_EmissionMap";
@@ -96,7 +91,6 @@ namespace TinyRenderPipeline.CustomShaderGUI
         {
             public const string _METALLICGLOSSMAP = "_METALLICGLOSSMAP";
             public const string _NORMALMAP = "_NORMALMAP";
-            public const string _OCCLUSIONMAP = "_OCCLUSIONMAP";
             public const string _EMISSION = "_EMISSION";
         }
 
@@ -118,9 +112,6 @@ namespace TinyRenderPipeline.CustomShaderGUI
 
         private MaterialProperty bumpScaleProp;
         private MaterialProperty bumpMapProp;
-
-        private MaterialProperty occlusionStrength;
-        private MaterialProperty occlusionMap;
 
         private MaterialProperty emissionEnabledProp;
         private MaterialProperty emissionColorProp;
@@ -150,9 +141,6 @@ namespace TinyRenderPipeline.CustomShaderGUI
 
             bumpScaleProp = FindProperty(Property.BumpScale, properties, false);
             bumpMapProp = FindProperty(Property.BumpMap, properties, false);
-
-            occlusionStrength = FindProperty(Property.OcclusionStrength, properties, false);
-            occlusionMap = FindProperty(Property.OcclusionMap, properties, false);
 
             emissionEnabledProp = FindProperty(Property.EmissionEnabled, properties, false);
             emissionColorProp = FindProperty(Property.EmissionColor, properties, false);
@@ -207,9 +195,6 @@ namespace TinyRenderPipeline.CustomShaderGUI
             if (bumpMapProp != null)
                 materialEditor.TexturePropertySingleLine(Styles.normalMapText, bumpMapProp, (bumpMapProp.textureValue != null) ? bumpScaleProp : null);
 
-            if (occlusionMap != null)
-                materialEditor.TexturePropertySingleLine(Styles.occlusionText, occlusionMap, (occlusionMap.textureValue != null) ? occlusionStrength : null);
-
             materialEditor.ShaderProperty(emissionEnabledProp, Styles.emissionEnabled);
             if (material.GetFloat(Property.EmissionEnabled) > 0.5f)
             {
@@ -259,9 +244,6 @@ namespace TinyRenderPipeline.CustomShaderGUI
 
             if (material.HasProperty(Property.BumpMap))
                 CoreUtils.SetKeyword(material, ShaderKeywordStrings._NORMALMAP, material.GetTexture(Property.BumpMap));
-
-            if (material.HasProperty(Property.OcclusionMap))
-                CoreUtils.SetKeyword(material, ShaderKeywordStrings._OCCLUSIONMAP, material.GetTexture(Property.OcclusionMap));
 
             if (material.HasProperty(Property.EmissionColor))
                 MaterialEditor.FixupEmissiveFlag(material);

@@ -53,7 +53,7 @@ Varyings LitVertex(Attributes input)
     output.normalWS = TransformObjectToWorldNormal(input.normalOS);
 #ifdef _NORMALMAP
     real sign = input.tangentOS.w * GetOddNegativeScale();
-    float3 tangentWS = TransformObjectToWorldDir(tangentOS.xyz);
+    float3 tangentWS = TransformObjectToWorldDir(input.tangentOS.xyz);
     output.tangentWS = half4(tangentWS, sign);
 #endif
 

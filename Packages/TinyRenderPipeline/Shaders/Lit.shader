@@ -12,9 +12,6 @@ Shader "Tiny Render Pipeline/Lit"
         _BumpScale("Scale", Float) = 1.0
         _BumpMap("Normal Map", 2D) = "bump" {}
 
-        _OcclusionStrength("Strength", Range(0.0, 1.0)) = 1.0
-        _OcclusionMap("Occlusion", 2D) = "white" {}
-
         [Toggle] _EmissionEnabled("Emission Enabled", Float) = 0.0
         [HDR] _EmissionColor("Color", Color) = (0,0,0)
         _EmissionMap("Emission", 2D) = "white" {}
@@ -54,7 +51,6 @@ Shader "Tiny Render Pipeline/Lit"
             #pragma shader_feature_local _NORMALMAP
             #pragma shader_feature_local_fragment _EMISSION
             #pragma shader_feature_local_fragment _METALLICGLOSSMAP
-            #pragma shader_feature_local_fragment _OCCLUSIONMAP
 
             #pragma multi_compile_fragment _ _SHADOWS_PCF _SHADOWS_PCSS
 

@@ -10,16 +10,14 @@ half4 _EmissionColor;
 half _Smoothness;
 half _Metallic;
 half _BumpScale;
-half _OcclusionStrength;
 half _Surface;
 CBUFFER_END
 
-TEXTURE2D(_BaseMap);               SAMPLER(sampler_BaseMap);
-TEXTURE2D(_MetallicGlossMap);      SAMPLER(sampler_MetallicGlossMap);
-TEXTURE2D(_BumpMap);               SAMPLER(sampler_BumpMap);
-TEXTURE2D(_OcclusionMap);          SAMPLER(sampler_OcclusionMap);
-TEXTURE2D(_EmissionMap);           SAMPLER(sampler_EmissionMap);
-TEXTURE2D(_IBL_DFG);               SAMPLER(sampler_IBL_DFG);
+TEXTURE2D(_BaseMap);                         SAMPLER(sampler_BaseMap);
+TEXTURE2D(_MetallicGlossMap);                SAMPLER(sampler_MetallicGlossMap);
+TEXTURE2D(_BumpMap);                         SAMPLER(sampler_BumpMap);
+TEXTURE2D(_EmissionMap);                     SAMPLER(sampler_EmissionMap);
+TEXTURE2D(_IBL_DFG);                         SAMPLER(sampler_IBL_DFG);
 
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/SurfaceData.hlsl"
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/BRDF.hlsl"
@@ -56,16 +54,6 @@ half3 SampleNormal(float2 uv, TEXTURE2D_PARAM(bumpMap, sampler_bumpMap), half sc
 #endif
 }
 
-half SampleOcclusion(float2 uv)
-{
-#ifdef _OCCLUSIONMAP
-    half occ = SAMPLE_TEXTURE2D(_OcclusionMap, sampler_OcclusionMap, uv).g;
-    return LerpWhiteTo(occ, _OcclusionStrength);
-#else
-    return half(1.0);
-#endif
-}
-
 half3 SampleEmission(float2 uv, half3 emissionColor, TEXTURE2D_PARAM(emissionMap, sampler_emissionMap))
 {
 #ifndef _EMISSION
@@ -83,7 +71,6 @@ void InitializeSurfaceData(float2 uv, out SurfaceData outSurfaceData)
     outSurfaceData.baseColor = albedoAlpha.rgb * _BaseColor.rgb;
 
     outSurfaceData.normalTS = SampleNormal(uv, TEXTURE2D_ARGS(_BumpMap, sampler_BumpMap), _BumpScale);
-    outSurfaceData.occlusion = SampleOcclusion(uv);
     outSurfaceData.emission = SampleEmission(uv, _EmissionColor.rgb, TEXTURE2D_ARGS(_EmissionMap, sampler_EmissionMap));
 
     half4 gloss = SampleMetallicGlossMap(uv);

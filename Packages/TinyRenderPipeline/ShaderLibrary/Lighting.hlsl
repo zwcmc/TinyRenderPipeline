@@ -3,6 +3,15 @@
 
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/RealtimeLights.hlsl"
 
+// Screen space ambient occlusion
+TEXTURE2D(_ScreenSpaceOcclusionTexture);      SAMPLER(sampler_ScreenSpaceOcclusionTexture);
+
+half SampleAmbientOcclusion(float2 normalizedScreenSpaceUV)
+{
+    half ao = SAMPLE_TEXTURE2D_LOD(_ScreenSpaceOcclusionTexture, sampler_ScreenSpaceOcclusionTexture, normalizedScreenSpaceUV, 0.0).r;
+    return ao;
+}
+
 half3 ShadingLit(Light light, BRDFData brdfData, InputData inputData)
 {
     half3 N = inputData.normalWS;
@@ -70,19 +79,20 @@ half4 SurfaceShading(InputData inputData, SurfaceData surfaceData)
     }
 
     // IBL
-    color += ShadingIndirect(brdfData, inputData) * surfaceData.occlusion;
+    half occlusion = SampleAmbientOcclusion(inputData.normalizedScreenSpaceUV);
+    color += ShadingIndirect(brdfData, inputData);
 
     uint additionalLightCount = GetAdditionalLightsCount();
     for (uint lightIndex = 0u; lightIndex < additionalLightCount; ++lightIndex)
     {
-        Light light = GetAdditionalLight(lightIndex, inputData.positionWS);
-        if (IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
-        {
-            color += ShadingLit(light, brdfData, inputData);
-        }
+    Light light = GetAdditionalLight(lightIndex, inputData.positionWS);
+    if (IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
+    {
+    color += ShadingLit(light, brdfData, inputData);
+    }
     }
 
-    return half4(color, surfaceData.alpha);
+    return half4(color * occlusion, surfaceData.alpha);
 }
 
 #endif

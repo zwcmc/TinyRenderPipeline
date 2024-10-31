@@ -59,13 +59,6 @@ public class PostProcessingPass
         public static int[] _BloomMipDown;
     }
 
-    // private class BloomMaterialSetupPassData
-    // {
-    //     public Vector4 bloomParams;
-    //     public bool highQualityFiltering;
-    //     public Material bloomMaterial;
-    // }
-
     private class BloomPassData
     {
         public int mipCount;
@@ -135,11 +128,6 @@ public class PostProcessingPass
 
         // Reset uber pass keywords
         m_Materials.uberPost.shaderKeywords = null;
-
-        // using (var builder = renderGraph.AddLowLevelPass())
-        // {
-        //
-        // }
 
         // Bloom
         if (m_Bloom.IsActive())

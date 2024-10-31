@@ -4,9 +4,9 @@
 float2 GetNormalizedScreenSpaceUV(float4 positionCS)
 {
     float2 normalizedScreenSpaceUV = positionCS.xy * rcp(_ScreenParams.xy);
-#ifdef UNITY_UV_STARTS_AT_TOP
-    normalizedScreenSpaceUV.y = 1.0 - normalizedScreenSpaceUV.y;
-#endif
+// #ifdef UNITY_UV_STARTS_AT_TOP
+//     normalizedScreenSpaceUV.y = 1.0 - normalizedScreenSpaceUV.y;
+// #endif
     return normalizedScreenSpaceUV;
 }
 

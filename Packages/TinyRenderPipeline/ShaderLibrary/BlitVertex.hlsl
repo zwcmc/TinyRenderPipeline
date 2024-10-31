@@ -5,6 +5,8 @@
 
 // Blit source texture
 TEXTURE2D(_BlitTexture);
+SAMPLER(sampler_BlitTexture);
+float4 _BlitTexture_TexelSize;
 
 float4 _BlitScaleBias;
 #define DYNAMIC_SCALING_APPLY_SCALEBIAS(uv) uv * _BlitScaleBias.xy + _BlitScaleBias.zw

@@ -43,6 +43,8 @@ public class TinyRenderer
 
     private TextureHandle m_ColorGradingLutTexture;
 
+    private TextureHandle m_ScalableAOTexture;
+
     private bool m_IsActiveTargetBackbuffer;
 
     // Materials
@@ -60,10 +62,12 @@ public class TinyRenderer
 
     private ColorGradingLutPass m_ColorGradingLutPass;
 
+    private ScalableAOPass m_ScalableAOPass;
+
     private DrawObjectsForwardPass m_ForwardOpaqueObjectsPass;
     private CopyDepthPass m_CopyDepthPass;
     private DrawSkyboxPass m_DrawSkyboxPass;
-    private CopyColorPass m_CopyColorPass;
+    // private CopyColorPass m_CopyColorPass;
     private DrawObjectsForwardPass m_ForwardTransparentObjectsPass;
 
     private PostProcessingPass m_PostProcessingPass;
@@ -88,10 +92,12 @@ public class TinyRenderer
 
         m_ColorGradingLutPass = new ColorGradingLutPass();
 
+        m_ScalableAOPass = new ScalableAOPass();
+
         m_ForwardOpaqueObjectsPass = new DrawObjectsForwardPass(true);
         m_CopyDepthPass = new CopyDepthPass(m_CopyDepthMaterial);
         m_DrawSkyboxPass = new DrawSkyboxPass();
-        m_CopyColorPass = new CopyColorPass(m_BlitMaterial);
+        // m_CopyColorPass = new CopyColorPass(m_BlitMaterial);
         m_ForwardTransparentObjectsPass = new DrawObjectsForwardPass();
 
         m_PostProcessingPass = new PostProcessingPass();
@@ -117,6 +123,8 @@ public class TinyRenderer
         m_AdditionalLightsShadowPass?.Dispose();
 
         m_ColorGradingLutPass?.Dispose();
+
+        m_ScalableAOPass?.Dispose();
 
         m_PostProcessingPass?.Dispose();
         m_FXAAPass?.Dispose();
@@ -192,8 +200,18 @@ public class TinyRenderer
             RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_CameraDepthTexture", SystemInfo.usesReversedZBuffer ? renderGraph.defaultResources.blackTexture : renderGraph.defaultResources.whiteTexture, "SetDefaultGlobalCameraDepthTexture");
         }
 
+        // Scalable Ambient Obscurance
+        if (supportIntermediateRendering)
+        {
+            m_ScalableAOPass.Record(renderGraph, in m_DepthTexture, out m_ScalableAOTexture, ref renderingData);
+        }
+        else
+        {
+            RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_ScreenSpaceOcclusionTexture", renderGraph.defaultResources.whiteTexture);
+        }
+
         // Draw opaque objects pass
-        m_ForwardOpaqueObjectsPass.Record(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, m_MainLightShadowMapTexture, m_AdditionalLightShadowMapTexture, ref renderingData);
+        m_ForwardOpaqueObjectsPass.Record(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, m_MainLightShadowMapTexture, m_AdditionalLightShadowMapTexture, m_ScalableAOTexture, ref renderingData);
 
         // Draw skybox pass
         m_DrawSkyboxPass.DrawRenderGraphSkybox(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, ref renderingData);
@@ -215,7 +233,7 @@ public class TinyRenderer
         RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_CameraOpaqueTexture", renderGraph.defaultResources.whiteTexture);
 
         // Draw transparent objects pass
-        m_ForwardTransparentObjectsPass.Record(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, TextureHandle.nullHandle, TextureHandle.nullHandle, ref renderingData);
+        m_ForwardTransparentObjectsPass.Record(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, TextureHandle.nullHandle, TextureHandle.nullHandle, m_ScalableAOTexture, ref renderingData);
 
         DrawRenderGraphGizmos(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, GizmoSubset.PreImageEffects, ref renderingData);
 
@@ -433,7 +451,7 @@ public class TinyRenderer
         Vector4 orthoParams = new Vector4(orthographicSize * aspectRatio, orthographicSize, 0.0f, isOrthographic);
         cmd.SetGlobalVector(ShaderPropertyId.orthoParams, orthoParams);
         float projectionFlipSign = isTargetFlipped ? -1.0f : 1.0f;
-        cmd.SetGlobalVector(ShaderPropertyId.projectionParams, new Vector4(projectionFlipSign, near, far, 1.0f * invFar));
+        cmd.SetGlobalVector(ShaderPropertyId.projectionParams, new Vector4(projectionFlipSign, near, far, invFar));
         cmd.SetGlobalVector(ShaderPropertyId.screenParams, new Vector4(cameraWidth, cameraHeight, 1.0f + 1.0f / cameraWidth, 1.0f + 1.0f / cameraHeight));
     }
 

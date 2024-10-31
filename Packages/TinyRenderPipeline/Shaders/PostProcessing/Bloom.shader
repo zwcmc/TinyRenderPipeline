@@ -14,7 +14,6 @@ Shader "Hidden/Tiny Render Pipeline/Bloom"
 
         TEXTURE2D(_SourceTexLowMip);
 
-        float4 _BlitTexture_TexelSize;  // ( x: 1/w, y: 1/h, z: w, w: h )
         float4 _SourceTexLowMip_TexelSize;
         float4 _BloomParams; // ( x: scatter, y: clamp max, z: threshold, w: threshold knee )
 

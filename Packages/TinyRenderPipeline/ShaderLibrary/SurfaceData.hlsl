@@ -6,7 +6,6 @@ struct SurfaceData
     half3 baseColor;
     half3 normalTS;
     half3 emission;
-    half occlusion;
     half alpha;
     half metallic;
     half smoothness;

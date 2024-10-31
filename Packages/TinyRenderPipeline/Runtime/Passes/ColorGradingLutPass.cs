@@ -9,7 +9,6 @@ public class ColorGradingLutPass
 
     private Material m_LutBuilderMaterial;
     private PostProcessingData m_PostProcessingData;
-    private RTHandle m_ColorGradingLut;
 
     private static class ShaderConstants
     {
@@ -59,7 +58,7 @@ public class ColorGradingLutPass
             int lutWidth = lutHeight * lutHeight;
             var lutFormat = renderingData.defaultFormat;
             var descriptor = new RenderTextureDescriptor(lutWidth, lutHeight, lutFormat, 0);
-            lutTarget = RenderingUtils.CreateRenderGraphTexture(renderGraph, descriptor, "_InternalGradingLut", true, FilterMode.Bilinear);
+            lutTarget = RenderingUtils.CreateRenderGraphTexture(renderGraph, descriptor, "_InternalGradingLut", false, FilterMode.Bilinear);
 
             passData.lutTextureHdl = builder.UseTextureFragment(lutTarget, 0, IBaseRenderGraphBuilder.AccessFlags.WriteAll);
 
