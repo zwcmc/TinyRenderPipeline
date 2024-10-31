@@ -93,6 +93,9 @@ float3 TapLocationFast(float i, float2 p, float noise)
     return float3(p, radius * radius);
 }
 
+TEXTURE2D_ARRAY(_MipmapDepthTexture);
+SAMPLER(sampler_MipmapDepthTexture);
+
 void ComputeAmbientOcclusionSAO(inout float occlusion, inout float3 bentNormal, float i, float ssDiskRadius, float2 uv, float3 origin, float3 normal, float2 tapPosition, float noise)
 {
     float3 tap = TapLocationFast(i, tapPosition, noise);
@@ -101,7 +104,13 @@ void ComputeAmbientOcclusionSAO(inout float occlusion, inout float3 bentNormal, 
 
     float2 uvSamplePos = uv + float2(ssRadius * tap.xy) * _CameraDepthTexture_TexelSize.xy;
 
-    float occlusionDepth = LinearEyeDepth(SampleSceneDepth(uvSamplePos), _ZBufferParams);
+    const float kLog2LodRate = 3.0;
+    int maxLevelIndex = 7;
+    int level = clamp(floor(log2(ssRadius) - kLog2LodRate), 0, maxLevelIndex);
+    float divded = pow(2, level);
+    float x = SAMPLE_TEXTURE2D_ARRAY(_MipmapDepthTexture, sampler_MipmapDepthTexture, uvSamplePos / divded, level).x;
+    float occlusionDepth = LinearEyeDepth(x, _ZBufferParams);
+    // float occlusionDepth = LinearEyeDepth(SampleSceneDepth(uvSamplePos), _ZBufferParams);
     float3 p = ComputeViewSpacePositionFromDepth(uvSamplePos, occlusionDepth);
 
     float3 v = p - origin;
@@ -149,7 +158,8 @@ half4 ScalableAOFragment(Varyings input) : SV_TARGET
 {
     float2 uv = input.texcoord;
 
-    float depth = SampleSceneDepth(uv);
+    // float depth = SampleSceneDepth(uv);
+    float depth = SAMPLE_TEXTURE2D_ARRAY(_MipmapDepthTexture, sampler_MipmapDepthTexture, uv, 0).x;
     float z = LinearEyeDepth(depth, _ZBufferParams);
     float3 origin = ComputeViewSpacePositionFromDepth(uv, z);
 

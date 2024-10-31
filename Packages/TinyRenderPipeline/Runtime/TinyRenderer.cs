@@ -62,6 +62,7 @@ public class TinyRenderer
 
     private ColorGradingLutPass m_ColorGradingLutPass;
 
+    private MipmapDepth m_MipmapDepth;
     private ScalableAOPass m_ScalableAOPass;
 
     private DrawObjectsForwardPass m_ForwardOpaqueObjectsPass;
@@ -96,6 +97,7 @@ public class TinyRenderer
 
         m_ColorGradingLutPass = new ColorGradingLutPass();
 
+        m_MipmapDepth = new MipmapDepth(asset.shaderResources.mipmapDepthCS);
         m_ScalableAOPass = new ScalableAOPass();
 
         m_ForwardOpaqueObjectsPass = new DrawObjectsForwardPass(true);
@@ -210,6 +212,7 @@ public class TinyRenderer
         // Scalable Ambient Obscurance
         if (supportIntermediateRendering)
         {
+            m_MipmapDepth.RenderMipmapDepth(renderGraph, in m_DepthTexture, ref renderingData);
             m_ScalableAOPass.Record(renderGraph, in m_DepthTexture, out m_ScalableAOTexture, ref renderingData);
         }
         else
