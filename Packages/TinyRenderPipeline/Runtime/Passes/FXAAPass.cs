@@ -61,6 +61,6 @@ public class FXAAPass
     {
         float width = source.rt.width;
         float height = source.rt.height;
-        cmd.SetGlobalVector(ShaderPropertyId.sourceSize, new Vector4(width, height, 1.0f / width, 1.0f / height));
+        cmd.SetGlobalVector(ShaderPropertyID.sourceSize, new Vector4(width, height, 1.0f / width, 1.0f / height));
     }
 }

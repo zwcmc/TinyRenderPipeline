@@ -452,15 +452,15 @@ public class TinyRenderer
             zBufferParams.z = -zBufferParams.z;
         }
 
-        cmd.SetGlobalVector(ShaderPropertyId.worldSpaceCameraPos, camera.transform.position);
-        cmd.SetGlobalVector(ShaderPropertyId.zBufferParams, zBufferParams);
+        cmd.SetGlobalVector(ShaderPropertyID.worldSpaceCameraPos, camera.transform.position);
+        cmd.SetGlobalVector(ShaderPropertyID.zBufferParams, zBufferParams);
         float aspectRatio = (float)camera.pixelWidth / (float)camera.pixelHeight;
         float orthographicSize = camera.orthographicSize;
         Vector4 orthoParams = new Vector4(orthographicSize * aspectRatio, orthographicSize, 0.0f, isOrthographic);
-        cmd.SetGlobalVector(ShaderPropertyId.orthoParams, orthoParams);
+        cmd.SetGlobalVector(ShaderPropertyID.orthoParams, orthoParams);
         float projectionFlipSign = isTargetFlipped ? -1.0f : 1.0f;
-        cmd.SetGlobalVector(ShaderPropertyId.projectionParams, new Vector4(projectionFlipSign, near, far, invFar));
-        cmd.SetGlobalVector(ShaderPropertyId.screenParams, new Vector4(cameraWidth, cameraHeight, 1.0f + 1.0f / cameraWidth, 1.0f + 1.0f / cameraHeight));
+        cmd.SetGlobalVector(ShaderPropertyID.projectionParams, new Vector4(projectionFlipSign, near, far, invFar));
+        cmd.SetGlobalVector(ShaderPropertyID.screenParams, new Vector4(cameraWidth, cameraHeight, 1.0f + 1.0f / cameraWidth, 1.0f + 1.0f / cameraHeight));
     }
 
 #if UNITY_EDITOR

@@ -126,7 +126,7 @@ public static class ShaderKeywordStrings
     public const string ShadowPCSS = "_SHADOWS_PCSS";
 }
 
-public static class ShaderPropertyId
+public static class ShaderPropertyID
 {
     public static readonly int worldSpaceCameraPos = Shader.PropertyToID("_WorldSpaceCameraPos");
     public static readonly int zBufferParams = Shader.PropertyToID("_ZBufferParams");

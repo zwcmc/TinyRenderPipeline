@@ -21,8 +21,17 @@ public class TinyRenderPipelineAssetEditor : Editor
         serializedObject.Update();
 
         EditorGUILayout.PropertyField(m_Shadows);
+
+        EditorGUILayout.Space();
+
         EditorGUILayout.PropertyField(m_PostProcessingData);
+
+        EditorGUILayout.Space();
+
         EditorGUILayout.PropertyField(m_RenderScale);
+
+        EditorGUILayout.Space();
+
         EditorGUILayout.PropertyField(m_AntialiasingMode);
 
         serializedObject.ApplyModifiedProperties();
