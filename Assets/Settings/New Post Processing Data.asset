@@ -16,7 +16,6 @@ MonoBehaviour:
     uberPostShader: {fileID: 4800000, guid: 2308bea0a8909ff4e98af241a4cc0112, type: 3}
     bloomShader: {fileID: 4800000, guid: 48f11e7c72d6b784b9b6bd3a6b7bc325, type: 3}
     lutBuilderShader: {fileID: 4800000, guid: c4e352c13ccd11b4f8d6b745cfa2bd24, type: 3}
-    fxaaShader: {fileID: 4800000, guid: c3a51ddabd49faa43a0e890f453e8ba6, type: 3}
   bloom:
     threshold: 1
     intensity: 1
@@ -35,4 +34,3 @@ MonoBehaviour:
   whiteBalance:
     temperature: 0
     tint: 0
-  antialiasingMode: 1

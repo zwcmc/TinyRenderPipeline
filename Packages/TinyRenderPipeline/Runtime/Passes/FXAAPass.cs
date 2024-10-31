@@ -7,7 +7,6 @@ public class FXAAPass
 {
     private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("FXAA");
 
-    private PostProcessingData m_PostProcessingData;
     private Material m_FXAAMaterial;
     private RTHandle m_Source;
 
@@ -19,18 +18,18 @@ public class FXAAPass
         public RenderingData renderingData;
     }
 
+    public FXAAPass(Shader fxaaShader)
+    {
+        if (fxaaShader)
+            m_FXAAMaterial = CoreUtils.CreateEngineMaterial(fxaaShader);
+    }
+
     public void Record(RenderGraph renderGraph, TextureHandle source, TextureHandle target, ref RenderingData renderingData)
     {
-        m_PostProcessingData = renderingData.postProcessingData;
-        if (m_PostProcessingData == null)
-        {
-            Debug.LogError("FXAA Pass: post-processing data is null.");
-            return;
-        }
-
         if (m_FXAAMaterial == null)
         {
-            m_FXAAMaterial = CoreUtils.CreateEngineMaterial(m_PostProcessingData.shaders.fxaaShader);
+            Debug.LogError("FXAA Pass: FXAA material is null.");
+            return;
         }
 
         using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_ProfilingSampler.name, out var passData, s_ProfilingSampler))

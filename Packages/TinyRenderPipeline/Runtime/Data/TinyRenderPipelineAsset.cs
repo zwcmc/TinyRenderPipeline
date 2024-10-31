@@ -9,23 +9,16 @@ using UnityEngine.Rendering;
 public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
 {
     [Serializable]
-    private class MainLightShadow
+    private class CascadeShadowMaps
     {
-        public ShadowResolution shadowResolution = ShadowResolution._4096;
-
         [Range(1, 4)]
         public int cascadeCount = 4;
 
         [Range(0.0f, 1.0f)]
         public float cascadeRatio1 = 0.067f, cascadeRatio2 = 0.2f, cascadeRatio3 = 0.467f;
 
-        public SoftShadows softShadows = SoftShadows.OFF;
-    }
-
-    [Serializable]
-    private class AdditionalLightsShadow
-    {
-        public ShadowResolution shadowResolution = ShadowResolution._2048;
+        [Range(0.0f, 1.0f)]
+        public float cascadeBorder = 0.2f;
     }
 
     // Shadows
@@ -34,93 +27,63 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
     {
         public float shadowDistance = 50.0f;
 
-        [Range(0.0f, 1.0f)]
-        public float cascadeBorder = 0.2f;
+        public ShadowResolution mainLightShadowResolution = ShadowResolution._4096;
 
-        public MainLightShadow mainLightShadow = default;
+        public CascadeShadowMaps cascadeShadowMaps;
 
-        public AdditionalLightsShadow additionalLightsShadow = default;
+        public ShadowResolution additionalLightShadowResolution = ShadowResolution._2048;
+
+        public SoftShadows softShadows = SoftShadows.OFF;
     }
 
     [SerializeField]
     private Shadows m_Shadows = default;
 
     [SerializeField]
-    private PostProcessingData m_PostProcessingData = default;
-
-    [SerializeField]
-    [Range(32, 64)]
-    private int m_ColorGradingLutSize = 32;
+    public PostProcessingData postProcessingData = default;
 
     [SerializeField]
     [Range(0.1f, 2f)]
-    private float m_RenderScale = 1f;
+    public float renderScale = 1f;
+
+    [SerializeField]
+    public AntialiasingMode antialiasingMode = AntialiasingMode.None;
 
     [Serializable, ReloadGroup]
     public class ShaderResources
     {
+        [Reload("Shaders/PostProcessing/FXAA.shader")]
+        public Shader fxaaShader;
+
         [Reload("Runtime/Passes/ScalableAO/MipmapDepth.compute")]
         public ComputeShader mipmapDepthCS;
     }
 
-    public float shadowDistance
-    {
-        get { return m_Shadows.shadowDistance; }
-        set { m_Shadows.shadowDistance = Mathf.Max(0.0f, value); }
-    }
+    public float shadowDistance => m_Shadows.shadowDistance;
 
-    public int mainLightShadowMapResolution
-    {
-        get { return (int)m_Shadows.mainLightShadow.shadowResolution; }
-        set { m_Shadows.mainLightShadow.shadowResolution = (ShadowResolution)value; }
-    }
+    public int mainLightShadowMapResolution => (int)m_Shadows.mainLightShadowResolution;
 
-    public int cascadesCount
-    {
-        get { return m_Shadows.mainLightShadow.cascadeCount; }
-    }
+    public int cascadesCount => m_Shadows.cascadeShadowMaps.cascadeCount;
 
     public Vector3 cascadesSplit
     {
         get
         {
             return new Vector3(
-                m_Shadows.mainLightShadow.cascadeRatio1,
-                m_Shadows.mainLightShadow.cascadeRatio2,
-                m_Shadows.mainLightShadow.cascadeRatio3
+                m_Shadows.cascadeShadowMaps.cascadeRatio1,
+                m_Shadows.cascadeShadowMaps.cascadeRatio2,
+                m_Shadows.cascadeShadowMaps.cascadeRatio3
             );
         }
     }
 
-    public float cascadeBorder
-    {
-        get { return m_Shadows.cascadeBorder; }
-    }
+    public float cascadeBorder => m_Shadows.cascadeShadowMaps.cascadeBorder;
 
-    public SoftShadows softShadows => m_Shadows.mainLightShadow.softShadows;
+    public SoftShadows softShadows => m_Shadows.softShadows;
 
-    public int additionalLightsShadowMapResolution
-    {
-        get { return (int)m_Shadows.additionalLightsShadow.shadowResolution; }
-        set { m_Shadows.additionalLightsShadow.shadowResolution = (ShadowResolution)value; }
-    }
+    public int additionalLightsShadowMapResolution => (int)m_Shadows.additionalLightShadowResolution;
 
-    public int colorGradingLutSize
-    {
-        get { return (int)m_ColorGradingLutSize; }
-        set { m_ColorGradingLutSize = Mathf.Clamp(value, 32, 64); }
-    }
-
-    public float renderScale
-    {
-        get { return m_RenderScale; }
-        set { m_RenderScale = Mathf.Clamp(value, 0.1f, 2f); }
-    }
-
-    public PostProcessingData postProcessingData
-    {
-        get { return m_PostProcessingData; }
-    }
+    public int colorGradingLutSize = 64;
 
     public ShaderResources shaderResources;
 

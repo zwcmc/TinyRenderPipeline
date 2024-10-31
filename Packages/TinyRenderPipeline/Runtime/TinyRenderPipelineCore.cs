@@ -19,6 +19,14 @@ public enum SoftShadows
     PCSS = 2
 }
 
+public enum AntialiasingMode
+{
+    [InspectorName("No Anti-aliasing")]
+    None,
+    [InspectorName("Fast Approximate Anti-aliasing (FXAA)")]
+    FastApproximateAntialiasing
+}
+
 public struct ShadowData
 {
     public bool mainLightShadowsEnabled;

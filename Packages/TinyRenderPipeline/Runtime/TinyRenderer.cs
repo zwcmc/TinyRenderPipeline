@@ -78,8 +78,12 @@ public class TinyRenderer
     private CopyDepthPass m_FinalCopyDepthPass;
 #endif
 
+    private readonly TinyRenderPipelineAsset m_PipelineAsset;
+
     public TinyRenderer(TinyRenderPipelineAsset asset)
     {
+        m_PipelineAsset = asset;
+
         m_BlitMaterial = CoreUtils.CreateEngineMaterial("Hidden/Tiny Render Pipeline/Blit");
         m_CopyDepthMaterial = CoreUtils.CreateEngineMaterial("Hidden/Tiny Render Pipeline/CopyDepth");
 
@@ -101,7 +105,7 @@ public class TinyRenderer
         m_ForwardTransparentObjectsPass = new DrawObjectsForwardPass();
 
         m_PostProcessingPass = new PostProcessingPass();
-        m_FXAAPass = new FXAAPass();
+        m_FXAAPass = new FXAAPass(m_PipelineAsset.shaderResources.fxaaShader);
         m_FinalBlitPass = new FinalBlitPass(m_BlitMaterial);
 
 #if UNITY_EDITOR
@@ -240,7 +244,8 @@ public class TinyRenderer
 
         DrawRenderGraphGizmos(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, GizmoSubset.PreImageEffects, ref renderingData);
 
-        bool hasFxaaPass = applyPostProcessing && (postProcessingData.antialiasingMode == PostProcessingData.AntialiasingMode.FastApproximateAntialiasing);
+        // bool hasFxaaPass = applyPostProcessing && (postProcessingData.antialiasingMode == PostProcessingData.AntialiasingMode.FastApproximateAntialiasing);
+        bool hasFxaaPass = supportIntermediateRendering && (m_PipelineAsset.antialiasingMode == AntialiasingMode.FastApproximateAntialiasing);
 
         if (applyPostProcessing)
         {

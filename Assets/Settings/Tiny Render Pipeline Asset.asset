@@ -14,18 +14,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Shadows:
     shadowDistance: 50
-    cascadeBorder: 0.2
-    mainLightShadow:
-      shadowResolution: 4096
+    mainLightShadowResolution: 4096
+    cascadeShadowMaps:
       cascadeCount: 4
       cascadeRatio1: 0.067
       cascadeRatio2: 0.2
       cascadeRatio3: 0.467
-      softShadows: 2
-    additionalLightsShadow:
-      shadowResolution: 2048
-  m_PostProcessingData: {fileID: 11400000, guid: 90ac35e882f8867438b6345c4c8a746c, type: 2}
-  m_ColorGradingLutSize: 32
-  m_RenderScale: 1
+      cascadeBorder: 0.2
+    additionalLightShadowResolution: 2048
+    softShadows: 2
+  postProcessingData: {fileID: 11400000, guid: 90ac35e882f8867438b6345c4c8a746c, type: 2}
+  colorGradingLutSize: 64
+  renderScale: 1
+  antialiasingMode: 1
   shaderResources:
+    fxaaShader: {fileID: 4800000, guid: c3a51ddabd49faa43a0e890f453e8ba6, type: 3}
     mipmapDepthCS: {fileID: 7200000, guid: 62222339b6cf647be8060b2291f647eb, type: 3}
