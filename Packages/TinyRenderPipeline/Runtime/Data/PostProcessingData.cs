@@ -59,7 +59,7 @@ public class PostProcessingData : ScriptableObject
 #endif
 
     [Serializable, ReloadGroup]
-    public class ShaderResources
+    public class PostProcessShaderResources
     {
         [Reload("Shaders/PostProcessing/UberPost.shader")]
         public Shader uberPostShader;
@@ -131,7 +131,7 @@ public class PostProcessingData : ScriptableObject
         public float tint = 0f;
     }
 
-    public ShaderResources shaders = default;
+    public PostProcessShaderResources shaders = default;
 
     public Bloom bloom = default;
 

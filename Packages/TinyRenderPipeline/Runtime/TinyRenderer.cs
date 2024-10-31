@@ -78,7 +78,7 @@ public class TinyRenderer
     private CopyDepthPass m_FinalCopyDepthPass;
 #endif
 
-    public TinyRenderer()
+    public TinyRenderer(TinyRenderPipelineAsset asset)
     {
         m_BlitMaterial = CoreUtils.CreateEngineMaterial("Hidden/Tiny Render Pipeline/Blit");
         m_CopyDepthMaterial = CoreUtils.CreateEngineMaterial("Hidden/Tiny Render Pipeline/CopyDepth");
@@ -192,6 +192,9 @@ public class TinyRenderer
             depthDescriptor.graphicsFormat = GraphicsFormat.R32_SFloat;
             depthDescriptor.depthStencilFormat = GraphicsFormat.None;
             depthDescriptor.depthBufferBits = (int)DepthBits.None;
+            depthDescriptor.mipCount = 6;
+            depthDescriptor.useMipMap = true;
+            depthDescriptor.autoGenerateMips = true;
             m_DepthTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, depthDescriptor, "_CameraDepthTexture", true);
             m_CopyDepthPass.Record(renderGraph, m_ActiveCameraDepthTexture, m_DepthTexture, TextureHandle.nullHandle, ref renderingData, true);
         }

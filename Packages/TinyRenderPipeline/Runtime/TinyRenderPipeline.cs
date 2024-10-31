@@ -57,7 +57,7 @@ public class TinyRenderPipeline : RenderPipeline
         s_RenderGraph = new RenderGraph("TRRenderGraph");
         s_RenderGraph.NativeRenderPassesEnabled = true;
 
-        s_TinyRenderer = new TinyRenderer();
+        s_TinyRenderer = new TinyRenderer(pipelineAsset);
     }
 
     protected override void Render(ScriptableRenderContext context, Camera[] cameras)

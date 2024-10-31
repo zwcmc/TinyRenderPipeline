@@ -56,6 +56,13 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
     [Range(0.1f, 2f)]
     private float m_RenderScale = 1f;
 
+    [Serializable, ReloadGroup]
+    public class ShaderResources
+    {
+        [Reload("Runtime/Passes/ScalableAO/MipmapDepth.compute")]
+        public ComputeShader mipmapDepthCS;
+    }
+
     public float shadowDistance
     {
         get { return m_Shadows.shadowDistance; }
@@ -114,6 +121,8 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
     {
         get { return m_PostProcessingData; }
     }
+
+    public ShaderResources shaderResources;
 
     public static readonly string packagePath = "Packages/com.tiny.render-pipeline";
 

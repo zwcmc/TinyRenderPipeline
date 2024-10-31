@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3f18393676273f643b1da85cc6337e93, type: 3}
-  m_Name: Render Pipeline Asset
+  m_Name: Tiny Render Pipeline Asset
   m_EditorClassIdentifier: 
   m_Shadows:
     shadowDistance: 50
@@ -27,3 +27,5 @@ MonoBehaviour:
   m_PostProcessingData: {fileID: 11400000, guid: 90ac35e882f8867438b6345c4c8a746c, type: 2}
   m_ColorGradingLutSize: 32
   m_RenderScale: 1
+  shaderResources:
+    mipmapDepthCS: {fileID: 7200000, guid: 62222339b6cf647be8060b2291f647eb, type: 3}
