@@ -244,7 +244,7 @@ half4 BilateralBlurFragment(Varyings input) : SV_TARGET
 
     // simple dithering helps a lot (assumes 8 bits target)
     // this is most useful with high quality/large blurs
-    // ao += ((InterleavedGradientNoise(input.positionCS.xy) - 0.5) / 255.0);
+    ao += ((InterleavedGradientNoise(input.positionCS.xy) - 0.5) / 255.0);
 
     return half4(ao, data.gb, 1.0);
 }
