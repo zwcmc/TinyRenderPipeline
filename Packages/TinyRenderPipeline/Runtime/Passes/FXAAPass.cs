@@ -24,7 +24,7 @@ public class FXAAPass
             m_FXAAMaterial = CoreUtils.CreateEngineMaterial(fxaaShader);
     }
 
-    public void Record(RenderGraph renderGraph, TextureHandle source, TextureHandle target, ref RenderingData renderingData)
+    public void RecordRenderGraph(RenderGraph renderGraph, TextureHandle source, TextureHandle target, ref RenderingData renderingData)
     {
         if (m_FXAAMaterial == null)
         {

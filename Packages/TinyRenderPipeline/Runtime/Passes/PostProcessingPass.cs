@@ -8,12 +8,12 @@ public class PostProcessingPass
 {
     private static class Profiling
     {
-        public static readonly ProfilingSampler s_ApplyPostProcessing = new ("Apply Post Processing");
+        public static readonly ProfilingSampler s_ApplyPostProcessing = new ProfilingSampler("Apply Post Processing");
 
-        public static readonly ProfilingSampler s_Bloom = new ("Bloom");
-        public static readonly ProfilingSampler s_BloomPrefilter = new ProfilingSampler("Bloom Prefilter");
-        public static readonly ProfilingSampler s_BloomDownsample = new ProfilingSampler("Bloom Downsample");
-        public static readonly ProfilingSampler s_BloomUpsample = new ProfilingSampler("Bloom Upsample");
+        public static readonly ProfilingSampler s_Bloom = new ProfilingSampler("Bloom");
+        public static readonly ProfilingSampler s_BloomPrefilter = new ProfilingSampler("Prefilter");
+        public static readonly ProfilingSampler s_BloomDownsample = new ProfilingSampler("Downsample");
+        public static readonly ProfilingSampler s_BloomUpsample = new ProfilingSampler("Upsample");
         public static readonly ProfilingSampler s_UberPassSetupBloom = new ProfilingSampler("Uber Pass Setup Bloom");
     }
 
@@ -105,7 +105,7 @@ public class PostProcessingPass
         }
     }
 
-    public void Record(RenderGraph renderGraph, in TextureHandle source, TextureHandle colorLut, TextureHandle target, ref RenderingData renderingData)
+    public void RecordRenderGraph(RenderGraph renderGraph, in TextureHandle source, TextureHandle colorLut, TextureHandle target, ref RenderingData renderingData)
     {
         m_PostProcessingData = renderingData.postProcessingData;
 

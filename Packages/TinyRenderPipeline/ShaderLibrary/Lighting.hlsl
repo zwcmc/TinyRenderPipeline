@@ -41,7 +41,7 @@ half3 ShadingLit(Light light, BRDFData brdfData, InputData inputData)
     return (Fd + Fr) * radiance;
 }
 
-half3 ShadingIndirect(BRDFData brdfData, InputData inputData)
+half3 ShadingIndirect(BRDFData brdfData, InputData inputData, half diffuseAO)
 {
     half3 N = inputData.normalWS;
     half3 V = inputData.viewDirectionWS;
@@ -58,7 +58,7 @@ half3 ShadingIndirect(BRDFData brdfData, InputData inputData)
     half3 E = brdfData.f0 * dfg.x + dfg.y;
 
     half3 iblFr = E * prefilteredRadiance;
-    half3 iblFd = brdfData.diffuseColor * diffuseIrradiance * (1.0 - E);
+    half3 iblFd = brdfData.diffuseColor * diffuseIrradiance * (1.0 - E) * diffuseAO;
 
     return iblFr + iblFd;
 }
@@ -80,19 +80,19 @@ half4 SurfaceShading(InputData inputData, SurfaceData surfaceData)
 
     // IBL
     half occlusion = SampleAmbientOcclusion(inputData.normalizedScreenSpaceUV);
-    color += ShadingIndirect(brdfData, inputData);
+    color += ShadingIndirect(brdfData, inputData, occlusion);
 
     uint additionalLightCount = GetAdditionalLightsCount();
     for (uint lightIndex = 0u; lightIndex < additionalLightCount; ++lightIndex)
     {
-    Light light = GetAdditionalLight(lightIndex, inputData.positionWS);
-    if (IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
-    {
-    color += ShadingLit(light, brdfData, inputData);
-    }
+        Light light = GetAdditionalLight(lightIndex, inputData.positionWS);
+        if (IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
+        {
+        color += ShadingLit(light, brdfData, inputData);
+        }
     }
 
-    return half4(color * occlusion, surfaceData.alpha);
+    return half4(color, surfaceData.alpha);
 }
 
 #endif

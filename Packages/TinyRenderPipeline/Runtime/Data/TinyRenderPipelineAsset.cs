@@ -49,6 +49,9 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
     [SerializeField]
     public AntialiasingMode antialiasingMode = AntialiasingMode.None;
 
+    [SerializeField]
+    public bool ssaoEnabled = false;
+
     [Serializable, ReloadGroup]
     public class ShaderResources
     {

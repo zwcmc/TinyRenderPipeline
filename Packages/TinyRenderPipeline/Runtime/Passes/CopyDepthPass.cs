@@ -27,7 +27,7 @@ public class CopyDepthPass
         m_CopyToDepthTexture = copyToDepthTexture;
     }
 
-    public void Record(RenderGraph renderGraph, TextureHandle source, TextureHandle destination, TextureHandle activeColorTexture, ref RenderingData renderingData, bool bindAsCameraDepth = false, string passName = "CopyDepthPass")
+    public void RecordRenderGraph(RenderGraph renderGraph, TextureHandle source, TextureHandle destination, TextureHandle activeColorTexture, ref RenderingData renderingData, bool bindAsCameraDepth = false, string passName = "CopyDepthPass")
     {
         // Set global depth attachment
         RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_CameraDepthAttachment", source, "SetGlobalCameraDepthAttachment");

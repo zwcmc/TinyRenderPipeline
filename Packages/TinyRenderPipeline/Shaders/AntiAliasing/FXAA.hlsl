@@ -1,8 +1,6 @@
 #ifndef TINY_RP_FXAA_INCLUDED
 #define TINY_RP_FXAA_INCLUDED
 
-#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
-
 float4 _SourceSize; // (x: screenWidthInPixels, y: screenHeightInPixels, z: 1.0/screenWidthInPixels, w: 1.0/screenHeightInPixels)
 
 /*----------------*/

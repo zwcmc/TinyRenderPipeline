@@ -7,5 +7,7 @@ RWTexture2D<float> _CurrMipDepth;
 void MipmapDepth(uint3 id : SV_DispatchThreadID)
 {
     // Rotated Grid Subsample
-    _CurrMipDepth[id.xy] = _PrevMipDepth.Load(uint3(id.xy << 1 + uint2(id.y & 1, id.x & 1), 0));
+    uint2 prevId = id.xy << 1;
+    uint2 currId = prevId + uint2(id.y & 1, id.x & 1);
+    _CurrMipDepth[id.xy] = _PrevMipDepth.Load(uint3(currId, 0));
 }

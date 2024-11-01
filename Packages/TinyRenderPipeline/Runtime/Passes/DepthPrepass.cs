@@ -4,7 +4,7 @@ using UnityEngine.Rendering;
 
 public class DepthPrepass
 {
-    private static readonly ProfilingSampler s_DepthPrepassSampler = new ("Depth Prepass");
+    private static readonly ProfilingSampler s_DepthPrepassSampler = new ProfilingSampler("Depth Prepass");
 
     private static readonly ShaderTagId k_ShaderTagId = new ("TinyRPDepth");
 
@@ -20,7 +20,7 @@ public class DepthPrepass
         m_FilteringSettings = new FilteringSettings(RenderQueueRange.opaque);
     }
 
-    public void Record(RenderGraph renderGraph, ref TextureHandle cameraDepthTexture, ref RenderingData renderingData)
+    public void RecordRenderGraph(RenderGraph renderGraph, ref TextureHandle cameraDepthTexture, ref RenderingData renderingData)
     {
         using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_DepthPrepassSampler.name, out var passData, s_DepthPrepassSampler))
         {

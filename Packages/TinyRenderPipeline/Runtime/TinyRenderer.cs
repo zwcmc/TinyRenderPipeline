@@ -8,8 +8,8 @@ using Debug = UnityEngine.Debug;
 
 public class TinyRenderer
 {
-    private static readonly ProfilingSampler s_GizmosPass = new ("Gizmos Pass");
-    private static readonly ProfilingSampler s_SetupCamera = new ("Setup Camera Properties");
+    private static readonly ProfilingSampler s_GizmosPass = new ProfilingSampler("Gizmos Pass");
+    private static readonly ProfilingSampler s_SetupCamera = new ProfilingSampler("Setup Camera Properties");
 
     private RTHandle m_TargetColorHandle;
     private RTHandle m_TargetDepthHandle;
@@ -62,7 +62,7 @@ public class TinyRenderer
 
     private ColorGradingLutPass m_ColorGradingLutPass;
 
-    private MipmapDepth m_MipmapDepth;
+    private MipmapDepthGenerator m_MipmapDepthGenerator;
     private ScalableAOPass m_ScalableAOPass;
 
     private DrawObjectsForwardPass m_ForwardOpaqueObjectsPass;
@@ -97,8 +97,8 @@ public class TinyRenderer
 
         m_ColorGradingLutPass = new ColorGradingLutPass();
 
-        m_MipmapDepth = new MipmapDepth(asset.shaderResources.mipmapDepthCS);
         m_ScalableAOPass = new ScalableAOPass();
+        m_MipmapDepthGenerator = new MipmapDepthGenerator(asset.shaderResources.mipmapDepthCS);
 
         m_ForwardOpaqueObjectsPass = new DrawObjectsForwardPass(true);
         m_CopyDepthPass = new CopyDepthPass(m_CopyDepthMaterial);
@@ -166,11 +166,11 @@ public class TinyRenderer
 
         // Render main light shadow map
         if (m_MainLightShadowPass.Setup(ref renderingData))
-            m_MainLightShadowMapTexture = m_MainLightShadowPass.Record(renderGraph, ref renderingData);
+            m_MainLightShadowMapTexture = m_MainLightShadowPass.RecordRenderGraph(renderGraph, ref renderingData);
 
         // Render additional lights shadow map
         if (m_AdditionalLightsShadowPass.Setup(ref renderingData))
-            m_AdditionalLightShadowMapTexture = m_AdditionalLightsShadowPass.Record(renderGraph, ref renderingData);
+            m_AdditionalLightShadowMapTexture = m_AdditionalLightsShadowPass.RecordRenderGraph(renderGraph, ref renderingData);
 
         CreateAndSetCameraRenderTargets(renderGraph, ref renderingData, supportIntermediateRendering);
 
@@ -178,7 +178,7 @@ public class TinyRenderer
         SetupRenderGraphCameraProperties(renderGraph, ref renderingData, m_ActiveCameraColorTexture);
 
         // Depth prepass
-        m_DepthPrepass.Record(renderGraph, ref m_ActiveCameraDepthTexture, ref renderingData);
+        m_DepthPrepass.RecordRenderGraph(renderGraph, ref m_ActiveCameraDepthTexture, ref renderingData);
 
         var postProcessingData = renderingData.postProcessingData;
         bool applyPostProcessing = postProcessingData && CoreUtils.ArePostProcessesEnabled(camera);
@@ -188,7 +188,7 @@ public class TinyRenderer
         bool generateColorGradingLut = applyPostProcessing && renderingData.isHdrEnabled;
         if (generateColorGradingLut)
         {
-            m_ColorGradingLutPass.Record(renderGraph, out m_ColorGradingLutTexture, ref renderingData);
+            m_ColorGradingLutPass.RecordRenderGraph(renderGraph, out m_ColorGradingLutTexture, ref renderingData);
         }
 
         // Copy depth pass
@@ -197,12 +197,11 @@ public class TinyRenderer
             var depthDescriptor = renderingData.cameraTargetDescriptor;
             depthDescriptor.graphicsFormat = GraphicsFormat.R32_SFloat;
             depthDescriptor.depthStencilFormat = GraphicsFormat.None;
-            depthDescriptor.depthBufferBits = (int)DepthBits.None;
             depthDescriptor.mipCount = 8;
             depthDescriptor.useMipMap = true;
             depthDescriptor.enableRandomWrite = true;
             m_DepthTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, depthDescriptor, "_CameraDepthTexture", false, FilterMode.Point, TextureWrapMode.Clamp);
-            m_CopyDepthPass.Record(renderGraph, m_ActiveCameraDepthTexture, m_DepthTexture, TextureHandle.nullHandle, ref renderingData, true);
+            m_CopyDepthPass.RecordRenderGraph(renderGraph, m_ActiveCameraDepthTexture, m_DepthTexture, TextureHandle.nullHandle, ref renderingData, true);
         }
         else
         {
@@ -210,10 +209,11 @@ public class TinyRenderer
         }
 
         // Scalable Ambient Obscurance
-        if (supportIntermediateRendering)
+        if (supportIntermediateRendering && m_PipelineAsset.ssaoEnabled)
         {
-            m_MipmapDepth.RenderMipmapDepth(renderGraph, in m_DepthTexture, ref renderingData);
-            m_ScalableAOPass.Record(renderGraph, in m_DepthTexture, out m_ScalableAOTexture, ref renderingData);
+            // Generate mipmap depth
+            m_MipmapDepthGenerator.RenderMipmapDepth(renderGraph, in m_DepthTexture, ref renderingData);
+            m_ScalableAOPass.RecordRenderGraph(renderGraph, in m_DepthTexture, out m_ScalableAOTexture, ref renderingData);
         }
         else
         {
@@ -221,10 +221,10 @@ public class TinyRenderer
         }
 
         // Draw opaque objects pass
-        m_ForwardOpaqueObjectsPass.Record(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, m_MainLightShadowMapTexture, m_AdditionalLightShadowMapTexture, m_ScalableAOTexture, ref renderingData);
+        m_ForwardOpaqueObjectsPass.RecordRenderGraph(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, m_MainLightShadowMapTexture, m_AdditionalLightShadowMapTexture, m_ScalableAOTexture, ref renderingData);
 
         // Draw skybox pass
-        m_DrawSkyboxPass.DrawRenderGraphSkybox(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, ref renderingData);
+        m_DrawSkyboxPass.RecordRenderGraph(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, ref renderingData);
 
         // // Copy color pass
         // if (supportIntermediateRendering)
@@ -233,7 +233,7 @@ public class TinyRenderer
         //     colorDescriptor.depthBufferBits = (int)DepthBits.None;
         //     colorDescriptor.depthStencilFormat = GraphicsFormat.None;
         //     m_CameraColorTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, colorDescriptor, "_CameraOpaqueTexture", true, FilterMode.Bilinear);
-        //     m_CopyColorPass.Record(renderGraph, m_ActiveCameraColorTexture, m_CameraColorTexture, ref renderingData);
+        //     m_CopyColorPass.RecordRenderGraph(renderGraph, m_ActiveCameraColorTexture, m_CameraColorTexture, ref renderingData);
         // }
         // else
         // {
@@ -243,7 +243,7 @@ public class TinyRenderer
         RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_CameraOpaqueTexture", renderGraph.defaultResources.whiteTexture);
 
         // Draw transparent objects pass
-        m_ForwardTransparentObjectsPass.Record(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, TextureHandle.nullHandle, TextureHandle.nullHandle, m_ScalableAOTexture, ref renderingData);
+        m_ForwardTransparentObjectsPass.RecordRenderGraph(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, TextureHandle.nullHandle, TextureHandle.nullHandle, m_ScalableAOTexture, ref renderingData);
 
         DrawRenderGraphGizmos(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, GizmoSubset.PreImageEffects, ref renderingData);
 
@@ -253,7 +253,7 @@ public class TinyRenderer
         if (applyPostProcessing)
         {
             var target = !hasFxaaPass ? m_BackbufferColorTexture : nextCameraColorTexture;
-            m_PostProcessingPass.Record(renderGraph, in m_ActiveCameraColorTexture, m_ColorGradingLutTexture, target, ref renderingData);
+            m_PostProcessingPass.RecordRenderGraph(renderGraph, in m_ActiveCameraColorTexture, m_ColorGradingLutTexture, target, ref renderingData);
 
             m_ActiveCameraColorTexture = target;
             if (!hasFxaaPass)
@@ -264,14 +264,14 @@ public class TinyRenderer
 
         if (hasFxaaPass)
         {
-            m_FXAAPass.Record(renderGraph, m_ActiveCameraColorTexture, m_BackbufferColorTexture, ref renderingData);
+            m_FXAAPass.RecordRenderGraph(renderGraph, m_ActiveCameraColorTexture, m_BackbufferColorTexture, ref renderingData);
             m_ActiveCameraColorTexture = m_BackbufferColorTexture;
             m_IsActiveTargetBackbuffer = true;
         }
 
         if (supportIntermediateRendering && !m_IsActiveTargetBackbuffer)
         {
-            m_FinalBlitPass.Record(renderGraph, m_ActiveCameraColorTexture, m_BackbufferColorTexture, ref renderingData);
+            m_FinalBlitPass.RecordRenderGraph(renderGraph, m_ActiveCameraColorTexture, m_BackbufferColorTexture, ref renderingData);
             m_ActiveCameraColorTexture = m_BackbufferColorTexture;
             m_IsActiveTargetBackbuffer = true;
         }
@@ -281,7 +281,7 @@ public class TinyRenderer
         bool isSceneViewOrPreviewCamera = cameraType == CameraType.SceneView || cameraType == CameraType.Preview;
         if (supportIntermediateRendering && (isSceneViewOrPreviewCamera || isGizmosEnabled))
         {
-            m_FinalCopyDepthPass.Record(renderGraph, m_ActiveCameraDepthTexture, m_BackbufferDepthTexture, m_ActiveCameraColorTexture, ref renderingData, false, "FinalDepthCopy");
+            m_FinalCopyDepthPass.RecordRenderGraph(renderGraph, m_ActiveCameraDepthTexture, m_BackbufferDepthTexture, m_ActiveCameraColorTexture, ref renderingData, false, "FinalDepthCopy");
         }
 #endif
 

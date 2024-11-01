@@ -23,7 +23,7 @@ public class FinalBlitPass
         m_BlitMaterial = blitMaterial;
     }
 
-    public void Record(RenderGraph renderGraph, TextureHandle source, TextureHandle destination, ref RenderingData renderingData)
+    public void RecordRenderGraph(RenderGraph renderGraph, TextureHandle source, TextureHandle destination, ref RenderingData renderingData)
     {
         using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_ProfilingSampler.name, out var passData, s_ProfilingSampler))
         {

@@ -26,6 +26,7 @@ MonoBehaviour:
   postProcessingData: {fileID: 11400000, guid: 90ac35e882f8867438b6345c4c8a746c, type: 2}
   renderScale: 1
   antialiasingMode: 1
+  ssaoEnabled: 1
   colorGradingLutSize: 64
   shaderResources:
     fxaaShader: {fileID: 4800000, guid: c3a51ddabd49faa43a0e890f453e8ba6, type: 3}

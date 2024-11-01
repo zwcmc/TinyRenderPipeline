@@ -138,7 +138,7 @@ public class MainLightShadowPass
         return true;
     }
 
-    public TextureHandle Record(RenderGraph renderGraph, ref RenderingData renderingData)
+    public TextureHandle RecordRenderGraph(RenderGraph renderGraph, ref RenderingData renderingData)
     {
         TextureHandle shadowTexture;
 
@@ -151,7 +151,7 @@ public class MainLightShadowPass
                 for (int cascadeIndex = 0; cascadeIndex < m_ShadowCasterCascadesCount; ++cascadeIndex)
                     builder.UseRendererList(passData.shadowRendererListHandle[cascadeIndex]);
 
-                passData.shadowMapTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, m_MainLightShadowMapTexture.rt.descriptor, k_ShadowMapTextureName, true, FilterMode.Bilinear);
+                passData.shadowMapTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, m_MainLightShadowMapTexture.rt.descriptor, k_ShadowMapTextureName, false, FilterMode.Bilinear);
                 builder.UseTextureFragmentDepth(passData.shadowMapTexture, IBaseRenderGraphBuilder.AccessFlags.Write);
             }
 

@@ -5,8 +5,9 @@ using UnityEngine.Rendering;
 
 public class ScalableAOPass
 {
-    private static readonly ProfilingSampler s_AOBufferSampler = new("AO Buffer");
-    private static readonly ProfilingSampler s_BilateralBlurSampler = new("Bilateral Blur");
+    private static readonly ProfilingSampler s_ScalableAmbientObscuranceSampler = new ProfilingSampler("Scalable Ambient Obscurance");
+    private static readonly ProfilingSampler s_AOBufferSampler = new ProfilingSampler("AO Buffer");
+    private static readonly ProfilingSampler s_BilateralBlurSampler = new ProfilingSampler("Bilateral Blur");
 
     private const string k_SSAOTextureName = "_ScreenSpaceOcclusionTexture";
 
@@ -15,14 +16,17 @@ public class ScalableAOPass
     private static class SAOMaterialParamShaderIDs
     {
         public static readonly int PositionParams = Shader.PropertyToID("_PositionParams");
-        public static readonly int SAO_Params = Shader.PropertyToID("_SAO_Params");
+        public static readonly int SaoParams = Shader.PropertyToID("_SAO_Params");
         public static readonly int BilateralBlurParams = Shader.PropertyToID("_BilateralBlurParams");
     }
 
     private class PassData
     {
         public Material saoMaterial;
+        public TextureHandle depthTexture;
         public TextureHandle saoBufferTexture;
+        public TextureHandle bilateralBlurTexture;
+        public TextureHandle ssaoTexture;
     }
 
     public ScalableAOPass()
@@ -30,33 +34,31 @@ public class ScalableAOPass
         m_ScalableAOMaterial = CoreUtils.CreateEngineMaterial("Hidden/Tiny Render Pipeline/ScalableAO");
     }
 
-    public void Record(RenderGraph renderGraph, in TextureHandle depthTexture, out TextureHandle ssaoTexture, ref RenderingData renderingData)
+    public void RecordRenderGraph(RenderGraph renderGraph, in TextureHandle depthTexture, out TextureHandle ssaoTexture, ref RenderingData renderingData)
     {
         TextureHandle saoBufferTexture;
         TextureHandle bilateralBlurTexture;
 
-        // Create texture handle
+        // Create texture handles
         var saoDescriptor = renderingData.cameraTargetDescriptor;
         saoDescriptor.graphicsFormat = GraphicsFormat.R8G8B8A8_UNorm;
         saoDescriptor.depthStencilFormat = GraphicsFormat.None;
-
         saoBufferTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, saoDescriptor, "_SAO_Buffer_Texture", false, FilterMode.Bilinear);
 
         var blurDescriptor = renderingData.cameraTargetDescriptor;
         blurDescriptor.graphicsFormat = GraphicsFormat.R8G8B8A8_UNorm;
         blurDescriptor.depthStencilFormat = GraphicsFormat.None;
-        blurDescriptor.width /= 2;
-        blurDescriptor.height /= 2;
         bilateralBlurTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, blurDescriptor, "SAO_Bilateral_Blur_Texture", false, FilterMode.Bilinear);
         blurDescriptor.graphicsFormat = GraphicsFormat.R8_UNorm;
         ssaoTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, blurDescriptor, k_SSAOTextureName, false, FilterMode.Bilinear);
 
-        using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_AOBufferSampler.name, out var passData, s_AOBufferSampler))
+        using (var builder = renderGraph.AddLowLevelPass<PassData>(s_ScalableAmbientObscuranceSampler.name, out var passData, s_ScalableAmbientObscuranceSampler))
         {
-            builder.UseTexture(depthTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
-
             passData.saoMaterial = m_ScalableAOMaterial;
-            passData.saoBufferTexture = builder.UseTextureFragment(saoBufferTexture, 0, IBaseRenderGraphBuilder.AccessFlags.WriteAll);
+            passData.depthTexture = depthTexture;
+            passData.saoBufferTexture = saoBufferTexture;
+            passData.bilateralBlurTexture = bilateralBlurTexture;
+            passData.ssaoTexture = ssaoTexture;
 
             // Setup material params
             Matrix4x4 projectionMatrix = GL.GetGPUProjectionMatrix(renderingData.camera.projectionMatrix, true);
@@ -64,29 +66,12 @@ public class ScalableAOPass
             passData.saoMaterial.SetVector(SAOMaterialParamShaderIDs.PositionParams, new Vector4(invProjection.m00 * 2.0f, invProjection.m11 * 2.0f, 0.0f, 0.0f));
 
             float projectionScale = Mathf.Min(0.5f * projectionMatrix.m00 * saoDescriptor.width, 0.5f * projectionMatrix.m11 * saoDescriptor.height);
-            const float radius = 0.3f;
+            const float radius = 0.5f;
             const float spiralTurns = 14.0f;
             const float sampleCount = 32.0f;
             float inc = (1.0f / (sampleCount - 0.5f)) * spiralTurns * (2.0f * Mathf.PI);
             Vector2 angleIncCosSin = new Vector2(Mathf.Cos(inc), Mathf.Sin(inc));
-            passData.saoMaterial.SetVector(SAOMaterialParamShaderIDs.SAO_Params, new Vector4(projectionScale * radius, sampleCount, angleIncCosSin.x, angleIncCosSin.y));
-
-            builder.AllowPassCulling(false);
-
-            builder.SetRenderFunc((PassData data, RasterGraphContext context) =>
-            {
-                Blitter.BlitTexture(context.cmd, data.saoBufferTexture, new Vector4(1f, 1f, 0f, 0f), data.saoMaterial, 0);
-            });
-        }
-
-        using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_BilateralBlurSampler.name, out var passData, s_BilateralBlurSampler))
-        {
-            builder.UseTexture(saoBufferTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
-
-            passData.saoMaterial = m_ScalableAOMaterial;
-            builder.UseTextureFragment(bilateralBlurTexture, 0, IBaseRenderGraphBuilder.AccessFlags.WriteAll);
-
-            builder.AllowPassCulling(false);
+            passData.saoMaterial.SetVector(SAOMaterialParamShaderIDs.SaoParams, new Vector4(projectionScale * radius, sampleCount, angleIncCosSin.x, angleIncCosSin.y));
 
             const float blurSampleCount = 6.0f;
             const float bilateralThreshold = 0.0625f;
@@ -96,25 +81,31 @@ public class ScalableAOPass
             float farPlaneOverEdgeDistance = -far / bilateralThreshold;
             passData.saoMaterial.SetVector(SAOMaterialParamShaderIDs.BilateralBlurParams, new Vector4(axisOffset.x, axisOffset.y, farPlaneOverEdgeDistance, blurSampleCount));
 
-            builder.SetRenderFunc((PassData data, RasterGraphContext context) =>
-            {
-                Blitter.BlitTexture(context.cmd, saoBufferTexture, new Vector4(1f, 1f, 0f, 0f), data.saoMaterial, 1);
-            });
-        }
+            builder.UseTexture(depthTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
 
-        using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_BilateralBlurSampler.name, out var passData, s_BilateralBlurSampler))
-        {
-            builder.UseTexture(bilateralBlurTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
-
-            passData.saoMaterial = m_ScalableAOMaterial;
-
-            builder.UseTextureFragment(ssaoTexture, 0, IBaseRenderGraphBuilder.AccessFlags.WriteAll);
+            builder.UseTexture(saoBufferTexture, IBaseRenderGraphBuilder.AccessFlags.ReadWrite);
+            builder.UseTexture(bilateralBlurTexture, IBaseRenderGraphBuilder.AccessFlags.ReadWrite);
+            builder.UseTexture(ssaoTexture, IBaseRenderGraphBuilder.AccessFlags.WriteAll);
 
             builder.AllowPassCulling(false);
 
-            builder.SetRenderFunc((PassData data, RasterGraphContext context) =>
+            builder.SetRenderFunc((PassData data, LowLevelGraphContext context) =>
             {
-                Blitter.BlitTexture(context.cmd, bilateralBlurTexture, new Vector4(1f, 1f, 0f, 0f), data.saoMaterial, 2);
+                var cmd = context.legacyCmd;
+
+                var loadAction = RenderBufferLoadAction.DontCare;
+                var storeAction = RenderBufferStoreAction.Store;
+
+                using (new ProfilingScope(cmd, s_AOBufferSampler))
+                {
+                    Blitter.BlitCameraTexture(cmd, data.depthTexture, data.saoBufferTexture, loadAction, storeAction, data.saoMaterial, 0);
+                }
+
+                using (new ProfilingScope(cmd, s_BilateralBlurSampler))
+                {
+                    Blitter.BlitCameraTexture(cmd, data.saoBufferTexture, data.bilateralBlurTexture, loadAction, storeAction, data.saoMaterial, 1);
+                    Blitter.BlitCameraTexture(cmd, data.bilateralBlurTexture, data.ssaoTexture, loadAction, storeAction, data.saoMaterial, 2);
+                }
             });
         }
 

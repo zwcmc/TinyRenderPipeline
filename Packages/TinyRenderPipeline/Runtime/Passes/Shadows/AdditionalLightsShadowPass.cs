@@ -241,7 +241,7 @@ public class AdditionalLightsShadowPass
         return true;
     }
 
-    public TextureHandle Record(RenderGraph renderGraph, ref RenderingData renderingData)
+    public TextureHandle RecordRenderGraph(RenderGraph renderGraph, ref RenderingData renderingData)
     {
         TextureHandle shadowTexture;
 
@@ -256,8 +256,7 @@ public class AdditionalLightsShadowPass
                     builder.UseRendererList(passData.shadowRendererListHandles[globalShadowSliceIndex]);
                 }
 
-                passData.shadowMapTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, m_AdditionalLightsShadowMapHandle.rt.descriptor, k_AdditionalLightsShadowMapTextureName,
-                    true, FilterMode.Bilinear);
+                passData.shadowMapTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, m_AdditionalLightsShadowMapHandle.rt.descriptor, k_AdditionalLightsShadowMapTextureName, false, FilterMode.Bilinear);
                 builder.UseTextureFragmentDepth(passData.shadowMapTexture, IBaseRenderGraphBuilder.AccessFlags.Write);
             }
 

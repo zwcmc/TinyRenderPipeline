@@ -30,7 +30,7 @@ public class ColorGradingLutPass
         public PostProcessingData postProcessingData;
     }
 
-    public void Record(RenderGraph renderGraph, out TextureHandle lutTarget, ref RenderingData renderingData)
+    public void RecordRenderGraph(RenderGraph renderGraph, out TextureHandle lutTarget, ref RenderingData renderingData)
     {
         m_PostProcessingData = renderingData.postProcessingData;
         if (m_PostProcessingData == null)

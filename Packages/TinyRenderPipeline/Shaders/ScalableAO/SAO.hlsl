@@ -130,16 +130,16 @@ void ComputeAmbientOcclusionSAO(inout float occlusion, float i, float ssDiskRadi
 
     float2 uvSamplePos = uv + float2(ssRadius * tap.xy) * _CameraDepthTexture_TexelSize.xy;
 
-    int maxLevelIndex = 7;
-    int level = clamp(floor(log2(ssRadius) - LOG_Q), 0, maxLevelIndex);
-    float occlusionDepth = LinearEyeDepth(SampleSceneDepth(uvSamplePos, level), _ZBufferParams);
+    float maxLevelIndex = 7.0;
+    float lod = clamp(floor(log2(ssRadius) - LOG_Q), 0.0, maxLevelIndex);
+    float occlusionDepth = LinearEyeDepth(SampleSceneDepth(uvSamplePos, lod), _ZBufferParams);
     float3 p = ComputeViewSpacePositionFromDepth(uvSamplePos, occlusionDepth);
 
     float3 v = p - origin;
     float vv = dot(v, v);
     float vn = dot(v, normal);
 
-    const float radius = 0.3;
+    const float radius = 0.5;
     float invRadiusSquared = 1.0 / (sq(radius));
     float w = sq(max(0.0, 1.0 - vv * invRadiusSquared));
 
@@ -170,7 +170,8 @@ void ScalableAmbientObscurance(out float obscurance, float2 uv, float3 origin, f
         tapPosition = mul(angleStep, tapPosition);
     }
 
-    const float peak = 0.1 * 0.3;
+    const float radius = 0.5;
+    const float peak = 0.1 * radius;
     const float intensity = (TWO_PI * peak) * 1.0;
     obscurance = sqrt(obscurance * (intensity / _SAO_Params.y));
 }
@@ -243,7 +244,7 @@ half4 BilateralBlurFragment(Varyings input) : SV_TARGET
 
     // simple dithering helps a lot (assumes 8 bits target)
     // this is most useful with high quality/large blurs
-    ao += ((InterleavedGradientNoise(input.positionCS.xy) - 0.5) / 255.0);
+    // ao += ((InterleavedGradientNoise(input.positionCS.xy) - 0.5) / 255.0);
 
     return half4(ao, data.gb, 1.0);
 }
