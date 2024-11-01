@@ -194,6 +194,8 @@ public static class RenderingUtils
         rgDesc.dimension = desc.dimension;
         rgDesc.clearBuffer = clear;
         rgDesc.bindTextureMS = desc.bindMS;
+        rgDesc.useMipMap = desc.useMipMap;
+        rgDesc.autoGenerateMips = desc.autoGenerateMips;
         rgDesc.colorFormat = desc.graphicsFormat;
         rgDesc.depthBufferBits = (DepthBits)desc.depthBufferBits;
         rgDesc.slices = desc.volumeDepth;

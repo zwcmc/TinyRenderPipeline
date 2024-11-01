@@ -1,49 +1,11 @@
-// Each #kernel tells which function to compile; you can have many kernels
-#pragma kernel CSCopyDepth
-#pragma kernel CSMipmapDepth
+#pragma kernel MipmapDepth
 
-// Create a RenderTexture with enableRandomWrite flag and set it
-// with cs.SetTexture
-// RWTexture2D<float4> Result;
-RWTexture2DArray<float> _MipmapDepthTexture;
+Texture2D<float> _PrevMipDepth;
+RWTexture2D<float> _CurrMipDepth;
 
-Texture2D<float> _CameraDepthTexture;
-
-uint2 sSize;
-uint2 dSize;
-// uint2 screenSize;
-uint sSlice;
-uint dSlice;
-
-inline float SampleDepth(uint3 pos) {
-    return _MipmapDepthTexture[uint3(min(pos.xy, float2(sSize.x - 1, sSize.y - 1)), pos.z)];
-}
-
-[numthreads(8,8,1)]
-void CSCopyDepth(uint3 id : SV_DispatchThreadID)
+[numthreads(8, 8, 1)]
+void MipmapDepth(uint3 id : SV_DispatchThreadID)
 {
-    _MipmapDepthTexture[uint3(id.xy, 0)] = _CameraDepthTexture[id.xy];
-}
-
-[numthreads(8,8,1)]
-void CSMipmapDepth(uint3 id : SV_DispatchThreadID)
-{
-    // float minValue = -1;
-
-    int2 prevPos = id.xy << 1;
-    uint3 prevId = uint3(prevPos.xy, sSlice);
-
-    float depth = _MipmapDepthTexture[uint3(prevId.xy + uint2(id.y & 1, id.x & 1), prevId.z)];
-
-    // uint3 o1 = prevId + uint3(1, 0, 0);
-    // uint3 o2 = prevId + uint3(1, 1, 0);
-    // uint3 o3 = prevId + uint3(0, 1, 0);
-    //
-    // float d0 = _MipmapDepthTexture[prevId];
-    // float d1 = SampleDepth(o1);
-    // float d2 = SampleDepth(o2);
-    // float d3 = SampleDepth(o3);
-    // minValue = max(max(d0, d1), max(d2, d3));
-
-    _MipmapDepthTexture[uint3(id.xy, dSlice)] = depth;
+    // Rotated Grid Subsample
+    _CurrMipDepth[id.xy] = _PrevMipDepth.Load(uint3(id.xy << 1 + uint2(id.y & 1, id.x & 1), 0));
 }

@@ -5,19 +5,18 @@ using UnityEngine.Rendering;
 
 public class ScalableAOPass
 {
-    private static readonly ProfilingSampler s_AOBufferSampler = new("SAO Buffer");
-    private static readonly ProfilingSampler s_BilateralBlurSampler = new("SAO Bilateral Blur");
-    private static readonly ProfilingSampler s_FinalBilateralBlurSampler = new("SAO Final Bilateral Blur");
+    private static readonly ProfilingSampler s_AOBufferSampler = new("AO Buffer");
+    private static readonly ProfilingSampler s_BilateralBlurSampler = new("Bilateral Blur");
 
     private const string k_SSAOTextureName = "_ScreenSpaceOcclusionTexture";
 
     Material m_ScalableAOMaterial;
 
-    private static class SAOMaterialParams
+    private static class SAOMaterialParamShaderIDs
     {
-        public static readonly int _PositionParams = Shader.PropertyToID("_PositionParams");
-        public static readonly int _SAO_Params = Shader.PropertyToID("_SAO_Params");
-        public static readonly int _BilateralBlurParams = Shader.PropertyToID("_BilateralBlurParams");
+        public static readonly int PositionParams = Shader.PropertyToID("_PositionParams");
+        public static readonly int SAO_Params = Shader.PropertyToID("_SAO_Params");
+        public static readonly int BilateralBlurParams = Shader.PropertyToID("_BilateralBlurParams");
     }
 
     private class PassData
@@ -62,7 +61,7 @@ public class ScalableAOPass
             // Setup material params
             Matrix4x4 projectionMatrix = GL.GetGPUProjectionMatrix(renderingData.camera.projectionMatrix, true);
             var invProjection = projectionMatrix.inverse;
-            passData.saoMaterial.SetVector(SAOMaterialParams._PositionParams, new Vector4(invProjection.m00 * 2.0f, invProjection.m11 * 2.0f, 0.0f, 0.0f));
+            passData.saoMaterial.SetVector(SAOMaterialParamShaderIDs.PositionParams, new Vector4(invProjection.m00 * 2.0f, invProjection.m11 * 2.0f, 0.0f, 0.0f));
 
             float projectionScale = Mathf.Min(0.5f * projectionMatrix.m00 * saoDescriptor.width, 0.5f * projectionMatrix.m11 * saoDescriptor.height);
             const float radius = 0.3f;
@@ -70,7 +69,7 @@ public class ScalableAOPass
             const float sampleCount = 32.0f;
             float inc = (1.0f / (sampleCount - 0.5f)) * spiralTurns * (2.0f * Mathf.PI);
             Vector2 angleIncCosSin = new Vector2(Mathf.Cos(inc), Mathf.Sin(inc));
-            passData.saoMaterial.SetVector(SAOMaterialParams._SAO_Params, new Vector4(projectionScale * radius, sampleCount, angleIncCosSin.x, angleIncCosSin.y));
+            passData.saoMaterial.SetVector(SAOMaterialParamShaderIDs.SAO_Params, new Vector4(projectionScale * radius, sampleCount, angleIncCosSin.x, angleIncCosSin.y));
 
             builder.AllowPassCulling(false);
 
@@ -89,12 +88,13 @@ public class ScalableAOPass
 
             builder.AllowPassCulling(false);
 
+            const float blurSampleCount = 6.0f;
             const float bilateralThreshold = 0.0625f;
             Vector2 offsetInTexel = new Vector2(1.0f, 1.0f);
             Vector2 axisOffset = new Vector2(offsetInTexel.x / blurDescriptor.width, offsetInTexel.y / blurDescriptor.height);
             float far = renderingData.camera.farClipPlane;
             float farPlaneOverEdgeDistance = -far / bilateralThreshold;
-            passData.saoMaterial.SetVector(SAOMaterialParams._BilateralBlurParams, new Vector4(axisOffset.x, axisOffset.y, farPlaneOverEdgeDistance, 0.0f));
+            passData.saoMaterial.SetVector(SAOMaterialParamShaderIDs.BilateralBlurParams, new Vector4(axisOffset.x, axisOffset.y, farPlaneOverEdgeDistance, blurSampleCount));
 
             builder.SetRenderFunc((PassData data, RasterGraphContext context) =>
             {
@@ -102,7 +102,7 @@ public class ScalableAOPass
             });
         }
 
-        using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_FinalBilateralBlurSampler.name, out var passData, s_FinalBilateralBlurSampler))
+        using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_BilateralBlurSampler.name, out var passData, s_BilateralBlurSampler))
         {
             builder.UseTexture(bilateralBlurTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
 

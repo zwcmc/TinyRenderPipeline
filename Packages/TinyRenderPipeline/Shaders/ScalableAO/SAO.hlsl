@@ -4,11 +4,10 @@
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/DeclareDepthTexture.hlsl"
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/CommonMath.hlsl"
 
-
-#define GAUSSIAN_SAMPLE_COUNT 6
+#define BLUR_MAX_SAMPLE_COUNT 16
 // Generated (in C#) with:
 // const float standardDeviation = 4.0f;
-// const int gaussianSampleCount = 6;
+// const int gaussianSampleCount = 16;
 // float[] outKernel = new float[gaussianSampleCount];
 // for (int i = 0; i < gaussianSampleCount; i++)
 // {
@@ -16,11 +15,27 @@
 //     float g = Mathf.Exp(-(x * x) / (2.0f * standardDeviation * standardDeviation));
 //     outKernel[i] = g;
 // }
-static const float gaussianKernel[GAUSSIAN_SAMPLE_COUNT] = { 1.0, 0.9692332, 0.8824969, 0.7548396, 0.6065307, 0.4578333 };
+static const float gaussianKernel[BLUR_MAX_SAMPLE_COUNT] = { 1.0, 0.9692332, 0.8824969, 0.7548396, 0.6065307, 0.4578333, 0.3246525, 0.2162652, 0.1353353, 0.07955951, 0.04393693, 0.02279418, 0.011109, 0.005086069, 0.002187491, 0.0008838263 };
 
+#define LOG_Q 3.0
+
+// x = projection[0][0] * 2.0
+// y = projection[1][1] * 2.0
+// z = unused
+// w = unused
 float4 _PositionParams;
-float4 _SAO_Params;  // { x: _ProjectionScaleRadius y: _SampleCount zw: _AngleIncCosSin.xy }
-float4 _BilateralBlurParams;  // { xy: blur axis offset z: farPlaneOverEdgeDistance w: unused }
+
+// x = projection scaled radius
+// y = sample count
+// z = sample delta X
+// w = sample delta Y
+float4 _SAO_Params;
+
+// x = bilateral blur offset in X direction (in texel size)
+// y = bilateral blur offset in Y direction (in texel size)
+// z = bilateral blur depth threshold
+// w = bilateral blur sample count
+float4 _BilateralBlurParams;
 
 half2 PackDepth(float normalizedDepth)
 {
@@ -44,9 +59,8 @@ float3 ComputeViewSpacePositionFromDepth(float2 uv, float linearDepth)
 // Accurate view-space normal reconstruction
 // Based on Yuwen Wu "Accurate Normal Reconstruction"
 // (https://atyuwen.github.io/posts/normal-reconstruction)
-float3 ComputeViewSpaceNormal(float2 uv, float depth, float3 position, float2 texel)
+float3 ComputeViewSpaceNormalAccurate(float2 uv, float depth, float3 positionC, float2 texel)
 {
-    float3 pos_c = position;
     float2 dx = float2(texel.x, 0.0);
     float2 dy = float2(0.0, texel.y);
 
@@ -59,7 +73,7 @@ float3 ComputeViewSpaceNormal(float2 uv, float depth, float3 position, float2 te
     float2 he = abs((2.0 * H.xy - H.zw) - depth);
     float3 pos_l = ComputeViewSpacePositionFromDepth(uv - dx, LinearEyeDepth(H.x, _ZBufferParams));
     float3 pos_r = ComputeViewSpacePositionFromDepth(uv + dx, LinearEyeDepth(H.y, _ZBufferParams));
-    float3 dpdx = (he.x < he.y) ? (pos_c - pos_l) : (pos_r - pos_c);
+    float3 dpdx = (he.x < he.y) ? (positionC - pos_l) : (pos_r - positionC);
 
     float4 V;
     V.x = SampleSceneDepth(uv - dy);
@@ -70,7 +84,22 @@ float3 ComputeViewSpaceNormal(float2 uv, float depth, float3 position, float2 te
     float2 ve = abs((2.0 * V.xy - V.zw) - depth);
     float3 pos_d = ComputeViewSpacePositionFromDepth(uv - dy, LinearEyeDepth(V.x, _ZBufferParams));
     float3 pos_u = ComputeViewSpacePositionFromDepth(uv + dy, LinearEyeDepth(V.y, _ZBufferParams));
-    float3 dpdy = (ve.x < ve.y) ? (pos_c - pos_d) : (pos_u - pos_c);
+    float3 dpdy = (ve.x < ve.y) ? (positionC - pos_d) : (pos_u - positionC);
+
+    return normalize(cross(dpdx, dpdy));
+}
+
+float3 ComputeViewSpaceNormal(float2 uv, float depth, float3 positionC, float2 texel)
+{
+    float2 dx = float2(texel.x, 0.0);
+    float2 dy = float2(0.0, texel.y);
+
+    float2 uvdx = uv + dx;
+    float2 uvdy = uv + dy;
+    float3 px = ComputeViewSpacePositionFromDepth(uvdx, LinearEyeDepth(SampleSceneDepth(uvdx), _ZBufferParams));
+    float3 py = ComputeViewSpacePositionFromDepth(uvdy, LinearEyeDepth(SampleSceneDepth(uvdy), _ZBufferParams));
+    float3 dpdx = px - positionC;
+    float3 dpdy = py - positionC;
 
     return normalize(cross(dpdx, dpdy));
 }
@@ -93,10 +122,7 @@ float3 TapLocationFast(float i, float2 p, float noise)
     return float3(p, radius * radius);
 }
 
-TEXTURE2D_ARRAY(_MipmapDepthTexture);
-SAMPLER(sampler_MipmapDepthTexture);
-
-void ComputeAmbientOcclusionSAO(inout float occlusion, inout float3 bentNormal, float i, float ssDiskRadius, float2 uv, float3 origin, float3 normal, float2 tapPosition, float noise)
+void ComputeAmbientOcclusionSAO(inout float occlusion, float i, float ssDiskRadius, float2 uv, float3 origin, float3 normal, float2 tapPosition, float noise)
 {
     float3 tap = TapLocationFast(i, tapPosition, noise);
 
@@ -104,13 +130,9 @@ void ComputeAmbientOcclusionSAO(inout float occlusion, inout float3 bentNormal, 
 
     float2 uvSamplePos = uv + float2(ssRadius * tap.xy) * _CameraDepthTexture_TexelSize.xy;
 
-    const float kLog2LodRate = 3.0;
     int maxLevelIndex = 7;
-    int level = clamp(floor(log2(ssRadius) - kLog2LodRate), 0, maxLevelIndex);
-    float divded = pow(2, level);
-    float x = SAMPLE_TEXTURE2D_ARRAY(_MipmapDepthTexture, sampler_MipmapDepthTexture, uvSamplePos / divded, level).x;
-    float occlusionDepth = LinearEyeDepth(x, _ZBufferParams);
-    // float occlusionDepth = LinearEyeDepth(SampleSceneDepth(uvSamplePos), _ZBufferParams);
+    int level = clamp(floor(log2(ssRadius) - LOG_Q), 0, maxLevelIndex);
+    float occlusionDepth = LinearEyeDepth(SampleSceneDepth(uvSamplePos, level), _ZBufferParams);
     float3 p = ComputeViewSpacePositionFromDepth(uvSamplePos, occlusionDepth);
 
     float3 v = p - origin;
@@ -132,7 +154,7 @@ void ComputeAmbientOcclusionSAO(inout float occlusion, inout float3 bentNormal, 
     occlusion += w * sampleOcclusion;
 }
 
-void ScalableAmbientObscurance(out float obscurance, out float3 bentNormal, float2 uv, float3 origin, float3 normal)
+void ScalableAmbientObscurance(out float obscurance, float2 uv, float3 origin, float3 normal)
 {
     float2 fragCoord = uv.xy * _ScreenParams.xy;
     float noise = InterleavedGradientNoise(fragCoord);
@@ -142,10 +164,9 @@ void ScalableAmbientObscurance(out float obscurance, out float3 bentNormal, floa
     float ssDiskRadius = -(_SAO_Params.x / origin.z);
 
     obscurance = 0.0;
-    bentNormal = normal;
     for (float i = 0.0; i < _SAO_Params.y; i += 1.0)
     {
-        ComputeAmbientOcclusionSAO(obscurance, bentNormal, i, ssDiskRadius, uv, origin, normal, tapPosition, noise);
+        ComputeAmbientOcclusionSAO(obscurance, i, ssDiskRadius, uv, origin, normal, tapPosition, noise);
         tapPosition = mul(angleStep, tapPosition);
     }
 
@@ -158,16 +179,14 @@ half4 ScalableAOFragment(Varyings input) : SV_TARGET
 {
     float2 uv = input.texcoord;
 
-    // float depth = SampleSceneDepth(uv);
-    float depth = SAMPLE_TEXTURE2D_ARRAY(_MipmapDepthTexture, sampler_MipmapDepthTexture, uv, 0).x;
+    float depth = SampleSceneDepth(uv);
     float z = LinearEyeDepth(depth, _ZBufferParams);
     float3 origin = ComputeViewSpacePositionFromDepth(uv, z);
 
     float3 normal = ComputeViewSpaceNormal(uv, depth, origin, _CameraDepthTexture_TexelSize.xy);
 
     float occlusion;
-    float3 bentNormal;
-    ScalableAmbientObscurance(occlusion, bentNormal, uv, origin, normal);
+    ScalableAmbientObscurance(occlusion, uv, origin, normal);
 
     const float power = 1.0 * 2.0;
     half aoVisibility = pow(saturate(1.0 - occlusion), power);
@@ -212,7 +231,7 @@ half4 BilateralBlurFragment(Varyings input) : SV_TARGET
     float2 offset = offsetAxis;
 
     UNITY_UNROLL
-    for (int i = 1; i < GAUSSIAN_SAMPLE_COUNT; i++)
+    for (int i = 1; i < min((int)_BilateralBlurParams.w, BLUR_MAX_SAMPLE_COUNT); i++)
     {
         float weight = gaussianKernel[i];
         Tap(sum, totalWeight, weight, depth, uv + offset);
@@ -249,7 +268,7 @@ half FinalBilateralBlurFragment(Varyings input) : SV_TARGET
     float2 offset = offsetAxis;
 
     UNITY_UNROLL
-    for (int i = 1; i < GAUSSIAN_SAMPLE_COUNT; i++)
+    for (int i = 1; i < min((int)_BilateralBlurParams.w, BLUR_MAX_SAMPLE_COUNT); i++)
     {
         float weight = gaussianKernel[i];
         Tap(sum, totalWeight, weight, depth, uv + offset);

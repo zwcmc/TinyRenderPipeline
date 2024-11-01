@@ -198,10 +198,10 @@ public class TinyRenderer
             depthDescriptor.graphicsFormat = GraphicsFormat.R32_SFloat;
             depthDescriptor.depthStencilFormat = GraphicsFormat.None;
             depthDescriptor.depthBufferBits = (int)DepthBits.None;
-            depthDescriptor.mipCount = 6;
+            depthDescriptor.mipCount = 8;
             depthDescriptor.useMipMap = true;
-            depthDescriptor.autoGenerateMips = true;
-            m_DepthTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, depthDescriptor, "_CameraDepthTexture", true);
+            depthDescriptor.enableRandomWrite = true;
+            m_DepthTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, depthDescriptor, "_CameraDepthTexture", false, FilterMode.Point, TextureWrapMode.Clamp);
             m_CopyDepthPass.Record(renderGraph, m_ActiveCameraDepthTexture, m_DepthTexture, TextureHandle.nullHandle, ref renderingData, true);
         }
         else

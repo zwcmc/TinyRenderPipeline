@@ -24,7 +24,7 @@ Shader "Hidden/Tiny Render Pipeline/ScalableAO"
 
         Pass
         {
-            Name "ScalableAO Bilateral Blur"
+            Name "ScalableAO Bilateral Blur Horizontal"
 
             HLSLPROGRAM
             #pragma vertex Vert
@@ -34,7 +34,7 @@ Shader "Hidden/Tiny Render Pipeline/ScalableAO"
 
         Pass
         {
-            Name "ScalableAO Final Bilateral Blur"
+            Name "ScalableAO Bilateral Blur Vertical"
 
             HLSLPROGRAM
             #pragma vertex Vert

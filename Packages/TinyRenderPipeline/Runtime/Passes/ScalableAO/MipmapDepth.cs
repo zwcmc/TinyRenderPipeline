@@ -5,110 +5,100 @@ using UnityEngine.Rendering;
 
 public class MipmapDepth
 {
-    private static readonly ProfilingSampler s_MipmapDepthSampler = new ProfilingSampler("Mipmap Depth");
+    private static readonly ProfilingSampler s_MipmapDepthSampler = new ProfilingSampler("Compute Mipmap Depth");
 
-    private ComputeShader m_MipmapDepthCS;
-
-    private int m_CopyDepthKernel;
-    private int m_GenerateMipmapDepthKernel;
-
-    // private static int m_MipmapDepthID = Shader.PropertyToID("_MipmapDepth");
-
-    private struct MipInfo
+    private static class PyramidDepthShaderIDs
     {
-        public int mipLevel;
-        public Vector2Int paddedResolution;
+        public static int PrevMipDepth = Shader.PropertyToID("_PrevMipDepth");
+        public static int CurrMipDepth = Shader.PropertyToID("_CurrMipDepth");
     }
-    private MipInfo[] m_MipInfos;
-    private static int k_MaxMipLevels = 8;
+
+    private ComputeShader m_Shader;
 
     private class PassData
     {
-        public int maxMipLevel;
-        public MipInfo[] mipInfos;
-        public ComputeShader computeShader;
-        public int copyDepthKernel;
-        public int generateMipmapDepthKernel;
+        public ComputeShader csShader;
+        public int mipCount;
+        public TextureHandle[] mipMapDepthHandles;
+        public Vector2Int[] mipmapDepthSizes;
+        public RenderingData renderingData;
     }
+
+    private Vector2Int[] m_MipmapDepthSizes;
+    private TextureHandle[] m_MipmapDepthHandles;
+
+    private int m_MipCount = 8;
 
     public MipmapDepth(ComputeShader shaderCS)
     {
-        m_MipmapDepthCS = shaderCS;
+        m_Shader = shaderCS;
 
-        m_CopyDepthKernel = m_MipmapDepthCS.FindKernel("CSCopyDepth");
-        m_GenerateMipmapDepthKernel = m_MipmapDepthCS.FindKernel("CSMipmapDepth");
-
-        m_MipInfos = new MipInfo[k_MaxMipLevels];
+        m_MipmapDepthSizes = new Vector2Int[m_MipCount];
+        m_MipmapDepthHandles = new TextureHandle[m_MipCount];
     }
 
     public void RenderMipmapDepth(RenderGraph renderGraph, in TextureHandle depthTexture, ref RenderingData renderingData)
     {
-        TextureHandle mipMapDepthTexture;
+        var pyramidDescriptor = renderingData.cameraTargetDescriptor;
+        pyramidDescriptor.graphicsFormat = GraphicsFormat.R32_SFloat;
+        pyramidDescriptor.depthStencilFormat = GraphicsFormat.None;
+        pyramidDescriptor.depthBufferBits = (int)DepthBits.None;
+        pyramidDescriptor.enableRandomWrite = true;
 
-        int width = Mathf.Max(32, renderingData.cameraTargetDescriptor.width);
-        int height = Mathf.Max(32, renderingData.cameraTargetDescriptor.height);
-
-        float maxSize = Mathf.Max(width, height);
-        int maxLevel = (int)Mathf.Log(maxSize, 2.0f) + 1;
-        maxLevel = Mathf.Min(maxLevel - 5, k_MaxMipLevels);
-        for (int i = 0; i < maxLevel; i++)
+        Vector2Int pyramidSize = new Vector2Int(pyramidDescriptor.width, pyramidDescriptor.height);
+        m_MipmapDepthSizes[0] = pyramidSize;
+        m_MipmapDepthHandles[0] = depthTexture;
+        for (int i = 1; i < m_MipCount; ++i)
         {
-            m_MipInfos[i].mipLevel = i;
-            m_MipInfos[i].paddedResolution.x = Mathf.Max(width >> i, 1);
-            m_MipInfos[i].paddedResolution.y = Mathf.Max(height >> i, 1);
+            pyramidSize.x /= 2;
+            pyramidSize.y /= 2;
+
+            pyramidDescriptor.width = pyramidSize.x;
+            pyramidDescriptor.height = pyramidSize.y;
+
+            m_MipmapDepthSizes[i] = pyramidSize;
+            m_MipmapDepthHandles[i] = RenderingUtils.CreateRenderGraphTexture(renderGraph, pyramidDescriptor, "_MipmapDepth_" + i, false, FilterMode.Point, TextureWrapMode.Clamp);
         }
 
-        var descriptor = renderingData.cameraTargetDescriptor;
-        descriptor.graphicsFormat = GraphicsFormat.R32_SFloat;
-        descriptor.depthStencilFormat = GraphicsFormat.None;
-        descriptor.width = width;
-        descriptor.height = height;
-        descriptor.volumeDepth = maxLevel;
-        descriptor.enableRandomWrite = true;
-        descriptor.dimension = TextureDimension.Tex2DArray;
-        mipMapDepthTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, descriptor, "_MipmapDepthTexture", false, FilterMode.Point, TextureWrapMode.Clamp);
 
         using (var builder = renderGraph.AddComputePass<PassData>(s_MipmapDepthSampler.name, out var passData, s_MipmapDepthSampler))
         {
-            passData.maxMipLevel = maxLevel;
-            passData.mipInfos = m_MipInfos;
-            passData.computeShader = m_MipmapDepthCS;
-            passData.copyDepthKernel = m_CopyDepthKernel;
-            passData.generateMipmapDepthKernel = m_GenerateMipmapDepthKernel;
+            passData.csShader = m_Shader;
+            passData.mipCount = m_MipCount;
+            passData.mipmapDepthSizes = m_MipmapDepthSizes;
+            passData.mipMapDepthHandles = m_MipmapDepthHandles;
+            passData.renderingData = renderingData;
 
-            builder.UseTexture(mipMapDepthTexture, IBaseRenderGraphBuilder.AccessFlags.ReadWrite);
-
-            builder.AllowPassCulling(false);
+            for (int i = 0; i < m_MipCount; i++)
+            {
+                builder.UseTexture(m_MipmapDepthHandles[i], IBaseRenderGraphBuilder.AccessFlags.ReadWrite);
+            }
 
             builder.SetRenderFunc((PassData data, ComputeGraphContext context) =>
             {
                 var cmd = context.cmd;
-                cmd.SetComputeTextureParam(data.computeShader, data.copyDepthKernel, "_MipmapDepthTexture", mipMapDepthTexture);
-                cmd.DispatchCompute(data.computeShader, data.copyDepthKernel, DivRoundUp(width, 8), DivRoundUp(height, 8), 1);
-
-
-                for (int i = 1; i < data.maxMipLevel; i++)
+                TextureHandle lastPyramidTexture = data.mipMapDepthHandles[0];
+                for (int i = 1; i < data.mipCount; i++)
                 {
-                    int sSlice = data.mipInfos[i - 1].mipLevel;
-                    int dSlice = data.mipInfos[i].mipLevel;
-                    int sW = data.mipInfos[i - 1].paddedResolution.x;
-                    int sH = data.mipInfos[i - 1].paddedResolution.y;
-                    int dW = data.mipInfos[i].paddedResolution.x;
-                    int dH = data.mipInfos[i].paddedResolution.y;
-                    cmd.SetComputeTextureParam(data.computeShader, data.generateMipmapDepthKernel, "_MipmapDepthTexture", mipMapDepthTexture);
-                    cmd.SetComputeVectorParam(data.computeShader, "sSize", new Vector2(sW, sH));
-                    cmd.SetComputeVectorParam(data.computeShader, "dSize", new Vector2(dW, dH));
-                    cmd.SetComputeIntParam(data.computeShader, "sSlice", sSlice);
-                    cmd.SetComputeIntParam(data.computeShader, "dSlice", dSlice);
+                    var mipSize = data.mipmapDepthSizes[i];
 
-                    int xGroup = DivRoundUp(dW, 8);
-                    int yGroup = DivRoundUp(dH, 8);
-                    cmd.DispatchCompute(data.computeShader, data.generateMipmapDepthKernel, xGroup, yGroup, 1);
+                    int dispatchSizeX = DivRoundUp(mipSize.x, 8);
+                    int dispatchSizeY = DivRoundUp(mipSize.y, 8);
+
+                    if (dispatchSizeX < 1 || dispatchSizeY < 1) break;
+
+                    int kernel = data.csShader.FindKernel("MipmapDepth");
+                    cmd.SetComputeTextureParam(data.csShader, kernel, PyramidDepthShaderIDs.PrevMipDepth, lastPyramidTexture);
+                    cmd.SetComputeTextureParam(data.csShader, kernel, PyramidDepthShaderIDs.CurrMipDepth, data.mipMapDepthHandles[i]);
+                    cmd.DispatchCompute(data.csShader, kernel, dispatchSizeX, dispatchSizeY, 1);
+
+                    // Copy texture to target mipmap level
+                    data.renderingData.commandBuffer.CopyTexture(data.mipMapDepthHandles[i], 0, 0, data.mipMapDepthHandles[0], 0, i);
+
+                    lastPyramidTexture = data.mipMapDepthHandles[i];
                 }
             });
         }
-
-        RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_MipmapDepthTexture", mipMapDepthTexture, "Set Global Mipmap Depth");
     }
 
     private static int DivRoundUp(int x, int y) => (x + y - 1) / y;

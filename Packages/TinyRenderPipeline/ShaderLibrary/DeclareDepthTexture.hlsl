@@ -8,9 +8,9 @@ SAMPLER(sampler_CameraDepthTexture);
 
 float4 _CameraDepthTexture_TexelSize;
 
-float SampleSceneDepth(float2 uv)
+float SampleSceneDepth(float2 uv, float lod = 0.0)
 {
-    return SAMPLE_TEXTURE2D_LOD(_CameraDepthTexture, sampler_CameraDepthTexture, uv, 0.0).r;
+    return SAMPLE_TEXTURE2D_LOD(_CameraDepthTexture, sampler_CameraDepthTexture, uv, lod).r;
 }
 
 #endif
