@@ -322,8 +322,6 @@ public class PostProcessingPass
 
                 material.SetTexture(ShaderConstants._InternalLut, data.lutTextureHdl);
                 material.SetVector(ShaderConstants._Lut_Params, data.lutParams);
-                if (data.renderingData.isHdrEnabled)
-                    material.EnableKeyword(ShaderKeywordStrings.HDRColorGrading);
             });
         }
     }

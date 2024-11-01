@@ -16,7 +16,6 @@ Shader "Hidden/Tiny Render Pipeline/Uber Post"
             #pragma fragment FragUberPost
             #pragma multi_compile_local_fragment _ _BLOOM
             #pragma multi_compile_local_fragment _ _TONEMAP_ACES _TONEMAP_NEUTRAL
-            #pragma multi_compile_local_fragment _ _HDR_COLORGRADING
 
             #include "Packages/com.tiny.render-pipeline/ShaderLibrary/BlitVertex.hlsl"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/GlobalSamplers.hlsl"
@@ -30,12 +29,8 @@ Shader "Hidden/Tiny Render Pipeline/Uber Post"
 
             half3 ApplyColorGrading(half3 input, TEXTURE2D_PARAM(lutTex, lutSampler), float3 lutParams)
             {
-
-            #if defined(_HDR_COLORGRADING)
                 float3 inputLutSpace = saturate(LinearToLogC(input));  // LUT space is in LogC
                 input = ApplyLut2D(TEXTURE2D_ARGS(lutTex, lutSampler), inputLutSpace, lutParams);
-            #endif
-
                 return input;
             }
 

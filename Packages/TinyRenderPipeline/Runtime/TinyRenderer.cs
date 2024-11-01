@@ -185,7 +185,7 @@ public class TinyRenderer
         applyPostProcessing &= supportIntermediateRendering;
 
         // Generate color grading LUT pass
-        bool generateColorGradingLut = applyPostProcessing && renderingData.isHdrEnabled;
+        bool generateColorGradingLut = applyPostProcessing;
         if (generateColorGradingLut)
         {
             m_ColorGradingLutPass.RecordRenderGraph(renderGraph, out m_ColorGradingLutTexture, ref renderingData);

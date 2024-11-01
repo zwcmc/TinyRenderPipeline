@@ -55,11 +55,6 @@ public struct RenderingData
 
     public float renderScale;
 
-    /// <summary>
-    /// True if this camera should render to high dynamic range color targets.
-    /// </summary>
-    public bool isHdrEnabled;
-
     public GraphicsFormat defaultFormat;
 
     public RenderTextureDescriptor cameraTargetDescriptor;
@@ -115,11 +110,6 @@ public static class ShaderKeywordStrings
     /// Keyword used for Neutral Tonemapping in uber post.
     /// </summary>
     public const string TonemapNeutral = "_TONEMAP_NEUTRAL";
-
-    /// <summary>
-    /// Keyword used for calculating Look Up Table Color Grading in uber post.
-    /// </summary>
-    public const string HDRColorGrading = "_HDR_COLORGRADING";
 
     public const string ShadowPCF = "_SHADOWS_PCF";
 

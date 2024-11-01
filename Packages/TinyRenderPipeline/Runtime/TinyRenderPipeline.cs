@@ -177,10 +177,8 @@ public class TinyRenderPipeline : RenderPipeline
         bool disableRenderScale = Mathf.Abs(1.0f - asset.renderScale) < kRenderScaleThreshold || isScenePreviewOrReflectionCamera;
         renderingData.renderScale = disableRenderScale ? 1.0f : asset.renderScale;
 
-        // Enable HDR
-        renderingData.isHdrEnabled = camera.allowHDR;
-        renderingData.defaultFormat = renderingData.isHdrEnabled ? SystemInfo.GetGraphicsFormat(DefaultFormat.HDR) : SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
-        renderingData.cameraTargetDescriptor = RenderingUtils.CreateRenderTextureDescriptor(renderingData.camera, renderingData.defaultFormat, renderingData.isHdrEnabled, renderingData.renderScale);
+        renderingData.defaultFormat = GraphicsFormat.B10G11R11_UFloatPack32;  // HDR
+        renderingData.cameraTargetDescriptor = RenderingUtils.CreateRenderTextureDescriptor(renderingData.camera, renderingData.defaultFormat, renderingData.renderScale);
 
         // var cameraRect = camera.rect;
         // renderingData.isDefaultCameraViewport = !(Math.Abs(cameraRect.x) > 0.0f || Math.Abs(cameraRect.y) > 0.0f || Math.Abs(cameraRect.width) < 1.0f || Math.Abs(cameraRect.height) < 1.0f);

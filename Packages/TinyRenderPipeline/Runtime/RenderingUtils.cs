@@ -64,7 +64,7 @@ public static class RenderingUtils
         return desc;
     }
 
-    public static RenderTextureDescriptor CreateRenderTextureDescriptor(Camera camera, GraphicsFormat format, bool isHdrEnabled, float renderScale = 1.0f)
+    public static RenderTextureDescriptor CreateRenderTextureDescriptor(Camera camera, GraphicsFormat format, float renderScale = 1.0f)
     {
         int scaledWidth = (int)((float)camera.pixelWidth * renderScale);
         int scaledHeight = (int)((float)camera.pixelHeight * renderScale);
@@ -86,11 +86,6 @@ public static class RenderingUtils
             desc.msaaSamples = 1;
             desc.width = scaledWidth;
             desc.height = scaledHeight;
-
-            if (camera.cameraType == CameraType.SceneView && !isHdrEnabled)
-            {
-                desc.graphicsFormat = SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
-            }
         }
 
         // Make sure dimension is non zero
