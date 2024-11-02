@@ -43,10 +43,6 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
     public PostProcessingData postProcessingData = default;
 
     [SerializeField]
-    [Range(0.1f, 2f)]
-    public float renderScale = 1f;
-
-    [SerializeField]
     public AntialiasingMode antialiasingMode = AntialiasingMode.None;
 
     [SerializeField]

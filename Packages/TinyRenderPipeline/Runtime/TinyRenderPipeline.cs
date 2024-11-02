@@ -169,16 +169,8 @@ public class TinyRenderPipeline : RenderPipeline
 
         renderingData.camera = camera;
 
-        // Discard variations lesser than kRenderScaleThreshold.
-        // Scale is only enabled for gameview.
-        var cameraType = renderingData.camera.cameraType;
-        bool isScenePreviewOrReflectionCamera = cameraType == CameraType.SceneView || cameraType == CameraType.Preview || cameraType == CameraType.Reflection;
-        const float kRenderScaleThreshold = 0.01f;
-        bool disableRenderScale = Mathf.Abs(1.0f - asset.renderScale) < kRenderScaleThreshold || isScenePreviewOrReflectionCamera;
-        renderingData.renderScale = disableRenderScale ? 1.0f : asset.renderScale;
-
         renderingData.defaultFormat = GraphicsFormat.B10G11R11_UFloatPack32;  // HDR
-        renderingData.cameraTargetDescriptor = RenderingUtils.CreateRenderTextureDescriptor(renderingData.camera, renderingData.defaultFormat, renderingData.renderScale);
+        renderingData.cameraTargetDescriptor = RenderingUtils.CreateRenderTextureDescriptor(renderingData.camera, renderingData.defaultFormat);
 
         // var cameraRect = camera.rect;
         // renderingData.isDefaultCameraViewport = !(Math.Abs(cameraRect.x) > 0.0f || Math.Abs(cameraRect.y) > 0.0f || Math.Abs(cameraRect.width) < 1.0f || Math.Abs(cameraRect.height) < 1.0f);

@@ -53,8 +53,6 @@ public struct RenderingData
 
     public Camera camera;
 
-    public float renderScale;
-
     public GraphicsFormat defaultFormat;
 
     public RenderTextureDescriptor cameraTargetDescriptor;
