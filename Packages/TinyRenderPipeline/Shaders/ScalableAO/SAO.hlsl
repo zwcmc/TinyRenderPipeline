@@ -1,7 +1,6 @@
 #ifndef TINY_RP_SAO_INCLUDED
 #define TINY_RP_SAO_INCLUDED
 
-// #include "Packages/com.tiny.render-pipeline/ShaderLibrary/DeclareDepthTexture.hlsl"
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/CommonMath.hlsl"
 
 #define BLUR_MAX_SAMPLE_COUNT 16
@@ -55,7 +54,7 @@ float UnpackDepth(half2 depth)
     return depth.x * (256.0 / 257.0) + depth.y * (1.0 / 257.0);
 }
 
-float3 ComputeViewSpacePositionFromDepth(float2 uv, float linearDepth)
+float3 ReconstructViewSpacePositionFromDepth(float2 uv, float linearDepth)
 {
     return float3((0.5 - uv) * _PositionParams.xy * linearDepth, linearDepth);
 }
@@ -80,8 +79,8 @@ float3 ComputeViewSpaceNormalAccurate(float2 uv, float depth, float3 positionC, 
     H.w = SampleMipmapDepthLod(uv + dx * 2.0);
 
     float2 he = abs((2.0 * H.xy - H.zw) - depth);
-    float3 pos_l = ComputeViewSpacePositionFromDepth(uv - dx, LinearEyeDepth(H.x, _ZBufferParams));
-    float3 pos_r = ComputeViewSpacePositionFromDepth(uv + dx, LinearEyeDepth(H.y, _ZBufferParams));
+    float3 pos_l = ReconstructViewSpacePositionFromDepth(uv - dx, LinearEyeDepth(H.x, _ZBufferParams));
+    float3 pos_r = ReconstructViewSpacePositionFromDepth(uv + dx, LinearEyeDepth(H.y, _ZBufferParams));
     float3 dpdx = (he.x < he.y) ? (positionC - pos_l) : (pos_r - positionC);
 
     float4 V;
@@ -91,22 +90,22 @@ float3 ComputeViewSpaceNormalAccurate(float2 uv, float depth, float3 positionC, 
     V.w = SampleMipmapDepthLod(uv + dy * 2.0);
 
     float2 ve = abs((2.0 * V.xy - V.zw) - depth);
-    float3 pos_d = ComputeViewSpacePositionFromDepth(uv - dy, LinearEyeDepth(V.x, _ZBufferParams));
-    float3 pos_u = ComputeViewSpacePositionFromDepth(uv + dy, LinearEyeDepth(V.y, _ZBufferParams));
+    float3 pos_d = ReconstructViewSpacePositionFromDepth(uv - dy, LinearEyeDepth(V.x, _ZBufferParams));
+    float3 pos_u = ReconstructViewSpacePositionFromDepth(uv + dy, LinearEyeDepth(V.y, _ZBufferParams));
     float3 dpdy = (ve.x < ve.y) ? (positionC - pos_d) : (pos_u - positionC);
 
     return normalize(cross(dpdx, dpdy));
 }
 
-float3 ComputeViewSpaceNormal(float2 uv, float3 positionC, float2 texel)
+float3 ReconstructViewSpaceNormal(float2 uv, float3 positionC, float2 texel)
 {
     float2 dx = float2(texel.x, 0.0);
     float2 dy = float2(0.0, texel.y);
 
     float2 uvdx = uv + dx;
     float2 uvdy = uv + dy;
-    float3 px = ComputeViewSpacePositionFromDepth(uvdx, LinearEyeDepth(SampleMipmapDepthLod(uvdx), _ZBufferParams));
-    float3 py = ComputeViewSpacePositionFromDepth(uvdy, LinearEyeDepth(SampleMipmapDepthLod(uvdy), _ZBufferParams));
+    float3 px = ReconstructViewSpacePositionFromDepth(uvdx, LinearEyeDepth(SampleMipmapDepthLod(uvdx), _ZBufferParams));
+    float3 py = ReconstructViewSpacePositionFromDepth(uvdy, LinearEyeDepth(SampleMipmapDepthLod(uvdy), _ZBufferParams));
     float3 dpdx = px - positionC;
     float3 dpdy = py - positionC;
 
@@ -142,7 +141,7 @@ void ComputeAmbientOcclusionSAO(inout float occlusion, float i, float ssDiskRadi
     float maxLevelIndex = 7.0;
     float lod = clamp(floor(log2(ssRadius) - LOG_Q), 0.0, maxLevelIndex);
     float occlusionDepth = LinearEyeDepth(SampleMipmapDepthLod(uvSamplePos, lod), _ZBufferParams);
-    float3 p = ComputeViewSpacePositionFromDepth(uvSamplePos, occlusionDepth);
+    float3 p = ReconstructViewSpacePositionFromDepth(uvSamplePos, occlusionDepth);
 
     float3 v = p - origin;
     float vv = dot(v, v);
@@ -191,9 +190,9 @@ half4 ScalableAOFragment(Varyings input) : SV_TARGET
 
     float depth = SampleMipmapDepthLod(uv);
     float z = LinearEyeDepth(depth, _ZBufferParams);
-    float3 origin = ComputeViewSpacePositionFromDepth(uv, z);
+    float3 origin = ReconstructViewSpacePositionFromDepth(uv, z);
 
-    float3 normal = ComputeViewSpaceNormal(uv, origin, _MipmapDepthTexture_TexelSize.xy);
+    float3 normal = ReconstructViewSpaceNormal(uv, origin, _MipmapDepthTexture_TexelSize.xy);
 
     float occlusion;
     ScalableAmbientObscurance(occlusion, uv, origin, normal);
