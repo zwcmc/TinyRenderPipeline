@@ -27,7 +27,7 @@ A customized render pipeline based on Unity SRP.
 
 ## Reference
 
-- [filament](https://github.com/google/filament)
-- [SRP Core Documentation](https://docs.unity3d.com/Packages/com.unity.render-pipelines.core@latest)
-- [Scalable Ambient Obscurance](https://research.nvidia.com/publication/2012-06_scalable-ambient-obscurance)
-- [Unity Graphics](https://github.com/Unity-Technologies/Graphics)
+- [1] [filament](https://github.com/google/filament)
+- [2] [SRP Core Documentation](https://docs.unity3d.com/Packages/com.unity.render-pipelines.core@latest)
+- [3] [Scalable Ambient Obscurance](https://research.nvidia.com/publication/2012-06_scalable-ambient-obscurance)
+- [4] [Unity Graphics](https://github.com/Unity-Technologies/Graphics)
