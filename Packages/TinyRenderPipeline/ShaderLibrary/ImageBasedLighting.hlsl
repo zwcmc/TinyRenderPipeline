@@ -1,5 +1,5 @@
-#ifndef TINY_RP_IBL_INCLUDED
-#define TINY_RP_IBL_INCLUDED
+#ifndef TINY_RP_IMAGE_BASED_LIGHTING_INCLUDED
+#define TINY_RP_IMAGE_BASED_LIGHTING_INCLUDED
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/SphericalHarmonics.hlsl"
 

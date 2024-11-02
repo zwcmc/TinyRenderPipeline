@@ -13,14 +13,14 @@ struct Varyings
     float4 positionCS : SV_POSITION;
 };
 
-Varyings DepthVertex(Attributes input) : SV_POSITION
+Varyings DepthVertex(Attributes input)
 {
     Varyings output = (Varyings)0;
     output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
     return output;
 }
 
-half DepthFragment(Varyings input) : SV_TARGET
+float DepthFragment(Varyings input) : SV_TARGET
 {
     return input.positionCS.z;
 }

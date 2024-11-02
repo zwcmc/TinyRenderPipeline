@@ -1,0 +1,11 @@
+#pragma kernel CSCopyColor
+
+Texture2D<float3> _CameraColorAttachment;
+
+RWTexture2D<float3> _CameraColorTexture;
+
+[numthreads(8, 8, 1)]
+void CSCopyColor(uint3 id : SV_DispatchThreadID)
+{
+    _CameraColorTexture[id.xy] = _CameraColorAttachment.Load(uint3(id.xy, 0));
+}

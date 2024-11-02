@@ -74,7 +74,7 @@ public class ScalableAOPass
             passData.saoMaterial.SetVector(SAOMaterialParamShaderIDs.SaoParams, new Vector4(projectionScale * radius, sampleCount, angleIncCosSin.x, angleIncCosSin.y));
 
             const float blurSampleCount = 6.0f;
-            const float bilateralThreshold = 0.0625f;
+            const float bilateralThreshold = 0.0516f;
             Vector2 offsetInTexel = new Vector2(1.0f, 1.0f);
             Vector2 axisOffset = new Vector2(offsetInTexel.x / blurDescriptor.width, offsetInTexel.y / blurDescriptor.height);
             float far = renderingData.camera.farClipPlane;

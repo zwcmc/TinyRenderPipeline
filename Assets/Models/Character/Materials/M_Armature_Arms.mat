@@ -91,7 +91,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _IBL_DFG:
-        m_Texture: {fileID: 2800000, guid: b4fccac7ac0664489b91ab8020f00ce8, type: 3}
+        m_Texture: {fileID: 8600000, guid: 87d106ee97ea240718f0e30c50e4b25f, type: 2}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _IridescenceMaskMap:

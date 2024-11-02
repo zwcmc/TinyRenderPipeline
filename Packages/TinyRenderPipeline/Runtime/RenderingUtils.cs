@@ -307,6 +307,23 @@ public static class RenderingUtils
         }
     }
 
+    public static void SetGlobalRenderGraphTextureID(RenderGraph renderGraph, int nameID, TextureHandle texture, string passName = "Set Global Texture")
+    {
+        using (var builder = renderGraph.AddRasterRenderPass<PassData>(passName, out var passData, s_SetGlobalRenderGraphTextureSampler))
+        {
+            passData.texture = builder.UseTexture(texture, IBaseRenderGraphBuilder.AccessFlags.Read);
+            passData.nameID = nameID;
+
+            builder.AllowPassCulling(false);
+            builder.AllowGlobalStateModification(true);
+
+            builder.SetRenderFunc((PassData data, RasterGraphContext rasterGraphContext) =>
+            {
+                rasterGraphContext.cmd.SetGlobalTexture(data.nameID, data.texture);
+            });
+        }
+    }
+
     public static void ScaleViewportAndBlit(RasterCommandBuffer cmd, RTHandle source, RTHandle target, ref RenderingData renderingData, Material material, int passIndex = 0)
     {
         var camera = renderingData.camera;

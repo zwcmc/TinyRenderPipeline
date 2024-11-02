@@ -1,0 +1,11 @@
+#pragma kernel CSCopyDepth
+
+Texture2D<float> _CameraDepthAttachment;
+
+RWTexture2D<float> _CameraDepthTexture;
+
+[numthreads(8, 8, 1)]
+void CSCopyDepth(uint3 id : SV_DispatchThreadID)
+{
+    _CameraDepthTexture[id.xy] = _CameraDepthAttachment.Load(uint3(id.xy, 0));
+}

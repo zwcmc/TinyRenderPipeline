@@ -60,6 +60,12 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
 
         [Reload("Runtime/Passes/ScalableAO/MipmapDepth.compute")]
         public ComputeShader mipmapDepthCS;
+
+        [Reload("Runtime/Passes/CopyDepth.compute")]
+        public ComputeShader copyDepthCS;
+
+        [Reload("Runtime/Passes/CopyColor.compute")]
+        public ComputeShader copyColorCS;
     }
 
     public float shadowDistance => m_Shadows.shadowDistance;

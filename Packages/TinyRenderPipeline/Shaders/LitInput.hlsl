@@ -21,7 +21,7 @@ TEXTURE2D(_IBL_DFG);                         SAMPLER(sampler_IBL_DFG);
 
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/SurfaceData.hlsl"
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/BRDF.hlsl"
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/IBL.hlsl"
+#include "Packages/com.tiny.render-pipeline/ShaderLibrary/ImageBasedLighting.hlsl"
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/Shadows.hlsl"
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/Lighting.hlsl"
 

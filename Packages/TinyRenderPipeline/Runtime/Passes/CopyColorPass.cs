@@ -7,55 +7,62 @@ public class CopyColorPass
 {
     private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("Copy Color");
 
-    private RTHandle m_Source;
-    private RTHandle m_Destination;
-    private Material m_CopyColorMaterial;
-
-    private class PassData
+    private static class CopyColorShaderIDs
     {
-        public TextureHandle source;
-        public Material blitMaterial;
+        public static readonly int CameraColorAttachment = Shader.PropertyToID("_CameraColorAttachment");
+        public static readonly int CameraColorTexture = Shader.PropertyToID("_CameraColorTexture");
     }
 
-    public CopyColorPass(Material copyColorMaterial)
+    private ComputeShader m_Shader;
+
+    private class ComputePassData
     {
-        m_CopyColorMaterial = copyColorMaterial;
+        public ComputeShader shader;
+        public int kernelID;
+        public TextureHandle sourceColorTexture;
+        public TextureHandle destColorTexture;
+        public Vector2Int size;
     }
 
-    public void RecordRenderGraph(RenderGraph renderGraph, TextureHandle source, TextureHandle destination, ref RenderingData renderingData)
+    public CopyColorPass(ComputeShader shader)
     {
-        // Copy color pass
-        using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_ProfilingSampler.name, out var passData, s_ProfilingSampler))
+        m_Shader = shader;
+    }
+
+    public void RecordRenderGraphCompute(RenderGraph renderGraph, in TextureHandle sourceColorTexture, out TextureHandle cameraColorTexture, ref RenderingData renderingData)
+    {
+        var colorDescriptor = renderingData.cameraTargetDescriptor;
+        colorDescriptor.depthBufferBits = (int)DepthBits.None;
+        colorDescriptor.depthStencilFormat = GraphicsFormat.None;
+        colorDescriptor.enableRandomWrite = true;
+        cameraColorTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, colorDescriptor, "_CameraColorTexture", false, FilterMode.Bilinear);
+
+        using (var builder = renderGraph.AddComputePass<ComputePassData>(s_ProfilingSampler.name, out var passData, s_ProfilingSampler))
         {
-            passData.source = source;
-            passData.blitMaterial = m_CopyColorMaterial;
+            passData.shader = m_Shader;
+            passData.kernelID = m_Shader.FindKernel("CSCopyColor");
+            passData.sourceColorTexture = sourceColorTexture;
+            passData.destColorTexture = cameraColorTexture;
+            passData.size = new Vector2Int(renderingData.cameraTargetDescriptor.width, renderingData.cameraTargetDescriptor.height);
 
-            builder.UseTexture(source, IBaseRenderGraphBuilder.AccessFlags.Read);
-            builder.UseTextureFragment(destination, 0, IBaseRenderGraphBuilder.AccessFlags.Write);
+            builder.UseTexture(sourceColorTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
+            builder.UseTexture(cameraColorTexture, IBaseRenderGraphBuilder.AccessFlags.WriteAll);
 
-            builder.AllowPassCulling(false);
-
-            builder.SetRenderFunc((PassData data, RasterGraphContext rasterGraphContext) =>
+            builder.SetRenderFunc((ComputePassData data, ComputeGraphContext context) =>
             {
-                ExecutePass(rasterGraphContext.cmd, ref data, data.source);
+                var cmd = context.cmd;
+
+                cmd.SetComputeTextureParam(data.shader, data.kernelID, CopyColorShaderIDs.CameraColorAttachment, data.sourceColorTexture);
+                cmd.SetComputeTextureParam(data.shader, data.kernelID, CopyColorShaderIDs.CameraColorTexture, data.destColorTexture);
+
+                int dispatchSizeX = Utils.DivRoundUp(data.size.x, 8);
+                int dispatchSizeY = Utils.DivRoundUp(data.size.y, 8);
+
+                cmd.DispatchCompute(data.shader, data.kernelID, dispatchSizeX, dispatchSizeY, 1);
             });
         }
 
-        // Set global opaque texture
-        RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_CameraOpaqueTexture", destination, "SetGlobalCameraOpaqueTexture");
-    }
-
-    private static void ExecutePass(RasterCommandBuffer cmd, ref PassData data, RTHandle source)
-    {
-        var copyColorMaterial = data.blitMaterial;
-
-        if (copyColorMaterial == null)
-        {
-            Debug.LogError("Copy Color Pass: Copy Color Material is null.");
-            return;
-        }
-
-        Vector4 scaleBias = new Vector4(1f, 1f, 0f, 0f);
-        Blitter.BlitTexture(cmd, source, scaleBias, copyColorMaterial, 0);
+        // Set global camera color texture
+        RenderingUtils.SetGlobalRenderGraphTextureID(renderGraph, CopyColorShaderIDs.CameraColorTexture, cameraColorTexture, "SetGlobalCameraColorTexture");
     }
 }

@@ -25,6 +25,12 @@ public class FinalBlitPass
 
     public void RecordRenderGraph(RenderGraph renderGraph, TextureHandle source, TextureHandle destination, ref RenderingData renderingData)
     {
+        if (m_BlitMaterial == null)
+        {
+            Debug.LogError("Final Blit: Blit Material is null.");
+            return;
+        }
+
         using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_ProfilingSampler.name, out var passData, s_ProfilingSampler))
         {
             passData.source = source;
@@ -47,14 +53,6 @@ public class FinalBlitPass
 
     private static void ExecutePass(RasterCommandBuffer cmd, ref PassData data, RTHandle source)
     {
-        var blitMaterial = data.blitMaterial;
-
-        if (blitMaterial == null)
-        {
-            Debug.LogError("Final Blit: Blit Material is null.");
-            return;
-        }
-
         ref var renderingData = ref data.renderingData;
         var camera = renderingData.camera;
         var cameraType = camera.cameraType;
@@ -65,6 +63,6 @@ public class FinalBlitPass
         if (isRenderToBackBufferTarget)
             cmd.SetViewport(camera.pixelRect);
 
-        Blitter.BlitTexture(cmd, source, scaleBias, blitMaterial, 0);
+        Blitter.BlitTexture(cmd, source, scaleBias, data.blitMaterial, 0);
     }
 }

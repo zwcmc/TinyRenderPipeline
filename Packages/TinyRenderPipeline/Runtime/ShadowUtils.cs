@@ -38,7 +38,7 @@ public static class ShadowUtils
     {
         if (shadowLightIndex < 0)
         {
-            Debug.LogWarning(string.Format("{0} is not a valid light index.", shadowLightIndex));
+            // Debug.LogWarning(string.Format("{0} is not a valid light index.", shadowLightIndex));
             return Vector4.zero;
         }
 
@@ -75,7 +75,7 @@ public static class ShadowUtils
         }
         else
         {
-            Debug.LogWarning("Only point, spot and directional shadow casters are supported.");
+            // Debug.LogWarning("Only point, spot and directional shadow casters are supported.");
             frustumSize = 0.0f;
         }
 

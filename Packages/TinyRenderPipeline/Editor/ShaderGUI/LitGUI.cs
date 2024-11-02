@@ -57,7 +57,7 @@ namespace TinyRenderPipeline.CustomShaderGUI
             public static readonly GUIContent emissionEnabled = EditorGUIUtility.TrTextContent("Emission", "");
             public static readonly GUIContent emissionMap = EditorGUIUtility.TrTextContent("Emission Map", "");
 
-            public static readonly GUIContent iblDFG = EditorGUIUtility.TrTextContent("IBL DFG Term", "");
+            public static readonly GUIContent iblDFG = EditorGUIUtility.TrTextContent("DFG LUT", "");
         }
 
         private static class Property

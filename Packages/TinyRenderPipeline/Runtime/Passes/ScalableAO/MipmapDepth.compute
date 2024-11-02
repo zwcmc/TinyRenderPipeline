@@ -1,10 +1,17 @@
-#pragma kernel MipmapDepth
+#pragma kernel CSCopyMipmapDepth0
+#pragma kernel CSMipmapDepth
 
 Texture2D<float> _PrevMipDepth;
 RWTexture2D<float> _CurrMipDepth;
 
 [numthreads(8, 8, 1)]
-void MipmapDepth(uint3 id : SV_DispatchThreadID)
+void CSCopyMipmapDepth0(uint3 id : SV_DispatchThreadID)
+{
+    _CurrMipDepth[id.xy] = _PrevMipDepth.Load(uint3(id.xy, 0));
+}
+
+[numthreads(8, 8, 1)]
+void CSMipmapDepth(uint3 id : SV_DispatchThreadID)
 {
     // Rotated Grid Subsample
     uint2 prevId = id.xy << 1;
