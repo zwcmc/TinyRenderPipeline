@@ -4,34 +4,30 @@
 
 A customized render pipeline based on Unity SRP.
 
-Unity Version: 2023.2.16f1c1
-
-![TinyRenderPipeline](TinyRenderPipeline.jpeg)
+![TinyRenderPipeline](TinyRenderPipeline.png)
 
 ## Feature
 
-- [x] Physically-based shading
-- [x] Light layers
-- [x] Cascaded shadowmap for main directional light (Hard shadows)
-- [x] Additional realtime directional light / spot light / point light shadows (Hard shadows)
+- [x] Physically Based Shading
+- [x] Image Based Lighting
+- [x] Shadow Mapping
+  - [x] Cascade Shadow Maps
+  - [x] PCF
+  - [x] PCSS
+- [x] Render Graph
 - [x] Bloom
-- [x] Color Grading with LUT
-- [x] Tonemapping post-processing effects
+- [x] Scalable Ambient Obscurance
+  - [x] Hierachical z with Rotated Grid Subsample
 - [x] FXAA
-- [x] Soft particles
-- [x] Render Graph API
 
-## To-do List
+## Planned
 
-- [ ] Soft shadows
-- [ ] Deferred render path
+- [ ] SSR
 - [ ] TAA
-- [ ] SSAO
-- [ ] Forward+ render path
 
 ## Reference
 
+- [filament](https://github.com/google/filament)
 - [SRP Core Documentation](https://docs.unity3d.com/Packages/com.unity.render-pipelines.core@latest)
-- [Custom SRP by Catlike Coding](https://catlikecoding.com/unity/tutorials/custom-srp/)
-- [Custom SRP for Unity 2022 by Catlike Coding](https://catlikecoding.com/unity/custom-srp/)
-- [URP](https://github.com/Unity-Technologies/Graphics)
+- [Scalable Ambient Obscurance](https://research.nvidia.com/publication/2012-06_scalable-ambient-obscurance)
+- [Unity Graphics](https://github.com/Unity-Technologies/Graphics)
