@@ -16,7 +16,7 @@ public class ScalableAOPass
     private static class SAOMaterialParamShaderIDs
     {
         public static readonly int PositionParams = Shader.PropertyToID("_PositionParams");
-        public static readonly int SaoParams = Shader.PropertyToID("_SAO_Params");
+        public static readonly int SaoParams = Shader.PropertyToID("_SaoParams");
         public static readonly int BilateralBlurParams = Shader.PropertyToID("_BilateralBlurParams");
     }
 
@@ -61,17 +61,22 @@ public class ScalableAOPass
             passData.ssaoTexture = ssaoTexture;
 
             // Setup material params
+            const float radius = 0.5f;
+            const float sampleCount = 16.0f;
+
             Matrix4x4 projectionMatrix = GL.GetGPUProjectionMatrix(renderingData.camera.projectionMatrix, true);
             var invProjection = projectionMatrix.inverse;
-            passData.saoMaterial.SetVector(SAOMaterialParamShaderIDs.PositionParams, new Vector4(invProjection.m00 * 2.0f, invProjection.m11 * 2.0f, 0.0f, 0.0f));
 
             float projectionScale = Mathf.Min(0.5f * projectionMatrix.m00 * saoDescriptor.width, 0.5f * projectionMatrix.m11 * saoDescriptor.height);
-            const float radius = 0.5f;
-            const float spiralTurns = 14.0f;
-            const float sampleCount = 32.0f;
+            float projectionScaledRadius = projectionScale * radius;
+
+            passData.saoMaterial.SetVector(SAOMaterialParamShaderIDs.PositionParams, new Vector4(invProjection.m00 * 2.0f, invProjection.m11 * 2.0f, projectionScaledRadius, 8.0f));
+
+            const float spiralTurns = 6.0f;
             float inc = (1.0f / (sampleCount - 0.5f)) * spiralTurns * (2.0f * Mathf.PI);
             Vector2 angleIncCosSin = new Vector2(Mathf.Cos(inc), Mathf.Sin(inc));
-            passData.saoMaterial.SetVector(SAOMaterialParamShaderIDs.SaoParams, new Vector4(projectionScale * radius, sampleCount, angleIncCosSin.x, angleIncCosSin.y));
+
+            passData.saoMaterial.SetVector(SAOMaterialParamShaderIDs.SaoParams, new Vector4(radius, sampleCount, angleIncCosSin.x, angleIncCosSin.y));
 
             const float blurSampleCount = 6.0f;
             const float bilateralThreshold = 0.0516f;

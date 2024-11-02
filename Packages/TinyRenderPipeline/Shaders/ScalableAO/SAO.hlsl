@@ -20,15 +20,15 @@ static const float gaussianKernel[BLUR_MAX_SAMPLE_COUNT] = { 1.0, 0.9692332, 0.8
 
 // x = projection[0][0] * 2.0
 // y = projection[1][1] * 2.0
-// z = unused
-// w = unused
+// z = projection scaled radius
+// w = mipmap count of the mipmap depth texture
 float4 _PositionParams;
 
-// x = projection scaled radius
+// x = radius
 // y = sample count
 // z = sample delta X
 // w = sample delta Y
-float4 _SAO_Params;
+float4 _SaoParams;
 
 // x = bilateral blur offset in X direction (in texel size)
 // y = bilateral blur offset in Y direction (in texel size)
@@ -120,14 +120,14 @@ float2 StartPosition(float noise)
 
 float2x2 TapAngleStep()
 {
-    float2 t = _SAO_Params.zw;
+    float2 t = _SaoParams.zw;
     return float2x2(t.x, t.y, -t.y, t.x);
 }
 
 float3 TapLocationFast(float i, float2 p, float noise)
 {
-    float radius = (i + noise + 0.5) * 1.0 / (_SAO_Params.y - 0.5);
-    return float3(p, radius * radius);
+    float r = (i + noise + 0.5) * 1.0 / (_SaoParams.y - 0.5);
+    return float3(p, r * r);
 }
 
 void ComputeAmbientOcclusionSAO(inout float occlusion, float i, float ssDiskRadius, float2 uv, float3 origin, float3 normal, float2 tapPosition, float noise)
@@ -138,28 +138,20 @@ void ComputeAmbientOcclusionSAO(inout float occlusion, float i, float ssDiskRadi
 
     float2 uvSamplePos = uv + float2(ssRadius * tap.xy) * _MipmapDepthTexture_TexelSize.xy;
 
-    float maxLevelIndex = 7.0;
-    float lod = clamp(floor(log2(ssRadius) - LOG_Q), 0.0, maxLevelIndex);
-    float occlusionDepth = LinearEyeDepth(SampleMipmapDepthLod(uvSamplePos, lod), _ZBufferParams);
+    float level = clamp(floor(log2(ssRadius) - LOG_Q), 0.0, _PositionParams.w - 1.0);
+    float occlusionDepth = LinearEyeDepth(SampleMipmapDepthLod(uvSamplePos, level), _ZBufferParams);
     float3 p = ReconstructViewSpacePositionFromDepth(uvSamplePos, occlusionDepth);
 
     float3 v = p - origin;
     float vv = dot(v, v);
     float vn = dot(v, normal);
 
-    const float radius = 0.5;
-    float invRadiusSquared = 1.0 / (sq(radius));
-    float w = sq(max(0.0, 1.0 - vv * invRadiusSquared));
+    const float epsilon = 0.01;
+    const float bias = 0.005;
+    float radius2 = sq(_SaoParams.x);
 
-    const float minHorizonAngleRad = 0.0;
-    float minHorizonAngleSineSquared = pow(sin(minHorizonAngleRad), 2.0);
-    w *= step(vv * minHorizonAngleSineSquared, vn * vn);
-
-    const float bias = 0.0005;
-    const float peak = 0.1 * radius;
-    float peak2 = peak * peak;
-    float sampleOcclusion = max(0.0, vn + (origin.z * bias)) / (vv + peak2);
-    occlusion += w * sampleOcclusion;
+    float f = max(radius2 - vv, 0.0);
+    occlusion += f * f * f * saturate((vn - bias) / (epsilon + vv));//max((vn - bias) / (epsilon + vv), 0.0);
 }
 
 void ScalableAmbientObscurance(out float obscurance, float2 uv, float3 origin, float3 normal)
@@ -169,19 +161,14 @@ void ScalableAmbientObscurance(out float obscurance, float2 uv, float3 origin, f
     float2 tapPosition = StartPosition(noise);
     float2x2 angleStep = TapAngleStep();
 
-    float ssDiskRadius = -(_SAO_Params.x / origin.z);
+    float ssDiskRadius = -(_PositionParams.z / origin.z);
 
     obscurance = 0.0;
-    for (float i = 0.0; i < _SAO_Params.y; i += 1.0)
+    for (float i = 0.0; i < _SaoParams.y; i += 1.0)
     {
         ComputeAmbientOcclusionSAO(obscurance, i, ssDiskRadius, uv, origin, normal, tapPosition, noise);
         tapPosition = mul(angleStep, tapPosition);
     }
-
-    const float radius = 0.5;
-    const float peak = 0.1 * radius;
-    const float intensity = (TWO_PI * peak) * 1.0;
-    obscurance = sqrt(obscurance * (intensity / _SAO_Params.y));
 }
 
 half4 ScalableAOFragment(Varyings input) : SV_TARGET
@@ -197,8 +184,9 @@ half4 ScalableAOFragment(Varyings input) : SV_TARGET
     float occlusion;
     ScalableAmbientObscurance(occlusion, uv, origin, normal);
 
-    const float power = 1.0 * 2.0;
-    half aoVisibility = pow(saturate(1.0 - occlusion), power);
+    const float aoIntensity = 1.0;
+    float intensityDivR6 = aoIntensity / (pow5(_SaoParams.x) * _SaoParams.x);
+    half aoVisibility = max(0.0, 1.0 - occlusion * intensityDivR6 * (5.0 / _SaoParams.y));
 
     return half4(aoVisibility, PackDepth(origin.z * _ProjectionParams.w), 1.0);
 }
