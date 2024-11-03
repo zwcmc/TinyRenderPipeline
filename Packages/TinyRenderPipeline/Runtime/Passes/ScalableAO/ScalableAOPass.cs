@@ -68,21 +68,27 @@ public class ScalableAOPass
             Matrix4x4 projectionMatrix = GL.GetGPUProjectionMatrix(renderingData.camera.projectionMatrix, true);
             var invProjection = projectionMatrix.inverse;
 
-            float projectionScale = Mathf.Min(0.5f * projectionMatrix.m00 * saoDescriptor.width, 0.5f * projectionMatrix.m11 * saoDescriptor.height);
+            // 屏幕的宽高(以像素为单位)
+            Vector2Int screenSizeInPixels = new Vector2Int(saoDescriptor.width, saoDescriptor.height);
+            // 投影矩阵将 xy 转换到 [-1,1] , 也就是 2 的范围 , 所以这里乘以 0.5
+            float projectionScale = Mathf.Min(0.5f * projectionMatrix.m00 * screenSizeInPixels.x, 0.5f * projectionMatrix.m11 * screenSizeInPixels.y);
+            // 计算经过投影矩阵缩放后的屏幕空间内范围大小(以像素为单位)
             float projectionScaledRadius = projectionScale * radius;
 
             passData.saoMaterial.SetVector(SAOMaterialParamShaderIDs.PositionParams, new Vector4(invProjection.m00 * 2.0f, invProjection.m11 * 2.0f, projectionScaledRadius, 8.0f));
 
             const float spiralTurns = 6.0f;
             const float stepTapRadius = 1.0f / (sampleCount - 0.5f);
+            // 每次采样旋转的角度
             float stepTapAngle = stepTapRadius * spiralTurns * (2.0f * Mathf.PI);
+            // 计算这个旋转角度的 cos 和 sin 值, 并在后续的 Shader 计算中构建一个 2x2 的旋转矩阵
             Vector2 angleIncCosSin = new Vector2(Mathf.Cos(stepTapAngle), Mathf.Sin(stepTapAngle));
 
             passData.saoMaterial.SetFloat(SAOMaterialParamShaderIDs.StepTapRadius, stepTapRadius);
             passData.saoMaterial.SetVector(SAOMaterialParamShaderIDs.SaoParams, new Vector4(radius, sampleCount, angleIncCosSin.x, angleIncCosSin.y));
 
             const float blurSampleCount = 6.0f;
-            const float bilateralThreshold = 0.0516f;
+            const float bilateralThreshold = 0.116f;
             Vector2 offsetInTexel = new Vector2(1.0f, 1.0f);
             Vector2 axisOffset = new Vector2(offsetInTexel.x / blurDescriptor.width, offsetInTexel.y / blurDescriptor.height);
             float far = renderingData.camera.farClipPlane;

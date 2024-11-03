@@ -1,4 +1,4 @@
-#pragma kernel CSCopyMipmapDepth0
+#pragma kernel CSCopyMipmap0Depth
 #pragma kernel CSMipmapDepth
 
 Texture2D<float> _PrevMipDepth;
@@ -11,9 +11,9 @@ float LinearEyeDepth(float depth)
 }
 
 [numthreads(8, 8, 1)]
-void CSCopyMipmapDepth0(uint3 id : SV_DispatchThreadID)
+void CSCopyMipmap0Depth(uint3 id : SV_DispatchThreadID)
 {
-    // Calculate linear depth in mipmap depth texture
+    // Calculate the linear depth and store in mipmap 0
     _CurrMipDepth[id.xy] = LinearEyeDepth(_PrevMipDepth.Load(uint3(id.xy, 0)));
 }
 

@@ -72,7 +72,7 @@ public class MipmapDepthGenerator
         using (var builder = renderGraph.AddComputePass<PassData>(s_MipmapDepthSampler.name, out var passData, s_MipmapDepthSampler))
         {
             passData.csShader = m_Shader;
-            passData.copyKernelID = m_Shader.FindKernel("CSCopyMipmapDepth0");
+            passData.copyKernelID = m_Shader.FindKernel("CSCopyMipmap0Depth");
             passData.kernelID = m_Shader.FindKernel("CSMipmapDepth");
             passData.mipCount = m_MipCount;
             passData.mipmapDepthSizes = m_MipmapDepthSizes;
