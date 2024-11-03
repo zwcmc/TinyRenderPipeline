@@ -61,8 +61,8 @@ public class ScalableAOPass
             passData.ssaoTexture = ssaoTexture;
 
             // Setup material params
-            const float radius = 0.5f;
-            const float sampleCount = 16.0f;
+            const float radius = 0.3f;
+            const float sampleCount = 9.0f;
 
             Matrix4x4 projectionMatrix = GL.GetGPUProjectionMatrix(renderingData.camera.projectionMatrix, true);
             var invProjection = projectionMatrix.inverse;
