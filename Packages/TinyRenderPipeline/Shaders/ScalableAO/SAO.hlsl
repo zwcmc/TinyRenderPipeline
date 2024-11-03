@@ -3,18 +3,19 @@
 
 #include "Packages/com.tiny.render-pipeline/ShaderLibrary/CommonMath.hlsl"
 
-#define BLUR_MAX_SAMPLE_COUNT 16
+#define BLUR_MAX_SAMPLE_COUNT 8
 // Generated (in C#) with:
 // const float standardDeviation = 4.0f;
-// const int gaussianSampleCount = 16;
+// const int gaussianSampleCount = 8;
 // float[] outKernel = new float[gaussianSampleCount];
 // for (int i = 0; i < gaussianSampleCount; i++)
 // {
 //     float x = (float)i;
 //     float g = Mathf.Exp(-(x * x) / (2.0f * standardDeviation * standardDeviation));
+//     Debug.Log(g);
 //     outKernel[i] = g;
 // }
-static const float gaussianKernel[BLUR_MAX_SAMPLE_COUNT] = { 1.0, 0.9692332, 0.8824969, 0.7548396, 0.6065307, 0.4578333, 0.3246525, 0.2162652, 0.1353353, 0.07955951, 0.04393693, 0.02279418, 0.011109, 0.005086069, 0.002187491, 0.0008838263 };
+static const float gaussianKernel[BLUR_MAX_SAMPLE_COUNT] = { 1.0, 0.9692332, 0.8824969, 0.7548396, 0.6065307, 0.4578333, 0.3246525, 0.2162652 };
 
 #define LOG_Q 3.0
 
@@ -64,38 +65,38 @@ float SampleMipmapDepthLod(float2 uv, float lod = 0.0)
     return SAMPLE_TEXTURE2D_LOD(_MipmapDepthTexture, sampler_MipmapDepthTexture, uv, lod).r;
 }
 
-// Accurate view-space normal reconstruction
-// Based on Yuwen Wu "Accurate Normal Reconstruction"
-// (https://atyuwen.github.io/posts/normal-reconstruction)
-float3 ComputeViewSpaceNormalAccurate(float2 uv, float depth, float3 positionC, float2 texel)
-{
-    float2 dx = float2(texel.x, 0.0);
-    float2 dy = float2(0.0, texel.y);
-
-    float4 H;
-    H.x = SampleMipmapDepthLod(uv - dx);
-    H.y = SampleMipmapDepthLod(uv + dx);
-    H.z = SampleMipmapDepthLod(uv - dx * 2.0);
-    H.w = SampleMipmapDepthLod(uv + dx * 2.0);
-
-    float2 he = abs((2.0 * H.xy - H.zw) - depth);
-    float3 pos_l = ReconstructViewSpacePositionFromDepth(uv - dx, LinearEyeDepth(H.x, _ZBufferParams));
-    float3 pos_r = ReconstructViewSpacePositionFromDepth(uv + dx, LinearEyeDepth(H.y, _ZBufferParams));
-    float3 dpdx = (he.x < he.y) ? (positionC - pos_l) : (pos_r - positionC);
-
-    float4 V;
-    V.x = SampleMipmapDepthLod(uv - dy);
-    V.y = SampleMipmapDepthLod(uv + dy);
-    V.z = SampleMipmapDepthLod(uv - dy * 2.0);
-    V.w = SampleMipmapDepthLod(uv + dy * 2.0);
-
-    float2 ve = abs((2.0 * V.xy - V.zw) - depth);
-    float3 pos_d = ReconstructViewSpacePositionFromDepth(uv - dy, LinearEyeDepth(V.x, _ZBufferParams));
-    float3 pos_u = ReconstructViewSpacePositionFromDepth(uv + dy, LinearEyeDepth(V.y, _ZBufferParams));
-    float3 dpdy = (ve.x < ve.y) ? (positionC - pos_d) : (pos_u - positionC);
-
-    return normalize(cross(dpdx, dpdy));
-}
+// // Accurate view-space normal reconstruction
+// // Based on Yuwen Wu "Accurate Normal Reconstruction"
+// // (https://atyuwen.github.io/posts/normal-reconstruction)
+// float3 ComputeViewSpaceNormalAccurate(float2 uv, float depth, float3 positionC, float2 texel)
+// {
+//     float2 dx = float2(texel.x, 0.0);
+//     float2 dy = float2(0.0, texel.y);
+//
+//     float4 H;
+//     H.x = SampleMipmapDepthLod(uv - dx);
+//     H.y = SampleMipmapDepthLod(uv + dx);
+//     H.z = SampleMipmapDepthLod(uv - dx * 2.0);
+//     H.w = SampleMipmapDepthLod(uv + dx * 2.0);
+//
+//     float2 he = abs((2.0 * H.xy - H.zw) - depth);
+//     float3 pos_l = ReconstructViewSpacePositionFromDepth(uv - dx, H.x);
+//     float3 pos_r = ReconstructViewSpacePositionFromDepth(uv + dx, H.y);
+//     float3 dpdx = (he.x < he.y) ? (positionC - pos_l) : (pos_r - positionC);
+//
+//     float4 V;
+//     V.x = SampleMipmapDepthLod(uv - dy);
+//     V.y = SampleMipmapDepthLod(uv + dy);
+//     V.z = SampleMipmapDepthLod(uv - dy * 2.0);
+//     V.w = SampleMipmapDepthLod(uv + dy * 2.0);
+//
+//     float2 ve = abs((2.0 * V.xy - V.zw) - depth);
+//     float3 pos_d = ReconstructViewSpacePositionFromDepth(uv - dy, V.x);
+//     float3 pos_u = ReconstructViewSpacePositionFromDepth(uv + dy, V.y);
+//     float3 dpdy = (ve.x < ve.y) ? (positionC - pos_d) : (pos_u - positionC);
+//
+//     return normalize(cross(dpdx, dpdy));
+// }
 
 float3 ReconstructViewSpaceNormal(float2 uv, float3 positionC, float2 texel)
 {
@@ -104,8 +105,8 @@ float3 ReconstructViewSpaceNormal(float2 uv, float3 positionC, float2 texel)
 
     float2 uvdx = uv + dx;
     float2 uvdy = uv + dy;
-    float3 px = ReconstructViewSpacePositionFromDepth(uvdx, LinearEyeDepth(SampleMipmapDepthLod(uvdx), _ZBufferParams));
-    float3 py = ReconstructViewSpacePositionFromDepth(uvdy, LinearEyeDepth(SampleMipmapDepthLod(uvdy), _ZBufferParams));
+    float3 px = ReconstructViewSpacePositionFromDepth(uvdx, SampleMipmapDepthLod(uvdx));
+    float3 py = ReconstructViewSpacePositionFromDepth(uvdy, SampleMipmapDepthLod(uvdy));
     float3 dpdx = px - positionC;
     float3 dpdy = py - positionC;
 
@@ -139,7 +140,7 @@ void ComputeAmbientOcclusionSAO(inout float occlusion, float i, float ssDiskRadi
     float2 uvSamplePos = uv + float2(ssRadius * tap.xy) * _MipmapDepthTexture_TexelSize.xy;
 
     float level = clamp(floor(log2(ssRadius) - LOG_Q), 0.0, _PositionParams.w - 1.0);
-    float occlusionDepth = LinearEyeDepth(SampleMipmapDepthLod(uvSamplePos, level), _ZBufferParams);
+    float occlusionDepth = SampleMipmapDepthLod(uvSamplePos, level);
     float3 p = ReconstructViewSpacePositionFromDepth(uvSamplePos, occlusionDepth);
 
     float3 v = p - origin;
@@ -175,8 +176,7 @@ half4 ScalableAOFragment(Varyings input) : SV_TARGET
 {
     float2 uv = input.texcoord;
 
-    float depth = SampleMipmapDepthLod(uv);
-    float z = LinearEyeDepth(depth, _ZBufferParams);
+    float z = SampleMipmapDepthLod(uv);
     float3 origin = ReconstructViewSpacePositionFromDepth(uv, z);
 
     float3 normal = ReconstructViewSpaceNormal(uv, origin, _MipmapDepthTexture_TexelSize.xy);
@@ -238,10 +238,6 @@ half4 BilateralBlurFragment(Varyings input) : SV_TARGET
 
     float ao = sum * (1.0 / totalWeight);
 
-    // simple dithering helps a lot (assumes 8 bits target)
-    // this is most useful with high quality/large blurs
-    ao += ((InterleavedGradientNoise(input.positionCS.xy) - 0.5) / 255.0);
-
     return half4(ao, data.gb, 1.0);
 }
 
@@ -274,10 +270,6 @@ half FinalBilateralBlurFragment(Varyings input) : SV_TARGET
     }
 
     float ao = sum * (1.0 / totalWeight);
-
-    // simple dithering helps a lot (assumes 8 bits target)
-    // this is most useful with high quality/large blurs
-    ao += ((InterleavedGradientNoise(input.positionCS.xy) - 0.5) / 255.0);
 
     return ao;
 }
