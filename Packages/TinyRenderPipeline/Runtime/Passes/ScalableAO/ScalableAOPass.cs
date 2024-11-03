@@ -18,6 +18,7 @@ public class ScalableAOPass
         public static readonly int PositionParams = Shader.PropertyToID("_PositionParams");
         public static readonly int SaoParams = Shader.PropertyToID("_SaoParams");
         public static readonly int BilateralBlurParams = Shader.PropertyToID("_BilateralBlurParams");
+        public static readonly int StepTapRadius = Shader.PropertyToID("_StepTapRadius");
     }
 
     private class PassData
@@ -73,9 +74,11 @@ public class ScalableAOPass
             passData.saoMaterial.SetVector(SAOMaterialParamShaderIDs.PositionParams, new Vector4(invProjection.m00 * 2.0f, invProjection.m11 * 2.0f, projectionScaledRadius, 8.0f));
 
             const float spiralTurns = 6.0f;
-            float inc = (1.0f / (sampleCount - 0.5f)) * spiralTurns * (2.0f * Mathf.PI);
-            Vector2 angleIncCosSin = new Vector2(Mathf.Cos(inc), Mathf.Sin(inc));
+            const float stepTapRadius = 1.0f / (sampleCount - 0.5f);
+            float stepTapAngle = stepTapRadius * spiralTurns * (2.0f * Mathf.PI);
+            Vector2 angleIncCosSin = new Vector2(Mathf.Cos(stepTapAngle), Mathf.Sin(stepTapAngle));
 
+            passData.saoMaterial.SetFloat(SAOMaterialParamShaderIDs.StepTapRadius, stepTapRadius);
             passData.saoMaterial.SetVector(SAOMaterialParamShaderIDs.SaoParams, new Vector4(radius, sampleCount, angleIncCosSin.x, angleIncCosSin.y));
 
             const float blurSampleCount = 6.0f;

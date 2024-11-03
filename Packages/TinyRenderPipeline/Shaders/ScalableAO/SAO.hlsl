@@ -37,6 +37,9 @@ float4 _SaoParams;
 // w = bilateral blur sample count
 float4 _BilateralBlurParams;
 
+// step tap radius
+float _StepTapRadius;
+
 TEXTURE2D_FLOAT(_MipmapDepthTexture);
 SAMPLER(sampler_MipmapDepthTexture);
 float4 _MipmapDepthTexture_TexelSize;
@@ -115,29 +118,26 @@ float3 ReconstructViewSpaceNormal(float2 uv, float3 positionC, float2 texel)
 
 float2 StartPosition(float noise)
 {
-    float angle = ((2.0 * PI) * 2.4) * noise;
+    float angle = (TWO_PI * 2.4) * noise;
     return float2(cos(angle), sin(angle));
 }
 
-float2x2 TapAngleStep()
+float2x2 TapAngleStepMatrix()
 {
     float2 t = _SaoParams.zw;
     return float2x2(t.x, t.y, -t.y, t.x);
 }
 
-float3 TapLocationFast(float i, float2 p, float noise)
+float TapRadius(float tapIndex, float noise)
 {
-    float r = (i + noise + 0.5) * 1.0 / (_SaoParams.y - 0.5);
-    return float3(p, r * r);
+    float r = (tapIndex + noise + 0.5) * _StepTapRadius;
+    return r * r;
 }
 
-void ComputeAmbientOcclusionSAO(inout float occlusion, float i, float ssDiskRadius, float2 uv, float3 origin, float3 normal, float2 tapPosition, float noise)
+void ComputeAmbientOcclusionSAO(inout float occlusion, float ssDiskRadius, float2 uv, float3 origin, float3 normal, float2 tapPosition, float ssR)
 {
-    float3 tap = TapLocationFast(i, tapPosition, noise);
-
-    float ssRadius = max(1.0, tap.z * ssDiskRadius);
-
-    float2 uvSamplePos = uv + float2(ssRadius * tap.xy) * _MipmapDepthTexture_TexelSize.xy;
+    float ssRadius = max(1.0, ssR * ssDiskRadius);
+    float2 uvSamplePos = uv + float2(ssRadius * tapPosition) * _MipmapDepthTexture_TexelSize.xy;
 
     float level = clamp(floor(log2(ssRadius) - LOG_Q), 0.0, _PositionParams.w - 1.0);
     float occlusionDepth = SampleMipmapDepthLod(uvSamplePos, level);
@@ -149,8 +149,8 @@ void ComputeAmbientOcclusionSAO(inout float occlusion, float i, float ssDiskRadi
 
     const float epsilon = 0.01;
     const float bias = 0.005;
-    float radius2 = sq(_SaoParams.x);
 
+    float radius2 = sq(_SaoParams.x);
     float f = max(radius2 - vv, 0.0);
     occlusion += f * f * f * saturate((vn - bias) / (epsilon + vv));//max((vn - bias) / (epsilon + vv), 0.0);
 }
@@ -158,17 +158,19 @@ void ComputeAmbientOcclusionSAO(inout float occlusion, float i, float ssDiskRadi
 void ScalableAmbientObscurance(out float obscurance, float2 uv, float3 origin, float3 normal)
 {
     float2 fragCoord = uv.xy * _ScreenParams.xy;
+
     float noise = InterleavedGradientNoise(fragCoord);
     float2 tapPosition = StartPosition(noise);
-    float2x2 angleStep = TapAngleStep();
+    float2x2 angleStepMatrix = TapAngleStepMatrix();
 
     float ssDiskRadius = -(_PositionParams.z / origin.z);
 
     obscurance = 0.0;
     for (float i = 0.0; i < _SaoParams.y; i += 1.0)
     {
-        ComputeAmbientOcclusionSAO(obscurance, i, ssDiskRadius, uv, origin, normal, tapPosition, noise);
-        tapPosition = mul(angleStep, tapPosition);
+        float ssR = TapRadius(i, noise);
+        ComputeAmbientOcclusionSAO(obscurance, ssDiskRadius, uv, origin, normal, tapPosition, ssR);
+        tapPosition = mul(angleStepMatrix, tapPosition);
     }
 }
 
