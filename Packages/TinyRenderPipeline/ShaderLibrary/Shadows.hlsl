@@ -117,24 +117,15 @@ real SampleShadow_PCF_Tent_5x5(TEXTURE2D_SHADOW_PARAM(shadowMap, sampler_shadowM
 
     SampleShadow_ComputeSamples_Tent_5x5(_MainLightShadowMapTexture_TexelSize, coord.xy, fetchesWeights, fetchesUV);
 
-    int i;
-    UNITY_LOOP
-    for (i = 0; i < 1; ++i)
-    {
-        shadow += fetchesWeights[0] * SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, float3(fetchesUV[0].xy, coord.z));
-        shadow += fetchesWeights[1] * SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, float3(fetchesUV[1].xy, coord.z));
-        shadow += fetchesWeights[2] * SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, float3(fetchesUV[2].xy, coord.z));
-        shadow += fetchesWeights[3] * SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, float3(fetchesUV[3].xy, coord.z));
-    }
+    shadow += fetchesWeights[0] * SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, float3(fetchesUV[0].xy, coord.z));
+    shadow += fetchesWeights[1] * SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, float3(fetchesUV[1].xy, coord.z));
+    shadow += fetchesWeights[2] * SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, float3(fetchesUV[2].xy, coord.z));
+    shadow += fetchesWeights[3] * SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, float3(fetchesUV[3].xy, coord.z));
 
-    UNITY_LOOP
-    for (i = 0; i < 1; ++i)
-    {
-        shadow += fetchesWeights[4] * SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, float3(fetchesUV[4].xy, coord.z));
-        shadow += fetchesWeights[5] * SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, float3(fetchesUV[5].xy, coord.z));
-        shadow += fetchesWeights[6] * SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, float3(fetchesUV[6].xy, coord.z));
-        shadow += fetchesWeights[7] * SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, float3(fetchesUV[7].xy, coord.z));
-    }
+    shadow += fetchesWeights[4] * SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, float3(fetchesUV[4].xy, coord.z));
+    shadow += fetchesWeights[5] * SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, float3(fetchesUV[5].xy, coord.z));
+    shadow += fetchesWeights[6] * SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, float3(fetchesUV[6].xy, coord.z));
+    shadow += fetchesWeights[7] * SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, float3(fetchesUV[7].xy, coord.z));
 
     shadow += fetchesWeights[8] * SampleShadow_PCF_Bilinear(shadowMap, sampler_shadowMap, float3(fetchesUV[8].xy, coord.z));
 
