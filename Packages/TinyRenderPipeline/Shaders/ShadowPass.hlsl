@@ -17,8 +17,8 @@ struct Attributes
 
 float3 ApplyShadowBias(float3 positionWS, float3 normalWS, float3 lightDirection)
 {
-    float invNdotL = 1.0 - saturate(dot(lightDirection, normalWS));
-    float scale = invNdotL * _ShadowBias.y;
+    float invNoL = 1.0 - saturate(dot(lightDirection, normalWS));
+    float scale = invNoL * _ShadowBias.y;
 
     positionWS = lightDirection * _ShadowBias.xxx + positionWS;
     positionWS = normalWS * scale.xxx + positionWS;

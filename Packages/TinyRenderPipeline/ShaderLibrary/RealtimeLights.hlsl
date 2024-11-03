@@ -28,8 +28,8 @@ float DistanceAttenuation(float distanceSqr, float distanceAttenuation)
 
 half AngleAttenuation(half3 spotDirection, half3 lightDirection, half2 spotAttenuation)
 {
-    half SdotL = dot(spotDirection, lightDirection);
-    half atten = saturate(SdotL * spotAttenuation.x + spotAttenuation.y);
+    half SoL = dot(spotDirection, lightDirection);
+    half atten = saturate(SoL * spotAttenuation.x + spotAttenuation.y);
     return atten * atten;
 }
 

@@ -179,18 +179,17 @@ half4 ScalableAOFragment(Varyings input) : SV_TARGET
     float2 uv = input.texcoord;
 
     float z = SampleMipmapDepthLod(uv);
-    float3 origin = ReconstructViewSpacePositionFromDepth(uv, z);
-
-    float3 normal = ReconstructViewSpaceNormal(uv, origin, _MipmapDepthTexture_TexelSize.xy);
+    float3 C = ReconstructViewSpacePositionFromDepth(uv, z);
+    float3 n_C = ReconstructViewSpaceNormal(uv, C, _MipmapDepthTexture_TexelSize.xy);
 
     float occlusion;
-    ScalableAmbientObscurance(occlusion, uv, origin, normal);
+    ScalableAmbientObscurance(occlusion, uv, C, n_C);
 
     const float aoIntensity = 1.0;
     float intensityDivR6 = aoIntensity / (pow5(_SaoParams.x) * _SaoParams.x);
     half aoVisibility = max(0.0, 1.0 - occlusion * intensityDivR6 * (5.0 / _SaoParams.y));
 
-    return half4(aoVisibility, PackDepth(origin.z * _ProjectionParams.w), 1.0);
+    return half4(aoVisibility, PackDepth(C.z * _ProjectionParams.w), 1.0);
 }
 
 float BilateralWeight(in float depth, float sampleDepth)
