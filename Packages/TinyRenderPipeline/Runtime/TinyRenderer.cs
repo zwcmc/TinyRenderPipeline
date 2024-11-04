@@ -236,8 +236,7 @@ public class TinyRenderer
 
         DrawRenderGraphGizmos(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, GizmoSubset.PreImageEffects, ref renderingData);
 
-        // bool hasFxaaPass = applyPostProcessing && (postProcessingData.antialiasingMode == PostProcessingData.AntialiasingMode.FastApproximateAntialiasing);
-        bool hasFxaaPass = supportIntermediateRendering && (m_PipelineAsset.antialiasingMode == AntialiasingMode.FastApproximateAntialiasing);
+        bool hasFxaaPass = supportIntermediateRendering && (m_PipelineAsset.antialiasingMode == AntialiasingMode.FastApproximateAntiAliasing);
 
         if (applyPostProcessing)
         {
