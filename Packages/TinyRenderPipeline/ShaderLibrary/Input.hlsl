@@ -3,7 +3,7 @@
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/UnityInput.hlsl"
+#include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/UnityInput.hlsl"
 
 // Max visible additional lights count
 #define MAX_VISIBLE_LIGHTS 8

@@ -1,7 +1,7 @@
 #ifndef TINY_RP_SHADOW_PASS_INCLUDED
 #define TINY_RP_SHADOW_PASS_INCLUDED
 
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/Core.hlsl"
+#include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/Core.hlsl"
 
 // For directional light, xyz: light direction, w: 1.0
 // For spot light and point light, xyz: light position, w: 0.0

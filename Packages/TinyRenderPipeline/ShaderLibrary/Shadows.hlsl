@@ -40,7 +40,7 @@ float4x4 _AdditionalLightsWorldToShadow[MAX_SHADOW_SLICE_COUNT];  // Per-shadow-
 CBUFFER_END
 #endif
 
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/PCSS.hlsl"
+#include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/PCSS.hlsl"
 
 half GetMainLightShadowFade(float3 positionWS)
 {

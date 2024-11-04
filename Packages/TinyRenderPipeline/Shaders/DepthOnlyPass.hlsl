@@ -1,7 +1,7 @@
 #ifndef TINY_RP_DEPTH_ONLY_PASS_INCLUDED
 #define TINY_RP_DEPTH_ONLY_PASS_INCLUDED
 
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/Core.hlsl"
+#include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/Core.hlsl"
 
 struct Attributes
 {

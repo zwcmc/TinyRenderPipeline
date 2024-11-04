@@ -1,7 +1,7 @@
 #ifndef TINY_RP_SAO_INCLUDED
 #define TINY_RP_SAO_INCLUDED
 
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/CommonMath.hlsl"
+#include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/CommonMath.hlsl"
 
 #define BLUR_MAX_SAMPLE_COUNT 8
 // Generated (in C#) with:

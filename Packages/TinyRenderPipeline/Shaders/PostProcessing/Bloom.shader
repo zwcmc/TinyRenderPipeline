@@ -8,7 +8,7 @@ Shader "Hidden/Tiny Render Pipeline/Bloom"
         ZWrite Off
 
         HLSLINCLUDE
-        #include "Packages/com.tiny.render-pipeline/ShaderLibrary/BlitVertex.hlsl"
+        #include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/BlitVertex.hlsl"
         #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Filtering.hlsl"
         #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/GlobalSamplers.hlsl"
 

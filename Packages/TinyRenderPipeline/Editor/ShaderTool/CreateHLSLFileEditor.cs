@@ -10,7 +10,7 @@ public class CreateHLSLFileEditor
     [MenuItem("Assets/Create/Shader/Custom Function (HLSL)")]
     static void CreateCustomFunction()
     {
-        var templatePath = Path.GetFullPath("Packages/com.tiny.render-pipeline/Editor/ShaderTool/HLSLTemplate.hlsl");
+        var templatePath = Path.GetFullPath("Packages/com.zwcmc.tiny-rp/Editor/ShaderTool/HLSLTemplate.hlsl");
         ProjectWindowUtil.CreateScriptAssetFromTemplateFile(templatePath, "New Function.hlsl");
     }
 }

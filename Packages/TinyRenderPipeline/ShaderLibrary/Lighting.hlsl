@@ -1,7 +1,7 @@
 #ifndef TINY_RP_LIGHTING_INCLUDED
 #define TINY_RP_LIGHTING_INCLUDED
 
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/RealtimeLights.hlsl"
+#include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/RealtimeLights.hlsl"
 
 // Screen space ambient occlusion
 TEXTURE2D(_ScreenSpaceOcclusionTexture);      SAMPLER(sampler_ScreenSpaceOcclusionTexture);

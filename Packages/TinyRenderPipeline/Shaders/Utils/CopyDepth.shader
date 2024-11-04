@@ -18,7 +18,7 @@ Shader "Hidden/Tiny Render Pipeline/CopyDepth"
 
             #pragma multi_compile _ _OUTPUT_DEPTH
 
-            #include "Packages/com.tiny.render-pipeline/ShaderLibrary/BlitVertex.hlsl"
+            #include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/BlitVertex.hlsl"
 
             TEXTURE2D_FLOAT(_CameraDepthAttachment);
             SAMPLER(sampler_CameraDepthAttachment);

@@ -12,9 +12,9 @@ Shader "Hidden/Tiny Render Pipeline/FXAA"
             Name "FXAA"
 
             HLSLPROGRAM
-            #include "Packages/com.tiny.render-pipeline/ShaderLibrary/BlitVertex.hlsl"
+            #include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/BlitVertex.hlsl"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/GlobalSamplers.hlsl"
-            #include "Packages/com.tiny.render-pipeline/Shaders/AntiAliasing/FXAA.hlsl"
+            #include "Packages/com.zwcmc.tiny-rp/Shaders/AntiAliasing/FXAA.hlsl"
 
             #pragma vertex Vert
             #pragma fragment FragFXAA

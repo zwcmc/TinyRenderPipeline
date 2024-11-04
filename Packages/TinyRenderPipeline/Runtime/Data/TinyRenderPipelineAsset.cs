@@ -92,7 +92,7 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
 
     public ShaderResources shaderResources;
 
-    public static readonly string packagePath = "Packages/com.tiny.render-pipeline";
+    public static readonly string packagePath = "Packages/com.zwcmc.tiny-rp";
 
 #if UNITY_EDITOR
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1812")]

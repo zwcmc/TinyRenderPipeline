@@ -8,8 +8,8 @@ Shader "Hidden/Tiny Render Pipeline/ScalableAO"
         ZWrite Off
 
         HLSLINCLUDE
-        #include "Packages/com.tiny.render-pipeline/ShaderLibrary/BlitVertex.hlsl"
-        #include "Packages/com.tiny.render-pipeline/Shaders/ScalableAO/SAO.hlsl"
+        #include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/BlitVertex.hlsl"
+        #include "Packages/com.zwcmc.tiny-rp/Shaders/ScalableAO/SAO.hlsl"
         ENDHLSL
 
         Pass

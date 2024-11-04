@@ -11,7 +11,7 @@ Shader "Hidden/Tiny Render Pipeline/LutBuilder"
 
         #pragma multi_compile_local _ _TONEMAP_ACES _TONEMAP_NEUTRAL
 
-        #include "Packages/com.tiny.render-pipeline/ShaderLibrary/BlitVertex.hlsl"
+        #include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/BlitVertex.hlsl"
         #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
 
         float4 _Lut_Params;        // x: lut_height, y: 0.5 / lut_width, z: 0.5 / lut_height, w: lut_height / lut_height - 1

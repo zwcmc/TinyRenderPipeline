@@ -54,8 +54,8 @@ Shader "Tiny Render Pipeline/Lit"
 
             #pragma multi_compile_fragment _ _SHADOWS_PCF _SHADOWS_PCSS
 
-            #include "Packages/com.tiny.render-pipeline/Shaders/LitInput.hlsl"
-            #include "Packages/com.tiny.render-pipeline/Shaders/LitForwardPass.hlsl"
+            #include "Packages/com.zwcmc.tiny-rp/Shaders/LitInput.hlsl"
+            #include "Packages/com.zwcmc.tiny-rp/Shaders/LitForwardPass.hlsl"
             ENDHLSL
         }
 
@@ -69,7 +69,7 @@ Shader "Tiny Render Pipeline/Lit"
             #pragma vertex ShadowVertex
             #pragma fragment ShadowFragment
 
-            #include "Packages/com.tiny.render-pipeline/Shaders/ShadowPass.hlsl"
+            #include "Packages/com.zwcmc.tiny-rp//Shaders/ShadowPass.hlsl"
             ENDHLSL
         }
 
@@ -87,7 +87,7 @@ Shader "Tiny Render Pipeline/Lit"
             #pragma vertex DepthVertex
             #pragma fragment DepthFragment
 
-            #include "Packages/com.tiny.render-pipeline/Shaders/DepthOnlyPass.hlsl"
+            #include "Packages/com.zwcmc.tiny-rp/Shaders/DepthOnlyPass.hlsl"
 
             ENDHLSL
         }

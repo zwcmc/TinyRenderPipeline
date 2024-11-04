@@ -23,8 +23,12 @@ public enum AntialiasingMode
 {
     [InspectorName("No Anti-aliasing")]
     None,
+
     [InspectorName("Fast Approximate Anti-aliasing (FXAA)")]
-    FastApproximateAntialiasing
+    FastApproximateAntialiasing,
+
+    [InspectorName("Temporal Antialiasing (TAA)")]
+    TemporalAA
 }
 
 public struct ShadowData

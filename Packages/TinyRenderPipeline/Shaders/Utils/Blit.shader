@@ -15,7 +15,7 @@ Shader "Hidden/Tiny Render Pipeline/Blit"
             #pragma vertex Vert
             #pragma fragment Frag
 
-            #include "Packages/com.tiny.render-pipeline/ShaderLibrary/BlitVertex.hlsl"
+            #include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/BlitVertex.hlsl"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/GlobalSamplers.hlsl"
 
             half4 Frag(Varyings input) : SV_TARGET

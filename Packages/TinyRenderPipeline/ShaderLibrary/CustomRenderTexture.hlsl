@@ -1,7 +1,7 @@
 #ifndef TINY_RP_CUSTOM_RENDER_TEXTURE_INCLUDED
 #define TINY_RP_CUSTOM_RENDER_TEXTURE_INCLUDED
 
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/Core.hlsl"
+#include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/Core.hlsl"
 
 // Keep in sync with CustomRenderTexture.h
 #define kCustomTextureBatchSize 16

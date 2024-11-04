@@ -17,7 +17,7 @@ Shader "Hidden/Tiny Render Pipeline/Uber Post"
             #pragma multi_compile_local_fragment _ _BLOOM
             #pragma multi_compile_local_fragment _ _TONEMAP_ACES _TONEMAP_NEUTRAL
 
-            #include "Packages/com.tiny.render-pipeline/ShaderLibrary/BlitVertex.hlsl"
+            #include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/BlitVertex.hlsl"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/GlobalSamplers.hlsl"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
 

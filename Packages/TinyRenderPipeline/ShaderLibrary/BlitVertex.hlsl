@@ -1,7 +1,7 @@
 #ifndef TINY_RP_BLIT_VERTEX_INCLUDED
 #define TINY_RP_BLIT_VERTEX_INCLUDED
 
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/Input.hlsl"
+#include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/Input.hlsl"
 
 // Blit source texture
 TEXTURE2D(_BlitTexture);

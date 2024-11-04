@@ -1,7 +1,7 @@
 #ifndef TINY_RP_LIT_INPUT_INCLUDED
 #define TINY_RP_LIT_INPUT_INCLUDED
 
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/Core.hlsl"
+#include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/Core.hlsl"
 
 CBUFFER_START(UnityPerMaterial)
 float4 _BaseMap_ST;
@@ -19,11 +19,11 @@ TEXTURE2D(_BumpMap);                         SAMPLER(sampler_BumpMap);
 TEXTURE2D(_EmissionMap);                     SAMPLER(sampler_EmissionMap);
 TEXTURE2D(_IBL_DFG);                         SAMPLER(sampler_IBL_DFG);
 
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/SurfaceData.hlsl"
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/BRDF.hlsl"
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/ImageBasedLighting.hlsl"
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/Shadows.hlsl"
-#include "Packages/com.tiny.render-pipeline/ShaderLibrary/Lighting.hlsl"
+#include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/SurfaceData.hlsl"
+#include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/BRDF.hlsl"
+#include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/ImageBasedLighting.hlsl"
+#include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/Shadows.hlsl"
+#include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/Lighting.hlsl"
 
 half4 SampleAlbedoAlpha(float2 uv, TEXTURE2D_PARAM(albedoAlphaMap, sampler_albedoAlphaMap))
 {
