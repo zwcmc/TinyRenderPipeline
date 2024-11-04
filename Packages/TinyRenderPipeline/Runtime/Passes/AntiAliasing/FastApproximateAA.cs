@@ -3,7 +3,7 @@ using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
-public class FXAAPass
+public class FastApproximateAA
 {
     private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("FXAA");
 
@@ -18,7 +18,7 @@ public class FXAAPass
         public RenderingData renderingData;
     }
 
-    public FXAAPass(Shader fxaaShader)
+    public FastApproximateAA(Shader fxaaShader)
     {
         if (fxaaShader)
             m_FXAAMaterial = CoreUtils.CreateEngineMaterial(fxaaShader);

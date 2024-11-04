@@ -69,11 +69,11 @@ public class TinyRenderer
     private DrawObjectsForwardPass m_ForwardOpaqueObjectsPass;
     private CopyDepthPass m_CopyDepthPass;
     private DrawSkyboxPass m_DrawSkyboxPass;
-    private CopyColorPass m_CopyColorPass;
+    // private CopyColorPass m_CopyColorPass;
     private DrawObjectsForwardPass m_ForwardTransparentObjectsPass;
 
     private PostProcessingPass m_PostProcessingPass;
-    private FXAAPass m_FXAAPass;
+    private FastApproximateAA m_FastApproximateAA;
     private FinalBlitPass m_FinalBlitPass;
 
 #if UNITY_EDITOR
@@ -104,11 +104,11 @@ public class TinyRenderer
         m_ForwardOpaqueObjectsPass = new DrawObjectsForwardPass(true);
         m_CopyDepthPass = new CopyDepthPass(m_CopyDepthMaterial, asset.shaderResources.copyDepthCS);
         m_DrawSkyboxPass = new DrawSkyboxPass();
-        m_CopyColorPass = new CopyColorPass(asset.shaderResources.copyColorCS);
+        // m_CopyColorPass = new CopyColorPass(asset.shaderResources.copyColorCS);
         m_ForwardTransparentObjectsPass = new DrawObjectsForwardPass();
 
         m_PostProcessingPass = new PostProcessingPass();
-        m_FXAAPass = new FXAAPass(m_PipelineAsset.shaderResources.fxaaShader);
+        m_FastApproximateAA = new FastApproximateAA(m_PipelineAsset.shaderResources.fxaaShader);
         m_FinalBlitPass = new FinalBlitPass(m_BlitMaterial);
 
 #if UNITY_EDITOR
@@ -134,7 +134,7 @@ public class TinyRenderer
         m_ScalableAOPass?.Dispose();
 
         m_PostProcessingPass?.Dispose();
-        m_FXAAPass?.Dispose();
+        m_FastApproximateAA?.Dispose();
 
         CoreUtils.Destroy(m_BlitMaterial);
         CoreUtils.Destroy(m_CopyDepthMaterial);
@@ -236,23 +236,23 @@ public class TinyRenderer
 
         DrawRenderGraphGizmos(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, GizmoSubset.PreImageEffects, ref renderingData);
 
-        bool hasFxaaPass = supportIntermediateRendering && (m_PipelineAsset.antialiasingMode == AntialiasingMode.FastApproximateAntiAliasing);
+        bool fxaaEnabled = supportIntermediateRendering && (m_PipelineAsset.antialiasingMode == AntialiasingMode.FastApproximateAntiAliasing);
 
         if (applyPostProcessing)
         {
-            var target = !hasFxaaPass ? m_BackbufferColorTexture : nextCameraColorTexture;
+            var target = !fxaaEnabled ? m_BackbufferColorTexture : nextCameraColorTexture;
             m_PostProcessingPass.RecordRenderGraph(renderGraph, in m_ActiveCameraColorTexture, m_ColorGradingLutTexture, target, ref renderingData);
 
             m_ActiveCameraColorTexture = target;
-            if (!hasFxaaPass)
+            if (!fxaaEnabled)
             {
                 m_IsActiveTargetBackbuffer = true;
             }
         }
 
-        if (hasFxaaPass)
+        if (fxaaEnabled)
         {
-            m_FXAAPass.RecordRenderGraph(renderGraph, m_ActiveCameraColorTexture, m_BackbufferColorTexture, ref renderingData);
+            m_FastApproximateAA.RecordRenderGraph(renderGraph, m_ActiveCameraColorTexture, m_BackbufferColorTexture, ref renderingData);
             m_ActiveCameraColorTexture = m_BackbufferColorTexture;
             m_IsActiveTargetBackbuffer = true;
         }

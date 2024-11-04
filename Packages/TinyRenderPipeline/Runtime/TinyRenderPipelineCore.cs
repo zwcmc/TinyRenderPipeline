@@ -21,11 +21,11 @@ public enum SoftShadows
 
 public enum AntialiasingMode
 {
-    [InspectorName("No Anti-aliasing")]
+    [InspectorName("Off")]
     None,
 
     [InspectorName("Fast Approximate Anti-aliasing (FXAA)")]
-    FastApproximateAntiAliasing,
+    FastApproximateAntiAliasing
 }
 
 public struct ShadowData
