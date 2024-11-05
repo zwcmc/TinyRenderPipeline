@@ -271,7 +271,7 @@ public static class ShadowUtils
     {
         var format = GraphicsFormatUtility.GetDepthStencilFormat(bits, 0);
         RenderTextureDescriptor rtd = new RenderTextureDescriptor(width, height, GraphicsFormat.None, format);
-        rtd.shadowSamplingMode = SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.Shadowmap) ? ShadowSamplingMode.CompareDepths : ShadowSamplingMode.None;
+        rtd.shadowSamplingMode = ShadowSamplingMode.CompareDepths;
         return rtd;
     }
 
