@@ -60,10 +60,7 @@ public class TinyRenderPipeline : RenderPipeline
         s_TinyRenderer = new TinyRenderer(pipelineAsset);
     }
 
-    protected override void Render(ScriptableRenderContext context, Camera[] cameras)
-    {
-        Render(context, new List<Camera>(cameras));
-    }
+    protected override void Render(ScriptableRenderContext context, Camera[] cameras) { }
 
     protected override void Render(ScriptableRenderContext context, List<Camera> cameras)
     {
@@ -224,6 +221,8 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.postProcessingData = asset.postProcessingData;
 
         renderingData.lutSize = asset.colorGradingLutSize;
+
+        renderingData.antialiasing = asset.antialiasingMode;
     }
 
     private static PerObjectData GetPerObjectLightFlags(int additionalLightsCount, bool isForwardPlus = false)

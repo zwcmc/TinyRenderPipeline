@@ -20,7 +20,7 @@ Shader "Hidden/Tiny Render Pipeline/Blit"
 
             half4 Frag(Varyings input) : SV_TARGET
             {
-                float2 uv = input.texcoord;
+                float2 uv = input.uv;
                 return SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_LinearClamp, uv, 0.0);
             }
 

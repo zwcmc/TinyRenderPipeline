@@ -13,6 +13,11 @@ float pow5(float x)
     return x2 * x2 * x;
 }
 
+float max3(float3 v)
+{
+    return max(v.x, max(v.y, v.z));
+}
+
 /*
  * Random number between 0 and 1, using interleaved gradient noise.
  * w must not be normalized (e.g. window coordinates)

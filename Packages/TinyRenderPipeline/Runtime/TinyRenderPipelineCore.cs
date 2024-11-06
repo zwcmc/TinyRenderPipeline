@@ -25,7 +25,10 @@ public enum AntialiasingMode
     None,
 
     [InspectorName("Fast Approximate Anti-aliasing (FXAA)")]
-    FastApproximateAntiAliasing
+    FastApproximateAntiAliasing,
+
+    [InspectorName("Temporal Anti-aliasing (TAA)")]
+    TemporalAntiAliasing
 }
 
 public struct ShadowData
@@ -75,6 +78,8 @@ public struct RenderingData
     /// The size of the color grading Look Up Table (LUT)
     /// </summary>
     public int lutSize;
+
+    public AntialiasingMode antialiasing;
 }
 
 public struct ShadowSliceData
@@ -115,12 +120,11 @@ public static class ShaderKeywordStrings
     public const string ShadowPCSS = "_SHADOWS_PCSS";
 }
 
-public static class ShaderPropertyID
+public static class ShaderPropertyIDs
 {
-    public static readonly int worldSpaceCameraPos = Shader.PropertyToID("_WorldSpaceCameraPos");
-    public static readonly int zBufferParams = Shader.PropertyToID("_ZBufferParams");
-    public static readonly int orthoParams = Shader.PropertyToID("unity_OrthoParams");
-    public static readonly int projectionParams = Shader.PropertyToID("_ProjectionParams");
-    public static readonly int screenParams = Shader.PropertyToID("_ScreenParams");
-    public static readonly int sourceSize = Shader.PropertyToID("_SourceSize");
+    public static readonly int WorldSpaceCameraPos = Shader.PropertyToID("_WorldSpaceCameraPos");
+    public static readonly int ZBufferParams = Shader.PropertyToID("_ZBufferParams");
+    public static readonly int OrthoParams = Shader.PropertyToID("unity_OrthoParams");
+    public static readonly int ProjectionParams = Shader.PropertyToID("_ProjectionParams");
+    public static readonly int ScreenParams = Shader.PropertyToID("_ScreenParams");
 }

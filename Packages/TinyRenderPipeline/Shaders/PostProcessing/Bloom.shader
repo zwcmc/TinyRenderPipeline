@@ -24,7 +24,7 @@ Shader "Hidden/Tiny Render Pipeline/Bloom"
 
         half4 FragPrefilter(Varyings input) : SV_TARGET
         {
-            float2 uv = input.texcoord;
+            float2 uv = input.uv;
 
         #if defined(_BLOOM_HQ)
             float texelSize = _BlitTexture_TexelSize.x;
@@ -73,7 +73,7 @@ Shader "Hidden/Tiny Render Pipeline/Bloom"
         half4 FragBlurH(Varyings input) : SV_TARGET
         {
             float2 texelSize = _BlitTexture_TexelSize.xy * 2.0;
-            float2 uv = input.texcoord;
+            float2 uv = input.uv;
 
             // 9-tap gaussian blur on the downsampled source
             half3 c0 = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, uv - float2(texelSize.x * 4.0, 0.0)).rgb;
@@ -96,7 +96,7 @@ Shader "Hidden/Tiny Render Pipeline/Bloom"
         half4 FragBlurV(Varyings input) : SV_TARGET
         {
             float2 texelSize = _BlitTexture_TexelSize.xy;
-            float2 uv = input.texcoord;
+            float2 uv = input.uv;
 
             // Optimized bilinear 5-tap gaussian on the same-sized source (9-tap equivalent)
             half3 c0 = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, uv - float2(0.0, texelSize.y * 3.23076923)).rgb;
@@ -114,7 +114,7 @@ Shader "Hidden/Tiny Render Pipeline/Bloom"
 
         half4 FragUpsample(Varyings input) : SV_TARGET
         {
-            float2 uv = input.texcoord;
+            float2 uv = input.uv;
 
             half3 highMip = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, uv).rgb;
 

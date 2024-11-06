@@ -7,6 +7,8 @@ public class FastApproximateAA
 {
     private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("FXAA");
 
+    private static int m_SourceSizeID = Shader.PropertyToID("_SourceSize");
+
     private Material m_FXAAMaterial;
     private RTHandle m_Source;
 
@@ -58,9 +60,9 @@ public class FastApproximateAA
     }
 
     private static void SetSourceSize(RasterCommandBuffer cmd, RTHandle source)
-    {
-        float width = source.rt.width;
-        float height = source.rt.height;
-        cmd.SetGlobalVector(ShaderPropertyID.sourceSize, new Vector4(width, height, 1.0f / width, 1.0f / height));
-    }
+         {
+             float width = source.rt.width;
+             float height = source.rt.height;
+             cmd.SetGlobalVector(m_SourceSizeID, new Vector4(width, height, 1.0f / width, 1.0f / height));
+         }
 }

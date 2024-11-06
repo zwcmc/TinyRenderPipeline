@@ -66,7 +66,7 @@ public class ScalableAOPass
             const float sampleCount = 9.0f;
 
             Matrix4x4 projectionMatrix = GL.GetGPUProjectionMatrix(renderingData.camera.projectionMatrix, true);
-            var invProjection = projectionMatrix.inverse;
+            var invProjection = Matrix4x4.Inverse(projectionMatrix);
 
             // 屏幕的宽高(以像素为单位)
             Vector2Int screenSizeInPixels = new Vector2Int(saoDescriptor.width, saoDescriptor.height);

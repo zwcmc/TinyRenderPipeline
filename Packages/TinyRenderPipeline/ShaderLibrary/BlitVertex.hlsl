@@ -18,7 +18,7 @@ struct Attributes
 
 struct Varyings
 {
-    float2 texcoord : TEXCOORD0;
+    float2 uv : TEXCOORD0;
     float4 positionCS : SV_POSITION;
 };
 
@@ -30,7 +30,7 @@ Varyings Vert(Attributes input)
     float2 uv  = GetFullScreenTriangleTexCoord(input.vertexID);
 
     output.positionCS = pos;
-    output.texcoord   = DYNAMIC_SCALING_APPLY_SCALEBIAS(uv);
+    output.uv   = DYNAMIC_SCALING_APPLY_SCALEBIAS(uv);
 
     return output;
 }

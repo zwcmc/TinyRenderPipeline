@@ -13,7 +13,6 @@ Shader "Hidden/Tiny Render Pipeline/FXAA"
 
             HLSLPROGRAM
             #include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/BlitVertex.hlsl"
-            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/GlobalSamplers.hlsl"
             #include "Packages/com.zwcmc.tiny-rp/Shaders/AntiAliasing/FXAA.hlsl"
 
             #pragma vertex Vert

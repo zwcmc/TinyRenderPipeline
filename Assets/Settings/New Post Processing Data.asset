@@ -19,7 +19,7 @@ MonoBehaviour:
   bloom:
     threshold: 1
     intensity: 1
-    scatter: 0.715
+    scatter: 0.786
     clamp: 65472
     maxIterations: 8
     highQualityFiltering: 0

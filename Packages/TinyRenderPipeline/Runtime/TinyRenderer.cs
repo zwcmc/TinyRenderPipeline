@@ -73,8 +73,12 @@ public class TinyRenderer
     private DrawObjectsForwardPass m_ForwardTransparentObjectsPass;
 
     private PostProcessingPass m_PostProcessingPass;
-    private FastApproximateAA m_FastApproximateAA;
     private FinalBlitPass m_FinalBlitPass;
+
+    // Anti-aliasing
+    private FastApproximateAA m_FastApproximateAA;
+
+    private TemporalAA m_TemporalAA;
 
 #if UNITY_EDITOR
     private CopyDepthPass m_FinalCopyDepthPass;
@@ -108,8 +112,10 @@ public class TinyRenderer
         m_ForwardTransparentObjectsPass = new DrawObjectsForwardPass();
 
         m_PostProcessingPass = new PostProcessingPass();
-        m_FastApproximateAA = new FastApproximateAA(m_PipelineAsset.shaderResources.fxaaShader);
         m_FinalBlitPass = new FinalBlitPass(m_BlitMaterial);
+
+        m_FastApproximateAA = new FastApproximateAA(m_PipelineAsset.shaderResources.fxaaShader);
+        m_TemporalAA = new TemporalAA(asset.shaderResources.taaShader);
 
 #if UNITY_EDITOR
         m_FinalCopyDepthPass = new CopyDepthPass(m_CopyDepthMaterial, asset.shaderResources.copyDepthCS, true);
@@ -134,6 +140,8 @@ public class TinyRenderer
         m_ScalableAOPass?.Dispose();
 
         m_PostProcessingPass?.Dispose();
+
+        m_TemporalAA?.Dispose();
         m_FastApproximateAA?.Dispose();
 
         CoreUtils.Destroy(m_BlitMaterial);
@@ -236,7 +244,15 @@ public class TinyRenderer
 
         DrawRenderGraphGizmos(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, GizmoSubset.PreImageEffects, ref renderingData);
 
-        bool fxaaEnabled = supportIntermediateRendering && (m_PipelineAsset.antialiasingMode == AntialiasingMode.FastApproximateAntiAliasing);
+        // TAA
+        if (supportIntermediateRendering && (renderingData.antialiasing == AntialiasingMode.TemporalAntiAliasing))
+        {
+            var target = nextCameraColorTexture;
+            m_TemporalAA.RecordRenderGraph(renderGraph, in m_ActiveCameraColorTexture, ref target, ref renderingData);
+            m_ActiveCameraColorTexture = target;
+        }
+
+        bool fxaaEnabled = supportIntermediateRendering && (renderingData.antialiasing == AntialiasingMode.FastApproximateAntiAliasing);
 
         if (applyPostProcessing)
         {
@@ -409,13 +425,18 @@ public class TinyRenderer
                 // - Camera billboard properties.
                 // - Camera frustum planes: unity_CameraWorldClipPlanes[6]
                 // - _ProjectionParams.x logic is deep inside GfxDevice
-                SetPerCameraShaderVariables(cmd, data.renderingData.camera, RenderingUtils.IsHandleYFlipped(data.colorTarget, data.renderingData.camera));
+                SetPerCameraShaderVariables(cmd, ref data);
             });
         }
     }
 
-    private static void SetPerCameraShaderVariables(RasterCommandBuffer cmd, Camera camera, bool isTargetFlipped)
+    private static void SetPerCameraShaderVariables(RasterCommandBuffer cmd, ref PassData passData)
     {
+        // data.renderingData.camera, RenderingUtils.IsHandleYFlipped(data.colorTarget, data.renderingData.camera)
+        ref var renderingData = ref passData.renderingData;
+        var camera = renderingData.camera;
+        bool isTargetFlipped = RenderingUtils.IsHandleYFlipped(passData.colorTarget, camera);
+
         float near = camera.nearClipPlane;
         float far = camera.farClipPlane;
         float invNear = Mathf.Approximately(near, 0.0f) ? 0.0f : 1.0f / near;
@@ -443,15 +464,24 @@ public class TinyRenderer
             zBufferParams.z = -zBufferParams.z;
         }
 
-        cmd.SetGlobalVector(ShaderPropertyID.worldSpaceCameraPos, camera.transform.position);
-        cmd.SetGlobalVector(ShaderPropertyID.zBufferParams, zBufferParams);
+        cmd.SetGlobalVector(ShaderPropertyIDs.WorldSpaceCameraPos, camera.transform.position);
+        cmd.SetGlobalVector(ShaderPropertyIDs.ZBufferParams, zBufferParams);
         float aspectRatio = (float)camera.pixelWidth / (float)camera.pixelHeight;
         float orthographicSize = camera.orthographicSize;
         Vector4 orthoParams = new Vector4(orthographicSize * aspectRatio, orthographicSize, 0.0f, isOrthographic);
-        cmd.SetGlobalVector(ShaderPropertyID.orthoParams, orthoParams);
+        cmd.SetGlobalVector(ShaderPropertyIDs.OrthoParams, orthoParams);
         float projectionFlipSign = isTargetFlipped ? -1.0f : 1.0f;
-        cmd.SetGlobalVector(ShaderPropertyID.projectionParams, new Vector4(projectionFlipSign, near, far, invFar));
-        cmd.SetGlobalVector(ShaderPropertyID.screenParams, new Vector4(cameraWidth, cameraHeight, 1.0f + 1.0f / cameraWidth, 1.0f + 1.0f / cameraHeight));
+        cmd.SetGlobalVector(ShaderPropertyIDs.ProjectionParams, new Vector4(projectionFlipSign, near, far, invFar));
+        cmd.SetGlobalVector(ShaderPropertyIDs.ScreenParams, new Vector4(cameraWidth, cameraHeight, 1.0f + 1.0f / cameraWidth, 1.0f + 1.0f / cameraHeight));
+
+        Matrix4x4 viewMatrix = camera.worldToCameraMatrix;
+        Matrix4x4 projectionMatrix = camera.projectionMatrix;
+        if (camera.cameraType <= CameraType.SceneView && renderingData.antialiasing == AntialiasingMode.TemporalAntiAliasing)
+        {
+            // Apply the TAA jitter
+            TemporalAA.TaaJitterProjectionMatrix(in renderingData.cameraTargetDescriptor, in viewMatrix, ref projectionMatrix);
+        }
+        cmd.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
     }
 
 #if UNITY_EDITOR

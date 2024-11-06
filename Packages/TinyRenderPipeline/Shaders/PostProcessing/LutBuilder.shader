@@ -93,7 +93,7 @@ Shader "Hidden/Tiny Render Pipeline/LutBuilder"
             // Lut input color in Log C space
             // We use Alexa Log C (El 1000) to store the LUT as it provides a good enough range
             // (~58.85666) and is good enough to be stored in fp16 without losing precision in the darks
-            float3 colorLutSpace = GetLutStripValue(input.texcoord, _Lut_Params);
+            float3 colorLutSpace = GetLutStripValue(input.uv, _Lut_Params);
 
             // Switch from Log C space to linear space
             float3 colorLinear = LogCToLinear(colorLutSpace);

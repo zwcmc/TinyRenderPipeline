@@ -1,6 +1,8 @@
 #ifndef TINY_RP_FXAA_INCLUDED
 #define TINY_RP_FXAA_INCLUDED
 
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/GlobalSamplers.hlsl"
+
 float4 _SourceSize; // (x: screenWidthInPixels, y: screenHeightInPixels, z: 1.0/screenWidthInPixels, w: 1.0/screenHeightInPixels)
 
 /*----------------*/
@@ -62,7 +64,7 @@ half4 FXAATex(float2 uv)
 half4 FragFXAA(Varyings input) : SV_TARGET
 {
     // Center pixel
-    float2 posM = input.texcoord;
+    float2 posM = input.uv;
 
     // Center sample
     half4 rgbyM = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_LinearClamp, posM, 0.0);

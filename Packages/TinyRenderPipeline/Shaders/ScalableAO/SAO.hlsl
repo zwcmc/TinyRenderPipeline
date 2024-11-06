@@ -206,7 +206,7 @@ void ScalableAmbientObscurance(out float sumObscurance, float2 uv, float3 origin
 
 half4 ScalableAOFragment(Varyings input) : SV_TARGET
 {
-    float2 uv = input.texcoord;
+    float2 uv = input.uv;
 
     float z = SampleMipmapDepthLod(uv);
     float3 C = ReconstructViewSpacePositionFromDepth(uv, z);
@@ -242,7 +242,7 @@ void Tap(inout float sum, inout float totalWeight, float weight, float depth, fl
 
 half4 BilateralBlurFragment(Varyings input) : SV_TARGET
 {
-    float2 uv = input.texcoord;
+    float2 uv = input.uv;
     half3 data = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, uv, 0.0).rgb;
 
     // This is the skybox, skip
@@ -275,7 +275,7 @@ half4 BilateralBlurFragment(Varyings input) : SV_TARGET
 
 half FinalBilateralBlurFragment(Varyings input) : SV_TARGET
 {
-    float2 uv = input.texcoord;
+    float2 uv = input.uv;
     half3 data = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, uv, 0.0).rgb;
 
     // This is the skybox, skip

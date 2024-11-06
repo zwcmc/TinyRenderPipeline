@@ -29,7 +29,7 @@ Shader "Hidden/Tiny Render Pipeline/CopyDepth"
             float Frag(Varyings input) : SV_TARGET
         #endif
             {
-                return SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthAttachment, sampler_CameraDepthAttachment, input.texcoord, 0.0);
+                return SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthAttachment, sampler_CameraDepthAttachment, input.uv, 0.0);
             }
 
             ENDHLSL

@@ -54,6 +54,9 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
         [Reload("Shaders/PostProcessing/FXAA.shader")]
         public Shader fxaaShader;
 
+        [Reload("Shaders/PostProcessing/TAA.shader")]
+        public Shader taaShader;
+
         [Reload("Runtime/Passes/ScalableAO/MipmapDepth.compute")]
         public ComputeShader mipmapDepthCS;
 
