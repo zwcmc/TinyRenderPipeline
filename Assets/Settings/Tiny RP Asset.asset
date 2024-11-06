@@ -21,7 +21,7 @@ MonoBehaviour:
       cascadeRatio2: 0.2
       cascadeRatio3: 0.467
       cascadeBorder: 0.2
-    additionalLightShadowResolution: 1024
+    additionalLightShadowResolution: 4096
     softShadows: 2
   postProcessingData: {fileID: 11400000, guid: 90ac35e882f8867438b6345c4c8a746c, type: 2}
   antialiasingMode: 2

@@ -182,6 +182,8 @@ half AdditionalLightShadow(int lightIndex, float3 positionWS, half3 lightDirecti
     half4 shadowParams = _AdditionalShadowParams[lightIndex];
 
     int shadowSliceIndex = shadowParams.w;
+
+    UNITY_BRANCH
     if (shadowSliceIndex < 0)
         return 1.0;
 

@@ -173,12 +173,12 @@ public class TinyRenderer
         // Setup lights data
         m_ForwardLights.SetupRenderGraphLights(renderGraph, ref renderingData);
 
-        // Render main light shadow map
-        if (m_MainLightShadowPass.Setup(ref renderingData))
+        // Main light shadow
+        if (m_MainLightShadowPass.IsEnabled(renderGraph, ref renderingData))
             m_MainLightShadowMapTexture = m_MainLightShadowPass.RecordRenderGraph(renderGraph, ref renderingData);
 
         // Render additional lights shadow map
-        if (m_AdditionalLightsShadowPass.Setup(ref renderingData))
+        if (m_AdditionalLightsShadowPass.IsEnabled(renderGraph, ref renderingData))
             m_AdditionalLightShadowMapTexture = m_AdditionalLightsShadowPass.RecordRenderGraph(renderGraph, ref renderingData);
 
         CreateAndSetCameraRenderTargets(renderGraph, ref renderingData, supportIntermediateRendering);

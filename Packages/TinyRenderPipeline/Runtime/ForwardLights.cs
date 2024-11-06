@@ -338,6 +338,7 @@ public class ForwardLights
             passData.forwardLights = this;
 
             builder.AllowPassCulling(false);
+            builder.AllowGlobalStateModification(true);
 
             builder.SetRenderFunc((SetupLightsPassData data, LowLevelGraphContext lowLevelGraphContext) =>
             {

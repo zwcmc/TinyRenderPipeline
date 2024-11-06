@@ -225,11 +225,13 @@ public class TinyRenderPipeline : RenderPipeline
         renderingData.antialiasing = asset.antialiasingMode;
     }
 
-    private static PerObjectData GetPerObjectLightFlags(int additionalLightsCount, bool isForwardPlus = false)
+    private static PerObjectData GetPerObjectLightFlags(int additionalLightsCount)
     {
         var configuration = PerObjectData.LightProbe | PerObjectData.ReflectionProbes | PerObjectData.LightData;
-        if (additionalLightsCount > 0 && !isForwardPlus)
+        if (additionalLightsCount > 0)
+        {
             configuration |= PerObjectData.LightIndices;
+        }
         return configuration;
     }
 
