@@ -1,6 +1,7 @@
 #ifndef TINY_RP_TEMPORAL_AA_INCLUDED
 #define TINY_RP_TEMPORAL_AA_INCLUDED
 
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/GlobalSamplers.hlsl"
 #include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/DeclareDepthTexture.hlsl"
 #include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/CommonMath.hlsl"
@@ -86,58 +87,25 @@ half4 SampleTextureBicubic5Tap(TEXTURE2D(tex), float2 uv, float4 texelSize)
     return result;
 }
 
-// This function take a rgb color (best is to provide color in sRGB space)
-// and return a YCoCg color in [0..1] space for 8bit (An offset is apply in the function)
-// Ref: http://www.nvidia.com/object/real-time-ycocg-dxt-compression.html
-#define YCOCG_CHROMA_BIAS (128.0 / 255.0)
-half3 RGB_YCoCg(half3 c)
-{
-    half3 YCoCg;
-    YCoCg.x = dot(c, half3(0.25, 0.5, 0.25));
-    YCoCg.y = dot(c, half3(0.5, 0.0, -0.5)) + YCOCG_CHROMA_BIAS;
-    YCoCg.z = dot(c, half3(-0.25, 0.5, -0.25)) + YCOCG_CHROMA_BIAS;
-
-    return YCoCg;
-}
-
-half3 YCoCg_RGB(half3 YCoCg)
-{
-    half Y = YCoCg.x;
-    half Co = YCoCg.y - YCOCG_CHROMA_BIAS;
-    half Cg = YCoCg.z - YCOCG_CHROMA_BIAS;
-
-    half3 rgb;
-    rgb.r = Y + Co - Cg;
-    rgb.g = Y + Cg;
-    rgb.b = Y - Co - Cg;
-
-    return rgb;
-}
-
 half LumaYCoCg(half3 c)
 {
     return c.x;
 }
 
-half LumaRGB(half3 linearRgb)
-{
-    return dot(linearRgb, half3(0.2126729, 0.7151522, 0.0721750));
-}
-
 half3 ToneMapReinhard(half3 c)
 {
-    return c * rcp(1.0 + LumaRGB(c));
+    return c * rcp(1.0 + max3(c));
 }
 
-half3 UntoneMapReinhard(half3 c) {
+half3 UnToneMapReinhard(half3 c) {
     const float epsilon = 1.0 / HALF_MAX;
-    return c * rcp(max(epsilon, 1.0 - LumaRGB(c)));
+    return c * rcp(max(epsilon, 1.0 - max3(c)));
 }
 
 half4 FetchOffset(TEXTURE2D(tex), float2 coords, float2 offset, float4 texelSize)
 {
     float2 uv = coords + offset * texelSize.xy;
-    return SAMPLE_TEXTURE2D_LOD(tex, sampler_LinearClamp, uv, 0.0);
+    return SAMPLE_TEXTURE2D_LOD(tex, sampler_PointClamp, uv, 0.0);
 }
 
 half4 ClipToBox(half3 boxmin, half3 boxmax, half4 c, half4 h)
@@ -150,7 +118,7 @@ half4 ClipToBox(half3 boxmin, half3 boxmax, half4 c, half4 h)
     return h + r * saturate(max3(imin));
 }
 
-half4 TemporalAAFragment(Varyings input) : SV_TARGET
+float4 TemporalAAFragment(Varyings input) : SV_TARGET
 {
     float4 uv = input.uv.xyxy;
 
@@ -159,61 +127,60 @@ half4 TemporalAAFragment(Varyings input) : SV_TARGET
     uv.zw = (q.xy * (1.0 / q.w)) * 0.5 + 0.5;
 
     // half4 history = SampleTextureBicubic5Tap(_TaaHistoryTexture, uv.zw, _TaaHistoryTexture_TexelSize);
-    half4 history = SAMPLE_TEXTURE2D_LOD(_TaaHistoryTexture, sampler_LinearClamp, uv.zw,  0.0);
-    history.rgb = RGB_YCoCg(history.rgb);
+    float4 history = SAMPLE_TEXTURE2D_LOD(_TaaHistoryTexture, sampler_LinearClamp, uv.zw, 0.0);
+    history.rgb = RGBToYCoCg(history.rgb);
 
-    float2 p = (floor(uv.xy * _BlitTexture_TexelSize.zw) + 0.5) * _BlitTexture_TexelSize.xy;
+    float2 p = uv.xy;
     // Filtered current frame input
-    half4 filtered = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_PointClamp, p, 0.0);
-    filtered.rgb = RGB_YCoCg(filtered.rgb);
+    float4 filtered = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_PointClamp, p, 0.0);
 
-    // // Should match the offsets define s_SamplesOffset in TemporalAA.cs
-    // float3 s[9];
-    // s[0] = RGB_YCoCg(FetchOffset(_BlitTexture, p, float2(-1.0, -1.0), _BlitTexture_TexelSize).rgb);
-    // s[1] = RGB_YCoCg(FetchOffset(_BlitTexture, p, float2(0.0, -1.0), _BlitTexture_TexelSize).rgb);
-    // s[2] = RGB_YCoCg(FetchOffset(_BlitTexture, p, float2(1.0, -1.0), _BlitTexture_TexelSize).rgb);
-    // s[3] = RGB_YCoCg(FetchOffset(_BlitTexture, p, float2(-1.0, 0.0), _BlitTexture_TexelSize).rgb);
-    // s[4] = RGB_YCoCg(filtered.rgb);
-    // s[5] = RGB_YCoCg(FetchOffset(_BlitTexture, p, float2(1.0, 0.0), _BlitTexture_TexelSize).rgb);
-    // s[6] = RGB_YCoCg(FetchOffset(_BlitTexture, p, float2(-1.0, 1.0), _BlitTexture_TexelSize).rgb);
-    // s[7] = RGB_YCoCg(FetchOffset(_BlitTexture, p, float2(0.0, 1.0), _BlitTexture_TexelSize).rgb);
-    // s[8] = RGB_YCoCg(FetchOffset(_BlitTexture, p, float2(1.0, 1.0), _BlitTexture_TexelSize).rgb);
-    //
-    // filtered = float4(0, 0, 0, filtered.a);
-    // UNITY_UNROLL
-    // for(int i = 0; i < 9; ++i)
-    // {
-    //     float w = _TaaFilterWeights[i];
-    //     filtered.rgb += s[i] * w;
-    // }
-    //
-    // // Build the history clamping box
-    // half3 boxmin = min(s[4], min(min(s[1], s[3]), min(s[5], s[7])));
-    // half3 boxmax = max(s[4], max(max(s[1], s[3]), max(s[5], s[7])));
-    // half3 box9min = min(boxmin, min(min(s[0], s[2]), min(s[6], s[8])));
-    // half3 box9max = max(boxmax, max(max(s[0], s[2]), max(s[6], s[8])));
-    // // round the corners of the 3x3 box
-    // boxmin = (boxmin + box9min) * 0.5;
-    // boxmax = (boxmax + box9max) * 0.5;
-    //
-    // // "An Excursion in Temporal Supersampling" by Marco Salvi
-    // float3 m0 = s[4];// conversion to highp
-    // float3 m1 = m0 * m0;
-    // // we use only 5 samples instead of all 9
-    // for (int i = 1; i < 9; i+=2) {
-    //     float3 c = s[i];// conversion to highp
-    //     m0 += c;
-    //     m1 += c * c;
-    // }
-    // float3 a0 = m0 * (1.0 / 5.0);
-    // float3 a1 = m1 * (1.0 / 5.0);
-    // float3 sigma = sqrt(a1 - a0 * a0);
-    // // intersect both bounding boxes
-    // boxmin = max(boxmin, a0 - _TaaVarianceGamma * sigma);
-    // boxmax = min(boxmax, a0 + _TaaVarianceGamma * sigma);
-    //
-    // // history clamping
-    // history = ClipToBox(boxmin, boxmax, filtered, history);
+    // Should match the offsets define s_SamplesOffset in TemporalAA.cs
+    float3 s[9];
+    s[0] = RGBToYCoCg(FetchOffset(_BlitTexture, p, float2(-1.0, -1.0), _BlitTexture_TexelSize).rgb);
+    s[1] = RGBToYCoCg(FetchOffset(_BlitTexture, p, float2(0.0, -1.0), _BlitTexture_TexelSize).rgb);
+    s[2] = RGBToYCoCg(FetchOffset(_BlitTexture, p, float2(1.0, -1.0), _BlitTexture_TexelSize).rgb);
+    s[3] = RGBToYCoCg(FetchOffset(_BlitTexture, p, float2(-1.0, 0.0), _BlitTexture_TexelSize).rgb);
+    s[4] = RGBToYCoCg(filtered.rgb);
+    s[5] = RGBToYCoCg(FetchOffset(_BlitTexture, p, float2(1.0, 0.0), _BlitTexture_TexelSize).rgb);
+    s[6] = RGBToYCoCg(FetchOffset(_BlitTexture, p, float2(-1.0, 1.0), _BlitTexture_TexelSize).rgb);
+    s[7] = RGBToYCoCg(FetchOffset(_BlitTexture, p, float2(0.0, 1.0), _BlitTexture_TexelSize).rgb);
+    s[8] = RGBToYCoCg(FetchOffset(_BlitTexture, p, float2(1.0, 1.0), _BlitTexture_TexelSize).rgb);
+
+    filtered = float4(0, 0, 0, filtered.a);
+    UNITY_UNROLL
+    for(int i = 0; i < 9; ++i)
+    {
+        float w = _TaaFilterWeights[i];
+        filtered.rgb += s[i] * w;
+    }
+
+    // Build the history clamping box
+    half3 boxmin = min(s[4], min(min(s[1], s[3]), min(s[5], s[7])));
+    half3 boxmax = max(s[4], max(max(s[1], s[3]), max(s[5], s[7])));
+    half3 box9min = min(boxmin, min(min(s[0], s[2]), min(s[6], s[8])));
+    half3 box9max = max(boxmax, max(max(s[0], s[2]), max(s[6], s[8])));
+    // round the corners of the 3x3 box
+    boxmin = (boxmin + box9min) * 0.5;
+    boxmax = (boxmax + box9max) * 0.5;
+
+    // "An Excursion in Temporal Supersampling" by Marco Salvi
+    float3 m0 = s[4];// conversion to highp
+    float3 m1 = m0 * m0;
+    // we use only 5 samples instead of all 9
+    for (int i = 1; i < 9; i+=2) {
+        float3 c = s[i];// conversion to highp
+        m0 += c;
+        m1 += c * c;
+    }
+    float3 a0 = m0 * (1.0 / 5.0);
+    float3 a1 = m1 * (1.0 / 5.0);
+    float3 sigma = sqrt(a1 - a0 * a0);
+    // intersect both bounding boxes
+    boxmin = max(boxmin, a0 - _TaaVarianceGamma * sigma);
+    boxmax = min(boxmax, a0 + _TaaVarianceGamma * sigma);
+
+    // history clamping
+    history = ClipToBox(boxmin, boxmax, filtered, history);
 
     float alpha = _TaaFeedback;
 
@@ -224,18 +191,18 @@ half4 TemporalAAFragment(Varyings input) : SV_TARGET
     alpha *= diff * diff;
 
     // go back to RGB space before tonemapping
-    filtered.rgb = YCoCg_RGB(filtered.rgb);
-    history.rgb = YCoCg_RGB(history.rgb);
+    filtered.rgb = YCoCgToRGB(filtered.rgb);
+    history.rgb = YCoCgToRGB(history.rgb);
 
     // tonemap before mixing
     filtered.rgb = ToneMapReinhard(filtered.rgb);
     history.rgb = ToneMapReinhard(history.rgb);
 
     // combine history and current frame
-    half4 result = lerp(history, filtered, alpha);
+    float4 result = lerp(history, filtered, alpha);
 
     // untonemap result
-    result.rgb = UntoneMapReinhard(result.rgb);
+    result.rgb = UnToneMapReinhard(result.rgb);
 
     return result;
 }

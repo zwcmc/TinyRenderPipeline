@@ -46,7 +46,7 @@ public class TemporalAA
     private static class TaaSettings
     {
         public static float filterWidth = 1.0f;    // Reconstruction filter width typically between 0.2 (sharper, aliased) and 1.5 (smoother)
-        public static float feedback = 0.12f;      // History feedback, between 0 (maximum temporal AA) and 1 (no temporal AA).
+        public static float feedback = 0.16f;      // History feedback, between 0 (maximum temporal AA) and 1 (no temporal AA).
         public static float varianceGamma = 1.0f;  // High values increases ghosting artefact, lower values increases jittering, range [0.75, 1.25]
     }
 
@@ -118,13 +118,11 @@ public class TemporalAA
 
         bool isHistoryValid = m_TaaHistoryRTHandle != null && m_TaaHistoryRTHandle.rt != null;
         TextureHandle history = isHistoryValid ? renderGraph.ImportTexture(m_TaaHistoryRTHandle) : currentColorTexture;
-
         using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_TaaSampler.name, out var passData, s_TaaSampler))
         {
             passData.input = currentColorTexture;
             builder.UseTexture(currentColorTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
 
-            // passData.history = history;
             passData.history = builder.UseTexture(history, IBaseRenderGraphBuilder.AccessFlags.Read);
 
             passData.taaMaterial = m_TaaMaterial;
