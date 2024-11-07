@@ -245,14 +245,14 @@ public class TinyRenderer
         DrawRenderGraphGizmos(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, GizmoSubset.PreImageEffects, ref renderingData);
 
         // TAA
-        if (supportIntermediateRendering && (renderingData.antialiasing == AntialiasingMode.TemporalAntiAliasing))
+        if (supportIntermediateRendering && (renderingData.antialiasing == AntialiasingMode.TemporalAntialiasing))
         {
             var target = nextCameraColorTexture;
             m_TemporalAA.RecordRenderGraph(renderGraph, in m_ActiveCameraColorTexture, ref target, ref renderingData);
             m_ActiveCameraColorTexture = target;
         }
 
-        bool fxaaEnabled = supportIntermediateRendering && (renderingData.antialiasing == AntialiasingMode.FastApproximateAntiAliasing);
+        bool fxaaEnabled = supportIntermediateRendering && (renderingData.antialiasing == AntialiasingMode.FastApproximateAntialiasing);
 
         if (applyPostProcessing)
         {
@@ -476,7 +476,7 @@ public class TinyRenderer
 
         Matrix4x4 viewMatrix = camera.worldToCameraMatrix;
         Matrix4x4 projectionMatrix = camera.projectionMatrix;
-        if (camera.cameraType <= CameraType.SceneView && renderingData.antialiasing == AntialiasingMode.TemporalAntiAliasing)
+        if (camera.cameraType <= CameraType.SceneView && renderingData.antialiasing == AntialiasingMode.TemporalAntialiasing)
         {
             // Apply the TAA jitter
             TemporalAA.TaaJitterProjectionMatrix(in renderingData.cameraTargetDescriptor, in viewMatrix, ref projectionMatrix);

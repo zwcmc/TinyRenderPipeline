@@ -43,7 +43,7 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
     public PostProcessingData postProcessingData = default;
 
     [SerializeField]
-    public AntialiasingMode antialiasingMode = AntialiasingMode.None;
+    public AntialiasingMode antialiasingMode = AntialiasingMode.Off;
 
     [SerializeField]
     public bool ssaoEnabled = false;
