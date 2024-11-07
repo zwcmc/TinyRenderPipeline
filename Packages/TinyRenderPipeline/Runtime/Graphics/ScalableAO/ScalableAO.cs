@@ -3,7 +3,7 @@ using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
-public class ScalableAOPass
+public class ScalableAO
 {
     private static readonly ProfilingSampler s_ScalableAmbientObscuranceSampler = new ProfilingSampler("Scalable Ambient Obscurance");
     private static readonly ProfilingSampler s_AOBufferSampler = new ProfilingSampler("AO Buffer");
@@ -30,7 +30,7 @@ public class ScalableAOPass
         public TextureHandle ssaoTexture;
     }
 
-    public ScalableAOPass()
+    public ScalableAO()
     {
         m_ScalableAOMaterial = CoreUtils.CreateEngineMaterial("Hidden/Tiny Render Pipeline/ScalableAO");
     }

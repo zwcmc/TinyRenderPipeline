@@ -2,7 +2,7 @@ using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
-public class DrawObjectsForwardPass
+public class DrawObjectsForward
 {
     private static readonly ProfilingSampler s_DrawOpaqueObjectsSampler = new ProfilingSampler("Opaque Objects");
     private static readonly ProfilingSampler s_DrawTransparentObjectsSampler = new ProfilingSampler("Transparent Objects");
@@ -18,7 +18,7 @@ public class DrawObjectsForwardPass
         public RendererListHandle legacyRendererListHandle;
     }
 
-    public DrawObjectsForwardPass(bool isOpaque = false)
+    public DrawObjectsForward(bool isOpaque = false)
     {
         m_IsOpaque = isOpaque;
 

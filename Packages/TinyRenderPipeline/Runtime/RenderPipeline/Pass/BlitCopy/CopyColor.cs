@@ -3,7 +3,7 @@ using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
-public class CopyColorPass
+public class CopyColor
 {
     private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("Copy Color");
 
@@ -24,7 +24,7 @@ public class CopyColorPass
         public Vector2Int size;
     }
 
-    public CopyColorPass(ComputeShader shader)
+    public CopyColor(ComputeShader shader)
     {
         m_Shader = shader;
     }
@@ -55,8 +55,8 @@ public class CopyColorPass
                 cmd.SetComputeTextureParam(data.shader, data.kernelID, CopyColorShaderIDs.CameraColorAttachment, data.sourceColorTexture);
                 cmd.SetComputeTextureParam(data.shader, data.kernelID, CopyColorShaderIDs.CameraColorTexture, data.destColorTexture);
 
-                int dispatchSizeX = Utils.DivRoundUp(data.size.x, 8);
-                int dispatchSizeY = Utils.DivRoundUp(data.size.y, 8);
+                int dispatchSizeX = CommonUtils.DivRoundUp(data.size.x, 8);
+                int dispatchSizeY = CommonUtils.DivRoundUp(data.size.y, 8);
 
                 cmd.DispatchCompute(data.shader, data.kernelID, dispatchSizeX, dispatchSizeY, 1);
             });

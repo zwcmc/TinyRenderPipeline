@@ -3,7 +3,7 @@ using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
-public class MainLightShadowPass
+public class MainLightShadow
 {
     private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("MainLight ShadowMap");
     private static readonly ProfilingSampler s_SetEmptyMainLightShadowMapSampler = new ProfilingSampler("Set Empty MainLight ShadowMap");
@@ -46,7 +46,7 @@ public class MainLightShadowPass
 
     private class PassData
     {
-        public MainLightShadowPass pass;
+        public MainLightShadow pass;
         public TextureHandle shadowMapTexture;
         public RenderingData renderingData;
         public RendererListHandle[] shadowRendererListHandle = new RendererListHandle[k_MaxCascades];
@@ -67,7 +67,7 @@ public class MainLightShadowPass
 
     private Vector4[] m_DeviceProjectionVectors;
 
-    public MainLightShadowPass()
+    public MainLightShadow()
     {
         m_MainLightShadowMatrices = new Matrix4x4[k_MaxCascades + 1];
         m_CascadesSplitDistance = new Vector4[k_MaxCascades];

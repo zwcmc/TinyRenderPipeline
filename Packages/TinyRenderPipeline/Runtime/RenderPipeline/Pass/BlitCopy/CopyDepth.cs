@@ -3,7 +3,7 @@ using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
-public class CopyDepthPass
+public class CopyDepth
 {
     private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("Copy Depth");
 
@@ -29,7 +29,7 @@ public class CopyDepthPass
 
     private ComputeShader m_Shader;
 
-    public CopyDepthPass(Material copyDepthMaterial, ComputeShader shaderCS, bool copyToDepthTexture = false)
+    public CopyDepth(Material copyDepthMaterial, ComputeShader shaderCS, bool copyToDepthTexture = false)
     {
         m_CopyDepthMaterial = copyDepthMaterial;
         m_CopyToDepthTexture = copyToDepthTexture;
@@ -73,8 +73,8 @@ public class CopyDepthPass
                 cmd.SetComputeTextureParam(data.shader, data.kernelID, CopyDepthShaderIDs.CameraDepthAttachment, data.sourceDepthTexture);
                 cmd.SetComputeTextureParam(data.shader, data.kernelID, CopyDepthShaderIDs.CameraDepthTexture, data.destDepthTexture);
 
-                int dispatchSizeX = Utils.DivRoundUp(data.size.x, 8);
-                int dispatchSizeY = Utils.DivRoundUp(data.size.y, 8);
+                int dispatchSizeX = CommonUtils.DivRoundUp(data.size.x, 8);
+                int dispatchSizeY = CommonUtils.DivRoundUp(data.size.y, 8);
 
                 cmd.DispatchCompute(data.shader, data.kernelID, dispatchSizeX, dispatchSizeY, 1);
             });

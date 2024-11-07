@@ -3,7 +3,7 @@ using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
-public class FinalBlitPass
+public class FinalBlit
 {
     private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("Final Blit");
 
@@ -18,7 +18,7 @@ public class FinalBlitPass
         public Material blitMaterial;
     }
 
-    public FinalBlitPass(Material blitMaterial)
+    public FinalBlit(Material blitMaterial)
     {
         m_BlitMaterial = blitMaterial;
     }

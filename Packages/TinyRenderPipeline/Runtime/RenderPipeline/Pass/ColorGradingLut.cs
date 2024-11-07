@@ -3,7 +3,7 @@ using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
-public class ColorGradingLutPass
+public class ColorGradingLut
 {
     private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("ColorGrading LUT");
 

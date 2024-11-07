@@ -55,25 +55,25 @@ public class TinyRenderer
     private ForwardLights m_ForwardLights;
 
     // Passes
-    private MainLightShadowPass m_MainLightShadowPass;
-    private AdditionalLightsShadowPass m_AdditionalLightsShadowPass;
+    private MainLightShadow m_MainLightShadow;
+    private AdditionalLightsShadow m_AdditionalLightsShadow;
 
     private DepthPrepass m_DepthPrepass;
 
-    private ColorGradingLutPass m_ColorGradingLutPass;
+    private ColorGradingLut m_ColorGradingLut;
 
     private TextureHandle m_MipmapDepthTexture;
     private MipmapDepthGenerator m_MipmapDepthGenerator;
-    private ScalableAOPass m_ScalableAOPass;
+    private ScalableAO m_ScalableAO;
 
-    private DrawObjectsForwardPass m_ForwardOpaqueObjectsPass;
-    private CopyDepthPass m_CopyDepthPass;
-    private DrawSkyboxPass m_DrawSkyboxPass;
-    // private CopyColorPass m_CopyColorPass;
-    private DrawObjectsForwardPass m_ForwardTransparentObjectsPass;
+    private DrawObjectsForward m_ForwardOpaque;
+    private CopyDepth m_CopyDepth;
+    private DrawSkybox m_DrawSkybox;
+    private CopyColor m_CopyColor;
+    private DrawObjectsForward m_ForwardTransparent;
 
-    private PostProcessingPass m_PostProcessingPass;
-    private FinalBlitPass m_FinalBlitPass;
+    private PostProcess m_PostProcess;
+    private FinalBlit m_FinalBlit;
 
     // Anti-aliasing
     private FastApproximateAA m_FastApproximateAA;
@@ -81,7 +81,7 @@ public class TinyRenderer
     private TemporalAA m_TemporalAA;
 
 #if UNITY_EDITOR
-    private CopyDepthPass m_FinalCopyDepthPass;
+    private CopyDepth m_FinalCopyDepthToCameraTarget;
 #endif
 
     private readonly TinyRenderPipelineAsset m_PipelineAsset;
@@ -95,30 +95,30 @@ public class TinyRenderer
 
         m_ForwardLights = new ForwardLights();
 
-        m_MainLightShadowPass = new MainLightShadowPass();
-        m_AdditionalLightsShadowPass = new AdditionalLightsShadowPass();
+        m_MainLightShadow = new MainLightShadow();
+        m_AdditionalLightsShadow = new AdditionalLightsShadow();
 
         m_DepthPrepass = new DepthPrepass();
 
-        m_ColorGradingLutPass = new ColorGradingLutPass();
+        m_ColorGradingLut = new ColorGradingLut();
 
-        m_ScalableAOPass = new ScalableAOPass();
+        m_ScalableAO = new ScalableAO();
         m_MipmapDepthGenerator = new MipmapDepthGenerator(asset.shaderResources.mipmapDepthCS);
 
-        m_ForwardOpaqueObjectsPass = new DrawObjectsForwardPass(true);
-        m_CopyDepthPass = new CopyDepthPass(m_CopyDepthMaterial, asset.shaderResources.copyDepthCS);
-        m_DrawSkyboxPass = new DrawSkyboxPass();
-        // m_CopyColorPass = new CopyColorPass(asset.shaderResources.copyColorCS);
-        m_ForwardTransparentObjectsPass = new DrawObjectsForwardPass();
+        m_ForwardOpaque = new DrawObjectsForward(true);
+        m_CopyDepth = new CopyDepth(m_CopyDepthMaterial, asset.shaderResources.copyDepthCS);
+        m_DrawSkybox = new DrawSkybox();
+        m_CopyColor = new CopyColor(asset.shaderResources.copyColorCS);
+        m_ForwardTransparent = new DrawObjectsForward();
 
-        m_PostProcessingPass = new PostProcessingPass();
-        m_FinalBlitPass = new FinalBlitPass(m_BlitMaterial);
+        m_PostProcess = new PostProcess();
+        m_FinalBlit = new FinalBlit(m_BlitMaterial);
 
         m_FastApproximateAA = new FastApproximateAA(m_PipelineAsset.shaderResources.fxaaShader);
         m_TemporalAA = new TemporalAA(asset.shaderResources.taaShader);
 
 #if UNITY_EDITOR
-        m_FinalCopyDepthPass = new CopyDepthPass(m_CopyDepthMaterial, asset.shaderResources.copyDepthCS, true);
+        m_FinalCopyDepthToCameraTarget = new CopyDepth(m_CopyDepthMaterial, asset.shaderResources.copyDepthCS, true);
 #endif
 
         m_IsActiveTargetBackbuffer = true;
@@ -132,14 +132,14 @@ public class TinyRenderer
 
         m_ForwardLights?.Cleanup();
 
-        m_MainLightShadowPass?.Dispose();
-        m_AdditionalLightsShadowPass?.Dispose();
+        m_MainLightShadow?.Dispose();
+        m_AdditionalLightsShadow?.Dispose();
 
-        m_ColorGradingLutPass?.Dispose();
+        m_ColorGradingLut?.Dispose();
 
-        m_ScalableAOPass?.Dispose();
+        m_ScalableAO?.Dispose();
 
-        m_PostProcessingPass?.Dispose();
+        m_PostProcess?.Dispose();
 
         m_TemporalAA?.Dispose();
         m_FastApproximateAA?.Dispose();
@@ -174,12 +174,12 @@ public class TinyRenderer
         m_ForwardLights.SetupRenderGraphLights(renderGraph, ref renderingData);
 
         // Main light shadow
-        if (m_MainLightShadowPass.IsEnabled(renderGraph, ref renderingData))
-            m_MainLightShadowMapTexture = m_MainLightShadowPass.RecordRenderGraph(renderGraph, ref renderingData);
+        if (m_MainLightShadow.IsEnabled(renderGraph, ref renderingData))
+            m_MainLightShadowMapTexture = m_MainLightShadow.RecordRenderGraph(renderGraph, ref renderingData);
 
         // Render additional lights shadow map
-        if (m_AdditionalLightsShadowPass.IsEnabled(renderGraph, ref renderingData))
-            m_AdditionalLightShadowMapTexture = m_AdditionalLightsShadowPass.RecordRenderGraph(renderGraph, ref renderingData);
+        if (m_AdditionalLightsShadow.IsEnabled(renderGraph, ref renderingData))
+            m_AdditionalLightShadowMapTexture = m_AdditionalLightsShadow.RecordRenderGraph(renderGraph, ref renderingData);
 
         CreateAndSetCameraRenderTargets(renderGraph, ref renderingData, supportIntermediateRendering);
 
@@ -197,13 +197,13 @@ public class TinyRenderer
         bool generateColorGradingLut = applyPostProcessing;
         if (generateColorGradingLut)
         {
-            m_ColorGradingLutPass.RecordRenderGraph(renderGraph, out m_ColorGradingLutTexture, ref renderingData);
+            m_ColorGradingLut.RecordRenderGraph(renderGraph, out m_ColorGradingLutTexture, ref renderingData);
         }
 
         // Copy depth pass
         if (supportIntermediateRendering)
         {
-            m_CopyDepthPass.RecordRenderGraphCompute(renderGraph, in m_ActiveCameraDepthTexture, out m_DepthTexture, ref renderingData);
+            m_CopyDepth.RecordRenderGraphCompute(renderGraph, in m_ActiveCameraDepthTexture, out m_DepthTexture, ref renderingData);
         }
         else
         {
@@ -216,31 +216,31 @@ public class TinyRenderer
             // Generate mipmap depth
             m_MipmapDepthGenerator.RecordRenderGraphCompute(renderGraph, in m_DepthTexture, out m_MipmapDepthTexture, ref renderingData);
 
-            m_ScalableAOPass.RecordRenderGraph(renderGraph, in m_MipmapDepthTexture, out m_ScalableAOTexture, ref renderingData);
+            m_ScalableAO.RecordRenderGraph(renderGraph, in m_MipmapDepthTexture, out m_ScalableAOTexture, ref renderingData);
         }
         else
         {
             RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_ScreenSpaceOcclusionTexture", renderGraph.defaultResources.whiteTexture);
         }
 
-        // Draw opaque objects pass
-        m_ForwardOpaqueObjectsPass.RecordRenderGraph(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, m_MainLightShadowMapTexture, m_AdditionalLightShadowMapTexture, m_ScalableAOTexture, ref renderingData);
+        // Draw opaque objects
+        m_ForwardOpaque.RecordRenderGraph(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, m_MainLightShadowMapTexture, m_AdditionalLightShadowMapTexture, m_ScalableAOTexture, ref renderingData);
 
-        // Draw skybox pass
-        m_DrawSkyboxPass.RecordRenderGraph(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, ref renderingData);
+        // Draw skybox
+        m_DrawSkybox.RecordRenderGraph(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, ref renderingData);
 
-        // Copy color pass
+        // // Copy color pass
         // if (supportIntermediateRendering)
         // {
-        //     m_CopyColorPass.RecordRenderGraphCompute(renderGraph, in m_ActiveCameraColorTexture, out m_CameraColorTexture, ref renderingData);
+        //     m_CopyColor.RecordRenderGraphCompute(renderGraph, in m_ActiveCameraColorTexture, out m_CameraColorTexture, ref renderingData);
         // }
         // else
         // {
         //     RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_CameraColorTexture", renderGraph.defaultResources.whiteTexture);
         // }
 
-        // Draw transparent objects pass
-        m_ForwardTransparentObjectsPass.RecordRenderGraph(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, TextureHandle.nullHandle, TextureHandle.nullHandle, m_ScalableAOTexture, ref renderingData);
+        // Draw transparent objects
+        m_ForwardTransparent.RecordRenderGraph(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, TextureHandle.nullHandle, TextureHandle.nullHandle, m_ScalableAOTexture, ref renderingData);
 
         DrawRenderGraphGizmos(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, GizmoSubset.PreImageEffects, ref renderingData);
 
@@ -257,7 +257,7 @@ public class TinyRenderer
         if (applyPostProcessing)
         {
             var target = !fxaaEnabled ? m_BackbufferColorTexture : nextCameraColorTexture;
-            m_PostProcessingPass.RecordRenderGraph(renderGraph, in m_ActiveCameraColorTexture, m_ColorGradingLutTexture, target, ref renderingData);
+            m_PostProcess.RecordRenderGraph(renderGraph, in m_ActiveCameraColorTexture, m_ColorGradingLutTexture, target, ref renderingData);
 
             m_ActiveCameraColorTexture = target;
             if (!fxaaEnabled)
@@ -275,7 +275,7 @@ public class TinyRenderer
 
         if (supportIntermediateRendering && !m_IsActiveTargetBackbuffer)
         {
-            m_FinalBlitPass.RecordRenderGraph(renderGraph, m_ActiveCameraColorTexture, m_BackbufferColorTexture, ref renderingData);
+            m_FinalBlit.RecordRenderGraph(renderGraph, m_ActiveCameraColorTexture, m_BackbufferColorTexture, ref renderingData);
             m_ActiveCameraColorTexture = m_BackbufferColorTexture;
             m_IsActiveTargetBackbuffer = true;
         }
@@ -285,7 +285,7 @@ public class TinyRenderer
         bool isSceneViewOrPreviewCamera = cameraType == CameraType.SceneView || cameraType == CameraType.Preview;
         if (supportIntermediateRendering && (isSceneViewOrPreviewCamera || isGizmosEnabled))
         {
-            m_FinalCopyDepthPass.RecordRenderGraph(renderGraph, m_ActiveCameraDepthTexture, m_BackbufferDepthTexture, m_ActiveCameraColorTexture, ref renderingData, false, "FinalDepthCopy");
+            m_FinalCopyDepthToCameraTarget.RecordRenderGraph(renderGraph, m_ActiveCameraDepthTexture, m_BackbufferDepthTexture, m_ActiveCameraColorTexture, ref renderingData, false, "FinalDepthCopy");
         }
 #endif
 

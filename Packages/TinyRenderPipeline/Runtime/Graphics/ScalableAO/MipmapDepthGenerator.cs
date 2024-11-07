@@ -97,8 +97,8 @@ public class MipmapDepthGenerator
                 {
                     var mipSize = data.mipmapDepthSizes[i];
 
-                    int dispatchSizeX = Utils.DivRoundUp(mipSize.x, 8);
-                    int dispatchSizeY = Utils.DivRoundUp(mipSize.y, 8);
+                    int dispatchSizeX = CommonUtils.DivRoundUp(mipSize.x, 8);
+                    int dispatchSizeY = CommonUtils.DivRoundUp(mipSize.y, 8);
 
                     if (dispatchSizeX < 1 || dispatchSizeY < 1) break;
 

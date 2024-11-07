@@ -2,7 +2,7 @@ using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
-public class DrawSkyboxPass
+public class DrawSkybox
 {
     private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("Skybox");
 

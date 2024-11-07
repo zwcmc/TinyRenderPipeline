@@ -1,10 +1,9 @@
-using System;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
-public class PostProcessingPass
+public class PostProcess
 {
     private static class Profiling
     {
@@ -84,7 +83,7 @@ public class PostProcessingPass
         public Vector4 lutParams;
     }
 
-    public PostProcessingPass()
+    public PostProcess()
     {
         ShaderConstants._BloomMipUp = new int[k_MaxPyramidSize];
         ShaderConstants._BloomMipDown = new int[k_MaxPyramidSize];

@@ -6,7 +6,7 @@ using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
-public class AdditionalLightsShadowPass
+public class AdditionalLightsShadow
 {
     private static readonly ProfilingSampler s_ProfilingSampler = new ProfilingSampler("AdditionalLights ShadowMap");
     private static readonly ProfilingSampler s_SetEmptyAdditionalLightsShadowMapSampler = new ProfilingSampler("Set Empty AdditionalLights ShadowMap");
@@ -54,7 +54,7 @@ public class AdditionalLightsShadowPass
 
     private class PassData
     {
-        public AdditionalLightsShadowPass pass;
+        public AdditionalLightsShadow pass;
 
         public TextureHandle shadowMapTexture;
         public RenderingData renderingData;
@@ -67,7 +67,7 @@ public class AdditionalLightsShadowPass
         public RendererListHandle[] shadowRendererListHandles;
     }
 
-    public AdditionalLightsShadowPass()
+    public AdditionalLightsShadow()
     {
         int maxAdditionalLightsCount = TinyRenderPipeline.maxVisibleAdditionalLights;
         int maxShadowSliceCount = TinyRenderPipeline.maxShadowSlicesCount;
