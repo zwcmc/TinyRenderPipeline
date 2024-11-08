@@ -2,7 +2,7 @@
 
 ## Description
 
-A customized render pipeline based on Unity SRP.
+A customized render pipeline for Unity SRP
 
 ![TinyRenderPipeline](TinyRenderPipeline.png)
 
@@ -19,11 +19,11 @@ A customized render pipeline based on Unity SRP.
 - [x] Scalable Ambient Obscurance
   - [x] Hierachical z with Rotated Grid Subsample
 - [x] FXAA
+- [x] TAA
 
 ## Planned
 
 - [ ] SSR
-- [ ] TAA
 
 ## Reference
 
