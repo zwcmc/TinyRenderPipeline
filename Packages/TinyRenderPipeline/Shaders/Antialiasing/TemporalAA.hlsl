@@ -10,9 +10,15 @@ TEXTURE2D(_TaaHistoryTexture);
 float4 _TaaHistoryTexture_TexelSize;
 
 float4x4 _HistoryReprojection;
-float _TaaFeedback;
+
+// Gaussian fit of a 3.3-wide Blackman-Harris window
 float _TaaFilterWeights[9];
-float _TaaVarianceGamma;
+
+// x = blend alpha
+// y = variance gamma
+// z = is first frame
+// w = unused
+float4 _TaaFrameInfo;
 
 #define EPSILON 0.0001
 
@@ -97,15 +103,15 @@ half3 ToneMapReinhard(half3 c)
     return c * rcp(1.0 + max3(c));
 }
 
-half3 UnToneMapReinhard(half3 c) {
-    const float epsilon = 1.0 / HALF_MAX;
-    return c * rcp(max(epsilon, 1.0 - max3(c)));
+half3 UnToneMapReinhard(half3 c)
+{
+    return c * rcp(max(1.0 / HALF_MAX, 1.0 - max3(c)));
 }
 
 half4 FetchOffset(TEXTURE2D(tex), float2 coords, float2 offset, float4 texelSize)
 {
     float2 uv = coords + offset * texelSize.xy;
-    return SAMPLE_TEXTURE2D_LOD(tex, sampler_PointClamp, uv, 0.0);
+    return SAMPLE_TEXTURE2D_LOD(tex, sampler_LinearClamp, uv, 0.0);
 }
 
 half4 ClipToBox(half3 boxmin, half3 boxmax, half4 c, half4 h)
@@ -118,24 +124,35 @@ half4 ClipToBox(half3 boxmin, half3 boxmax, half4 c, half4 h)
     return h + r * saturate(max3(imin));
 }
 
-float4 TemporalAAFragment(Varyings input) : SV_TARGET
+half4 TemporalAAFragment(Varyings input) : SV_TARGET
 {
     float4 uv = input.uv.xyxy;
 
-    float depth = SAMPLE_TEXTURE2D_LOD(_CameraDepthTexture, sampler_PointClamp, uv.zw, 0.0).r;
-    float4 q = mul(_HistoryReprojection, float4(uv.zw, depth, 1.0));
+    // 如果是第一帧, 则直接输出采样结果
+    if (_TaaFrameInfo.z > 0.5)
+    {
+        half4 filtered = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_LinearClamp, uv.xy, 0.0);
+        return filtered;
+    }
+
+    // 当前像素的中心位置
+    float2 ph = (floor(uv.zw * _BlitTexture_TexelSize.zw) + 0.5) * _BlitTexture_TexelSize.xy;
+
+    // 采样深度, 并重投影到上一帧的位置
+    float depth = SAMPLE_TEXTURE2D_LOD(_CameraDepthTexture, sampler_PointClamp, ph, 0.0).r;
+    float4 q = mul(_HistoryReprojection, float4(ph, depth, 1.0));
     uv.zw = (q.xy * (1.0 / q.w)) * 0.5 + 0.5;
 
-    // half4 history = SampleTextureBicubic5Tap(_TaaHistoryTexture, uv.zw, _TaaHistoryTexture_TexelSize);
-    float4 history = SAMPLE_TEXTURE2D_LOD(_TaaHistoryTexture, sampler_LinearClamp, uv.zw, 0.0);
+    // 采样历史像素数据
+    half4 history = SampleTextureBicubic5Tap(_TaaHistoryTexture, uv.zw, _TaaHistoryTexture_TexelSize);
     history.rgb = RGBToYCoCg(history.rgb);
 
+    // 采样当前帧像素数据
     float2 p = uv.xy;
-    // Filtered current frame input
-    float4 filtered = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_PointClamp, p, 0.0);
+    half4 filtered = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_LinearClamp, p, 0.0);
 
-    // Should match the offsets define s_SamplesOffset in TemporalAA.cs
-    float3 s[9];
+    // 考虑当前像素相邻的 3x3 的像素, 采样当前帧的像素数据, 从 RGB 颜色空间转换到 YCoCg 颜色空间
+    half3 s[9];
     s[0] = RGBToYCoCg(FetchOffset(_BlitTexture, p, float2(-1.0, -1.0), _BlitTexture_TexelSize).rgb);
     s[1] = RGBToYCoCg(FetchOffset(_BlitTexture, p, float2(0.0, -1.0), _BlitTexture_TexelSize).rgb);
     s[2] = RGBToYCoCg(FetchOffset(_BlitTexture, p, float2(1.0, -1.0), _BlitTexture_TexelSize).rgb);
@@ -146,7 +163,8 @@ float4 TemporalAAFragment(Varyings input) : SV_TARGET
     s[7] = RGBToYCoCg(FetchOffset(_BlitTexture, p, float2(0.0, 1.0), _BlitTexture_TexelSize).rgb);
     s[8] = RGBToYCoCg(FetchOffset(_BlitTexture, p, float2(1.0, 1.0), _BlitTexture_TexelSize).rgb);
 
-    filtered = float4(0, 0, 0, filtered.a);
+    // 使用 3.3 宽 Blackman-Harris 窗口的高斯拟合来对当前帧 3x3 的像素区域的像素数据进行滤波
+    filtered = half4(0, 0, 0, filtered.a);
     UNITY_UNROLL
     for(int i = 0; i < 9; ++i)
     {
@@ -154,7 +172,8 @@ float4 TemporalAAFragment(Varyings input) : SV_TARGET
         filtered.rgb += s[i] * w;
     }
 
-    // Build the history clamping box
+    // 构建当前帧 3x3 像素数据的 AABB , 用以对历史像素数据进行修正
+    // 这里是通过 最小值和最大值 以及 均值和标准差 混合的方式来构建 AABB , 算法来自 filament
     half3 boxmin = min(s[4], min(min(s[1], s[3]), min(s[5], s[7])));
     half3 boxmax = max(s[4], max(max(s[1], s[3]), max(s[5], s[7])));
     half3 box9min = min(boxmin, min(min(s[0], s[2]), min(s[6], s[8])));
@@ -163,45 +182,51 @@ float4 TemporalAAFragment(Varyings input) : SV_TARGET
     boxmin = (boxmin + box9min) * 0.5;
     boxmax = (boxmax + box9max) * 0.5;
 
+    // 计算均值和标准差
     // "An Excursion in Temporal Supersampling" by Marco Salvi
-    float3 m0 = s[4];// conversion to highp
+    float3 m0 = s[4]; // conversion to highp
     float3 m1 = m0 * m0;
     // we use only 5 samples instead of all 9
-    for (int i = 1; i < 9; i+=2) {
-        float3 c = s[i];// conversion to highp
+    UNITY_UNROLL
+    for (int j = 1; j < 9; j+=2)
+    {
+        float3 c = s[j]; // conversion to highp
         m0 += c;
         m1 += c * c;
     }
     float3 a0 = m0 * (1.0 / 5.0);
     float3 a1 = m1 * (1.0 / 5.0);
-    float3 sigma = sqrt(a1 - a0 * a0);
-    // intersect both bounding boxes
-    boxmin = max(boxmin, a0 - _TaaVarianceGamma * sigma);
-    boxmax = min(boxmax, a0 + _TaaVarianceGamma * sigma);
+    float3 sigma = sqrt(abs(a1 - a0 * a0));
 
-    // history clamping
+    // intersect both bounding boxes
+    boxmin = max(boxmin, a0 - _TaaFrameInfo.y * sigma);
+    boxmax = min(boxmax, a0 + _TaaFrameInfo.y * sigma);
+
+    // 验证历史像素数据
     history = ClipToBox(boxmin, boxmax, filtered, history);
 
-    float alpha = _TaaFeedback;
+    // 混合权重 alpha
+    half alpha = _TaaFrameInfo.x;
 
+    // 消除闪烁
     // [Lottes] prevents flickering by modulating the blend weight by the difference in luma
-    float lumaColor = LumaYCoCg(filtered.rgb);
-    float lumaHistory = LumaYCoCg(history.rgb);
-    float diff = 1.0 - abs(lumaColor - lumaHistory) / (0.001 + max(lumaColor, lumaHistory));
-    alpha *= diff * diff;
+    // half lumaColor = LumaYCoCg(filtered.rgb);
+    // half lumaHistory = LumaYCoCg(history.rgb);
+    // half diff = 1.0 - abs(lumaColor - lumaHistory) / (0.001 + max(lumaColor, lumaHistory));
+    // alpha *= diff * diff;
 
-    // go back to RGB space before tonemapping
+    // 转换到 RGB 颜色空间
     filtered.rgb = YCoCgToRGB(filtered.rgb);
     history.rgb = YCoCgToRGB(history.rgb);
 
-    // tonemap before mixing
+    // 色调映射
     filtered.rgb = ToneMapReinhard(filtered.rgb);
     history.rgb = ToneMapReinhard(history.rgb);
 
-    // combine history and current frame
-    float4 result = lerp(history, filtered, alpha);
+    // 混合历史像素数据与当前帧的像素数据
+    half4 result = lerp(history, filtered, alpha);
 
-    // untonemap result
+    // 逆向色调映射
     result.rgb = UnToneMapReinhard(result.rgb);
 
     return result;

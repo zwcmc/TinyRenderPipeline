@@ -18,10 +18,10 @@ MonoBehaviour:
     lutBuilderShader: {fileID: 4800000, guid: c4e352c13ccd11b4f8d6b745cfa2bd24, type: 3}
   bloom:
     threshold: 1
-    intensity: 1
-    scatter: 0.786
+    intensity: 0.5
+    scatter: 0.7
     clamp: 65472
-    maxIterations: 8
+    maxIterations: 6
     highQualityFiltering: 0
   tonemapping:
     mode: 2

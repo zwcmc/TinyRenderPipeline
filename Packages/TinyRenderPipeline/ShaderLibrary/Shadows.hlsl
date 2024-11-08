@@ -40,7 +40,7 @@ float4x4 _AdditionalLightsWorldToShadow[MAX_SHADOW_SLICE_COUNT];  // Per-shadow-
 CBUFFER_END
 #endif
 
-#include "Packages/com.zwcmc.tiny-rp/ShaderLibrary/PCSS.hlsl"
+#include "PCSS.hlsl"
 
 half GetMainLightShadowFade(float3 positionWS)
 {
@@ -183,7 +183,6 @@ half AdditionalLightShadow(int lightIndex, float3 positionWS, half3 lightDirecti
 
     int shadowSliceIndex = shadowParams.w;
 
-    UNITY_BRANCH
     if (shadowSliceIndex < 0)
         return 1.0;
 

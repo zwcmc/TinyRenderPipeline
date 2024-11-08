@@ -28,10 +28,9 @@ public class TemporalAA
     private static class TaaMaterialParamShaderIDs
     {
         public static readonly int HistoryColorTexture = Shader.PropertyToID(k_TaaHistoryTextureName);
-        public static readonly int TaaFeedback = Shader.PropertyToID("_TaaFeedback");
         public static readonly int HistoryReprojection = Shader.PropertyToID("_HistoryReprojection");
         public static readonly int TaaFilterWeights = Shader.PropertyToID("_TaaFilterWeights");
-        public static readonly int TaaVarianceGamma = Shader.PropertyToID("_TaaVarianceGamma");
+        public static readonly int TaaFrameInfo = Shader.PropertyToID("_TaaFrameInfo");
     }
 
     private Material m_TaaMaterial;
@@ -46,8 +45,8 @@ public class TemporalAA
     private static class TaaSettings
     {
         public static float filterWidth = 1.0f;    // Reconstruction filter width typically between 0.2 (sharper, aliased) and 1.5 (smoother)
-        public static float feedback = 0.16f;      // History feedback, between 0 (maximum temporal AA) and 1 (no temporal AA).
-        public static float varianceGamma = 1.0f;  // High values increases ghosting artefact, lower values increases jittering, range [0.75, 1.25]
+        public static float alpha = 0.12f;         // History feedback, between 0 (maximum temporal AA) and 1 (no temporal AA).
+        public static float varianceGamma = 1.0f;  // High values increases ghosting artifact, lower values increases jittering, range [0.75, 1.25]
     }
 
     private static readonly Vector2[] s_SamplesOffset = new Vector2[]
@@ -100,6 +99,7 @@ public class TemporalAA
         s_LastFrameViewProjection = s_CurrentFrameViewProjection;
         s_CurrentFrameViewProjection = gpuProjectionMatrix;
 
+        // 添加屏幕像素抖动偏移
         float cameraTargetWidth = (float)cameraDescriptor.width;
         float cameraTargetHeight = (float)cameraDescriptor.height;
         projectionMatrix.m02 -= s_Jitter.x * (2.0f / cameraTargetWidth);
@@ -116,8 +116,8 @@ public class TemporalAA
             return;
         }
 
-        bool isHistoryValid = m_TaaHistoryRTHandle != null && m_TaaHistoryRTHandle.rt != null;
-        TextureHandle history = isHistoryValid ? renderGraph.ImportTexture(m_TaaHistoryRTHandle) : currentColorTexture;
+        bool isFirstFrame = m_TaaHistoryRTHandle == null || m_TaaHistoryRTHandle.rt == null;
+        TextureHandle history = isFirstFrame ? currentColorTexture : renderGraph.ImportTexture(m_TaaHistoryRTHandle);
         using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_TaaSampler.name, out var passData, s_TaaSampler))
         {
             passData.input = currentColorTexture;
@@ -127,9 +127,7 @@ public class TemporalAA
 
             passData.taaMaterial = m_TaaMaterial;
 
-            m_TaaMaterial.SetFloat(TaaMaterialParamShaderIDs.TaaFeedback, TaaSettings.feedback);
-
-            Matrix4x4 historyViewProjection = isHistoryValid ? s_LastFrameViewProjection : s_CurrentFrameViewProjection;
+            Matrix4x4 historyViewProjection = isFirstFrame ? s_CurrentFrameViewProjection : s_LastFrameViewProjection;
             Matrix4x4 normalizedToClip = Matrix4x4.identity;
             normalizedToClip.m00 = 2.0f;
             normalizedToClip.m03 = -1.0f;
@@ -142,7 +140,9 @@ public class TemporalAA
             ComputeWeights(ref weights);
             m_TaaMaterial.SetFloatArray(TaaMaterialParamShaderIDs.TaaFilterWeights, weights);
 
-            m_TaaMaterial.SetFloat(TaaMaterialParamShaderIDs.TaaVarianceGamma, TaaSettings.varianceGamma);
+
+            Vector4 taaFrameInfo = new Vector4(TaaSettings.alpha, TaaSettings.varianceGamma, isFirstFrame ? 1.0f : 0.0f, 0.0f);
+            m_TaaMaterial.SetVector(TaaMaterialParamShaderIDs.TaaFrameInfo, taaFrameInfo);
 
             builder.UseTextureFragment(target, 0, IBaseRenderGraphBuilder.AccessFlags.WriteAll);
 
@@ -155,7 +155,7 @@ public class TemporalAA
             });
         }
 
-        if (!isHistoryValid)
+        if (isFirstFrame)
         {
             var colorDescriptor = renderingData.cameraTargetDescriptor;
             colorDescriptor.depthStencilFormat = GraphicsFormat.None;
@@ -194,7 +194,7 @@ public class TemporalAA
             Vector2 o = s_SamplesOffset[i];
             Vector2 d = (o - jitter) / TaaSettings.filterWidth;
             float d2 = d.x * d.x + d.y * d.y;
-            weights[i] = Mathf.Exp((-0.5f / (0.22f)) * d2);
+            weights[i] = Mathf.Exp(-2.29f * d2);
             totalWeight += weights[i];
         }
 
