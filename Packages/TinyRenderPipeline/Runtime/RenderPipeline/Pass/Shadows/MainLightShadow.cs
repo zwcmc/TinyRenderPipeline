@@ -57,7 +57,7 @@ public class MainLightShadow
 
     private static class PCSSLightParams
     {
-        public static float dirLightAngularDiameter = 2.66f;
+        public static float dirLightAngularDiameter = 1.76f;
         public static float dirLightPCSSBlockerSearchAngularDiameter = 12;
         public static float dirLightPCSSMinFilterMaxAngularDiameter = 10;
         public static float dirLightPCSSMaxPenumbraSize = 0.56f;
