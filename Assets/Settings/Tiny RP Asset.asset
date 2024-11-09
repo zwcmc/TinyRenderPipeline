@@ -17,7 +17,7 @@ MonoBehaviour:
     mainLightShadowResolution: 4096
     cascadeShadowMaps:
       cascadeCount: 4
-      cascadeRatio1: 0.067
+      cascadeRatio1: 0.079
       cascadeRatio2: 0.2
       cascadeRatio3: 0.467
       cascadeBorder: 0.2
