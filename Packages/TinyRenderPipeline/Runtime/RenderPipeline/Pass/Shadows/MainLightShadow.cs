@@ -10,7 +10,7 @@ public class MainLightShadow
 
     // This limit matches same limit in Shadows.hlsl
     private const int k_MaxCascades = 4;
-    private const int k_ShadowMapBufferBits = 16;
+    private const int k_ShadowMapBufferBits = 32;
     private const string k_ShadowMapTextureName = "_MainLightShadowMapTexture";
 
     private static int m_MainLightShadowMapID = Shader.PropertyToID(k_ShadowMapTextureName);
