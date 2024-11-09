@@ -34,9 +34,14 @@ public class DepthPyramidGenerator
 
     private int m_MipCount = 8;
 
+    private int m_CopyMip0KernelID;
+    private int m_MipmapDepthKernelID;
+
     public DepthPyramidGenerator(ComputeShader shader)
     {
         m_Shader = shader;
+        m_CopyMip0KernelID = m_Shader.FindKernel("CSCopyMipmap0Depth");
+        m_MipmapDepthKernelID = m_Shader.FindKernel("CSMipmapDepth");
 
         m_MipmapDepthSizes = new Vector2Int[m_MipCount];
         m_MipmapDepthHandles = new TextureHandle[m_MipCount];
@@ -72,8 +77,8 @@ public class DepthPyramidGenerator
         using (var builder = renderGraph.AddComputePass<PassData>(s_MipmapDepthSampler.name, out var passData, s_MipmapDepthSampler))
         {
             passData.csShader = m_Shader;
-            passData.copyKernelID = m_Shader.FindKernel("CSCopyMipmap0Depth");
-            passData.kernelID = m_Shader.FindKernel("CSMipmapDepth");
+            passData.copyKernelID = m_CopyMip0KernelID;
+            passData.kernelID = m_MipmapDepthKernelID;
             passData.mipCount = m_MipCount;
             passData.mipmapDepthSizes = m_MipmapDepthSizes;
             passData.mipMapDepthHandles = m_MipmapDepthHandles;
