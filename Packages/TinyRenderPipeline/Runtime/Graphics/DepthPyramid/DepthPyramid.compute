@@ -4,6 +4,7 @@
 Texture2D<float> _PrevMipDepth;
 RWTexture2D<float> _CurrMipDepth;
 
+// Build linear rotated grid subsample depth pyramid
 float4 _ZBufferParams;
 float LinearEyeDepth(float depth)
 {

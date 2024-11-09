@@ -30,6 +30,6 @@ MonoBehaviour:
   shaderResources:
     fxaaShader: {fileID: 4800000, guid: c3a51ddabd49faa43a0e890f453e8ba6, type: 3}
     taaShader: {fileID: 4800000, guid: 6e8c7ae33d0294aacb1c48bba2766aed, type: 3}
-    mipmapDepthCS: {fileID: 7200000, guid: 62222339b6cf647be8060b2291f647eb, type: 3}
+    depthPyramidCS: {fileID: 7200000, guid: 62222339b6cf647be8060b2291f647eb, type: 3}
     copyDepthCS: {fileID: 7200000, guid: 8f5515fda1b4a453dbd1cf31e5623884, type: 3}
     copyColorCS: {fileID: 7200000, guid: a0d72c449186e4073bd3a7ae7c42c8db, type: 3}

@@ -51,19 +51,19 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
     [Serializable, ReloadGroup]
     public class ShaderResources
     {
-        [Reload("Shaders/PostProcessing/FXAA.shader")]
+        [Reload("Shaders/Antialiasing/FXAA.shader")]
         public Shader fxaaShader;
 
-        [Reload("Shaders/PostProcessing/TAA.shader")]
+        [Reload("Shaders/Antialiasing/TAA.shader")]
         public Shader taaShader;
 
-        [Reload("Runtime/Passes/ScalableAO/MipmapDepth.compute")]
-        public ComputeShader mipmapDepthCS;
+        [Reload("Runtime/Graphics/DepthPyramid/DepthPyramid.compute")]
+        public ComputeShader depthPyramidCS;
 
-        [Reload("Runtime/Passes/CopyDepth.compute")]
+        [Reload("Runtime/RenderPipeline/Pass/BlitCopy/CopyDepth.compute")]
         public ComputeShader copyDepthCS;
 
-        [Reload("Runtime/Passes/CopyColor.compute")]
+        [Reload("Runtime/RenderPipeline/Pass/BlitCopy/CopyColor.compute")]
         public ComputeShader copyColorCS;
     }
 

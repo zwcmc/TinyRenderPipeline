@@ -4,7 +4,6 @@ using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
-using Debug = UnityEngine.Debug;
 
 public class TinyRenderer
 {
@@ -62,14 +61,12 @@ public class TinyRenderer
 
     private ColorGradingLut m_ColorGradingLut;
 
-    private TextureHandle m_MipmapDepthTexture;
-    private MipmapDepthGenerator m_MipmapDepthGenerator;
     private ScalableAO m_ScalableAO;
 
     private DrawObjectsForward m_ForwardOpaque;
     private CopyDepth m_CopyDepth;
     private DrawSkybox m_DrawSkybox;
-    private CopyColor m_CopyColor;
+    // private CopyColor m_CopyColor;
     private DrawObjectsForward m_ForwardTransparent;
 
     private PostProcess m_PostProcess;
@@ -102,13 +99,12 @@ public class TinyRenderer
 
         m_ColorGradingLut = new ColorGradingLut();
 
-        m_ScalableAO = new ScalableAO();
-        m_MipmapDepthGenerator = new MipmapDepthGenerator(asset.shaderResources.mipmapDepthCS);
+        m_ScalableAO = new ScalableAO(asset.shaderResources.depthPyramidCS);
 
         m_ForwardOpaque = new DrawObjectsForward(true);
         m_CopyDepth = new CopyDepth(m_CopyDepthMaterial, asset.shaderResources.copyDepthCS);
         m_DrawSkybox = new DrawSkybox();
-        m_CopyColor = new CopyColor(asset.shaderResources.copyColorCS);
+        // m_CopyColor = new CopyColor(asset.shaderResources.copyColorCS);
         m_ForwardTransparent = new DrawObjectsForward();
 
         m_PostProcess = new PostProcess();
@@ -213,10 +209,7 @@ public class TinyRenderer
         // Scalable Ambient Obscurance
         if (supportIntermediateRendering && m_PipelineAsset.ssaoEnabled)
         {
-            // Generate mipmap depth
-            m_MipmapDepthGenerator.RecordRenderGraphCompute(renderGraph, in m_DepthTexture, out m_MipmapDepthTexture, ref renderingData);
-
-            m_ScalableAO.RecordRenderGraph(renderGraph, in m_MipmapDepthTexture, out m_ScalableAOTexture, ref renderingData);
+            m_ScalableAO.RecordRenderGraph(renderGraph, in m_DepthTexture, out m_ScalableAOTexture, ref renderingData);
         }
         else
         {

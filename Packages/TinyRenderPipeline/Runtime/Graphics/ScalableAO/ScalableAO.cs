@@ -30,13 +30,21 @@ public class ScalableAO
         public TextureHandle ssaoTexture;
     }
 
-    public ScalableAO()
+    private DepthPyramidGenerator m_DepthPyramidGenerator;
+
+    public ScalableAO(ComputeShader shader)
     {
+        m_DepthPyramidGenerator = new DepthPyramidGenerator(shader);
+
         m_ScalableAOMaterial = CoreUtils.CreateEngineMaterial("Hidden/Tiny Render Pipeline/ScalableAO");
     }
 
     public void RecordRenderGraph(RenderGraph renderGraph, in TextureHandle depthTexture, out TextureHandle ssaoTexture, ref RenderingData renderingData)
     {
+        // Generate depth pyramid
+        TextureHandle depthPyramidTexture;
+        m_DepthPyramidGenerator.RecordRenderGraphCompute(renderGraph, in depthTexture, out depthPyramidTexture, ref renderingData);
+
         TextureHandle saoBufferTexture;
         TextureHandle bilateralBlurTexture;
 
@@ -56,7 +64,7 @@ public class ScalableAO
         using (var builder = renderGraph.AddLowLevelPass<PassData>(s_ScalableAmbientObscuranceSampler.name, out var passData, s_ScalableAmbientObscuranceSampler))
         {
             passData.saoMaterial = m_ScalableAOMaterial;
-            passData.depthTexture = depthTexture;
+            passData.depthTexture = depthPyramidTexture;
             passData.saoBufferTexture = saoBufferTexture;
             passData.bilateralBlurTexture = bilateralBlurTexture;
             passData.ssaoTexture = ssaoTexture;
@@ -95,7 +103,7 @@ public class ScalableAO
             float farPlaneOverEdgeDistance = -far / bilateralThreshold;
             passData.saoMaterial.SetVector(SAOMaterialParamShaderIDs.BilateralBlurParams, new Vector4(axisOffset.x, axisOffset.y, farPlaneOverEdgeDistance, blurSampleCount));
 
-            builder.UseTexture(depthTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
+            builder.UseTexture(depthPyramidTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
 
             builder.UseTexture(saoBufferTexture, IBaseRenderGraphBuilder.AccessFlags.ReadWrite);
             builder.UseTexture(bilateralBlurTexture, IBaseRenderGraphBuilder.AccessFlags.ReadWrite);

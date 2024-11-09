@@ -3,7 +3,7 @@ using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
-public class MipmapDepthGenerator
+public class DepthPyramidGenerator
 {
     private static readonly ProfilingSampler s_MipmapDepthSampler = new ProfilingSampler("Mipmap Depth");
 
@@ -34,7 +34,7 @@ public class MipmapDepthGenerator
 
     private int m_MipCount = 8;
 
-    public MipmapDepthGenerator(ComputeShader shader)
+    public DepthPyramidGenerator(ComputeShader shader)
     {
         m_Shader = shader;
 
