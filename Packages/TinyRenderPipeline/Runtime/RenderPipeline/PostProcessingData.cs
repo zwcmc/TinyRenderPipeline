@@ -53,13 +53,13 @@ public class PostProcessingData : ScriptableObject
     [Serializable, ReloadGroup]
     public class PostProcessShaderResources
     {
-        [Reload("Shaders/PostProcessing/UberPost.shader")]
+        [Reload("Shaders/PostProcess/UberPost.shader")]
         public Shader uberPostShader;
 
-        [Reload("Shaders/PostProcessing/Bloom.shader")]
+        [Reload("Shaders/PostProcess/Bloom.shader")]
         public Shader bloomShader;
 
-        [Reload("Shaders/PostProcessing/LutBuilder.shader")]
+        [Reload("Shaders/PostProcess/LutBuilder.shader")]
         public Shader lutBuilderShader;
     }
 
