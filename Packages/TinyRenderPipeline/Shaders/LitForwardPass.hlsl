@@ -61,7 +61,7 @@ Varyings LitVertex(Attributes input)
     return output;
 }
 
-half4 LitFragment(Varyings input) : SV_TARGET
+half4 LitFragment(Varyings input) : SV_Target0
 {
     SurfaceData surfaceData;
     InitializeSurfaceData(input.uv, surfaceData);

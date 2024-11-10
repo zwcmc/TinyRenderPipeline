@@ -20,7 +20,7 @@ Varyings DepthVertex(Attributes input)
     return output;
 }
 
-float DepthFragment(Varyings input) : SV_TARGET
+float DepthFragment(Varyings input) : SV_Target0
 {
     return input.positionCS.z;
 }

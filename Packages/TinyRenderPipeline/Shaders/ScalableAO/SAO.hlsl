@@ -204,7 +204,7 @@ void ScalableAmbientObscurance(out float sumObscurance, float2 uv, float3 origin
     }
 }
 
-half4 ScalableAOFragment(Varyings input) : SV_TARGET
+half4 ScalableAOFragment(Varyings input) : SV_Target0
 {
     float2 uv = input.uv;
 
@@ -240,7 +240,7 @@ void Tap(inout float sum, inout float totalWeight, float weight, float depth, fl
     totalWeight += bilateral;
 }
 
-half4 BilateralBlurFragment(Varyings input) : SV_TARGET
+half4 BilateralBlurFragment(Varyings input) : SV_Target0
 {
     float2 uv = input.uv;
     half3 data = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, uv, 0.0).rgb;
@@ -273,7 +273,7 @@ half4 BilateralBlurFragment(Varyings input) : SV_TARGET
     return half4(ao, data.gb, 1.0);
 }
 
-half FinalBilateralBlurFragment(Varyings input) : SV_TARGET
+half FinalBilateralBlurFragment(Varyings input) : SV_Target0
 {
     float2 uv = input.uv;
     half3 data = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, uv, 0.0).rgb;

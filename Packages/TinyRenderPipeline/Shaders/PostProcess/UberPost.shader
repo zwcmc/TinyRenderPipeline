@@ -34,7 +34,7 @@ Shader "Hidden/Tiny Render Pipeline/Uber Post"
                 return input;
             }
 
-            half4 FragUberPost(Varyings input) : SV_TARGET
+            half4 FragUberPost(Varyings input) : SV_Target0
             {
                 float2 uv = input.uv;
 

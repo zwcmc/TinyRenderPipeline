@@ -61,7 +61,7 @@ half4 FXAATex(float2 uv)
     return SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_LinearClamp, uv, 0.0);
 }
 
-half4 FragFXAA(Varyings input) : SV_TARGET
+half4 FragFXAA(Varyings input) : SV_Target0
 {
     // Center pixel
     float2 posM = input.uv;

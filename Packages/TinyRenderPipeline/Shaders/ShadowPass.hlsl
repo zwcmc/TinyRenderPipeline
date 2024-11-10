@@ -47,7 +47,7 @@ float4 ShadowVertex(Attributes input) : SV_POSITION
     return GetShadowPositionHClip(input);
 }
 
-half4 ShadowFragment() : SV_TARGET
+half4 ShadowFragment() : SV_Target0
 {
     return 0;
 }

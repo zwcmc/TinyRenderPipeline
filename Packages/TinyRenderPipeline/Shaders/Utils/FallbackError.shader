@@ -30,7 +30,7 @@ Shader "Hidden/Tiny Render Pipeline/FallbackError"
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 return o;
             }
-            fixed4 frag (v2f i) : SV_TARGET
+            fixed4 frag (v2f i) : SV_Target0
             {
                 return fixed4(1,0,1,1);
             }

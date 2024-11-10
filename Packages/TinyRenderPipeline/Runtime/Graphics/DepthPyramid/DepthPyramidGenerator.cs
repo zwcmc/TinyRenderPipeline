@@ -18,7 +18,7 @@ public class DepthPyramidGenerator
 
     private class PassData
     {
-        public ComputeShader csShader;
+        public ComputeShader cs;
         public int copyKernelID;
         public int kernelID;
         public int mipCount;
@@ -76,7 +76,7 @@ public class DepthPyramidGenerator
 
         using (var builder = renderGraph.AddComputePass<PassData>(s_MipmapDepthSampler.name, out var passData, s_MipmapDepthSampler))
         {
-            passData.csShader = m_Shader;
+            passData.cs = m_Shader;
             passData.copyKernelID = m_CopyMip0KernelID;
             passData.kernelID = m_MipmapDepthKernelID;
             passData.mipCount = m_MipCount;
@@ -109,9 +109,9 @@ public class DepthPyramidGenerator
 
                     int kernelID = i == 0 ? data.copyKernelID : data.kernelID;
 
-                    cmd.SetComputeTextureParam(data.csShader, kernelID, MipmapDepthShaderIDs.PrevMipDepth, lastMipTexture);
-                    cmd.SetComputeTextureParam(data.csShader, kernelID, MipmapDepthShaderIDs.CurrMipDepth, data.mipMapDepthHandles[i]);
-                    cmd.DispatchCompute(data.csShader, kernelID, dispatchSizeX, dispatchSizeY, 1);
+                    cmd.SetComputeTextureParam(data.cs, kernelID, MipmapDepthShaderIDs.PrevMipDepth, lastMipTexture);
+                    cmd.SetComputeTextureParam(data.cs, kernelID, MipmapDepthShaderIDs.CurrMipDepth, data.mipMapDepthHandles[i]);
+                    cmd.DispatchCompute(data.cs, kernelID, dispatchSizeX, dispatchSizeY, 1);
 
                     // Copy texture to target mipmap level
                     data.renderingData.commandBuffer.CopyTexture(data.mipMapDepthHandles[i], 0, 0, data.destDepthTexture, 0, i);

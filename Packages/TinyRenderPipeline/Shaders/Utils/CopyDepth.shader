@@ -26,7 +26,7 @@ Shader "Hidden/Tiny Render Pipeline/CopyDepth"
         #if defined(_OUTPUT_DEPTH)
             float Frag(Varyings input) : SV_Depth
         #else
-            float Frag(Varyings input) : SV_TARGET
+            float Frag(Varyings input) : SV_Target0
         #endif
             {
                 return SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthAttachment, sampler_CameraDepthAttachment, input.uv, 0.0);

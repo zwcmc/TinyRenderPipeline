@@ -15,7 +15,7 @@ Shader "Hidden/Tiny Render Pipeline/GenerateLUTs"
                 #pragma vertex CustomRenderTextureVertex
                 #pragma fragment IntegrateSpecularDGVFragment
 
-                float2 IntegrateSpecularDGVFragment(Varyings input) : SV_TARGET
+                float2 IntegrateSpecularDGVFragment(Varyings input) : SV_Target0
                 {
                     float2 uv = input.localTexcoord.xy;
                     float2 iblDFG = DFV(uv.x, uv.y);

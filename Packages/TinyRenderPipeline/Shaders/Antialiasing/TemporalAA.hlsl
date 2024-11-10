@@ -124,7 +124,7 @@ half4 ClipToBox(half3 boxmin, half3 boxmax, half4 c, half4 h)
     return h + r * saturate(max3(imin));
 }
 
-half4 TemporalAAFragment(Varyings input) : SV_TARGET
+half4 TemporalAAFragment(Varyings input) : SV_Target0
 {
     float4 uv = input.uv.xyxy;
 
@@ -232,7 +232,7 @@ half4 TemporalAAFragment(Varyings input) : SV_TARGET
     return result;
 }
 
-half4 CopyHistoryFragment(Varyings input) : SV_TARGET
+half4 CopyHistoryFragment(Varyings input) : SV_Target0
 {
     float2 uv = input.uv;
     return SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, uv, 0.0);
