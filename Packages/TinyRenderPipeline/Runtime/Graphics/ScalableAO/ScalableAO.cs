@@ -49,12 +49,12 @@ public class ScalableAO
         TextureHandle bilateralBlurTexture;
 
         // Create texture handles
-        var saoDescriptor = renderingData.cameraTargetDescriptor;
+        var saoDescriptor = renderingData.cameraData.targetDescriptor;
         saoDescriptor.graphicsFormat = GraphicsFormat.R8G8B8A8_UNorm;
         saoDescriptor.depthStencilFormat = GraphicsFormat.None;
         saoBufferTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, saoDescriptor, "_SAO_Buffer_Texture", false, FilterMode.Bilinear);
 
-        var blurDescriptor = renderingData.cameraTargetDescriptor;
+        var blurDescriptor = renderingData.cameraData.targetDescriptor;
         blurDescriptor.graphicsFormat = GraphicsFormat.R8G8B8A8_UNorm;
         blurDescriptor.depthStencilFormat = GraphicsFormat.None;
         bilateralBlurTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, blurDescriptor, "SAO_Bilateral_Blur_Texture", false, FilterMode.Bilinear);
@@ -73,7 +73,8 @@ public class ScalableAO
             const float radius = 0.3f;
             const float sampleCount = 9.0f;
 
-            Matrix4x4 projectionMatrix = GL.GetGPUProjectionMatrix(renderingData.camera.projectionMatrix, true);
+            ref var cameraData = ref renderingData.cameraData;
+            Matrix4x4 projectionMatrix = GL.GetGPUProjectionMatrix(cameraData.GetJitteredProjectionMatrix(), true);
             var invProjection = Matrix4x4.Inverse(projectionMatrix);
 
             // 屏幕的宽高(以像素为单位)
@@ -99,7 +100,7 @@ public class ScalableAO
             const float bilateralThreshold = 0.116f;
             Vector2 offsetInTexel = new Vector2(1.0f, 1.0f);
             Vector2 axisOffset = new Vector2(offsetInTexel.x / blurDescriptor.width, offsetInTexel.y / blurDescriptor.height);
-            float far = renderingData.camera.farClipPlane;
+            float far = cameraData.camera.farClipPlane;
             float farPlaneOverEdgeDistance = -far / bilateralThreshold;
             passData.saoMaterial.SetVector(SAOMaterialParamShaderIDs.BilateralBlurParams, new Vector4(axisOffset.x, axisOffset.y, farPlaneOverEdgeDistance, blurSampleCount));
 

@@ -119,11 +119,11 @@ public class PostProcess
             m_Materials = new MaterialLibrary(m_PostProcessingData);
         }
 
-        m_Descriptor = renderingData.cameraTargetDescriptor;
+        m_Descriptor = renderingData.cameraData.targetDescriptor;
         // m_ResolveToScreen = resolveToScreen;
 
         m_Bloom = m_PostProcessingData.bloom;
-        m_DefaultHDRFormat = renderingData.defaultFormat;
+        m_DefaultHDRFormat = renderingData.cameraData.defaultGraphicsFormat;
 
         // Reset uber pass keywords
         m_Materials.uberPost.shaderKeywords = null;

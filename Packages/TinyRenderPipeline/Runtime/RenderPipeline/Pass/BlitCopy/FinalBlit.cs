@@ -54,7 +54,7 @@ public class FinalBlit
     private static void ExecutePass(RasterCommandBuffer cmd, ref PassData data, RTHandle source)
     {
         ref var renderingData = ref data.renderingData;
-        var camera = renderingData.camera;
+        var camera = renderingData.cameraData.camera;
         var cameraType = camera.cameraType;
         bool isRenderToBackBufferTarget = cameraType != CameraType.SceneView;
 

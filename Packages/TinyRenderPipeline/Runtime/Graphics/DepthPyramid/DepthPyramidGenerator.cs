@@ -49,7 +49,7 @@ public class DepthPyramidGenerator
 
     public void RecordRenderGraphCompute(RenderGraph renderGraph, in TextureHandle depthTexture, out TextureHandle mipmapDepthTexture, ref RenderingData renderingData)
     {
-        var mipmapDepthDescriptor = renderingData.cameraTargetDescriptor;
+        var mipmapDepthDescriptor = renderingData.cameraData.targetDescriptor;
         mipmapDepthDescriptor.graphicsFormat = GraphicsFormat.R32_SFloat;
         mipmapDepthDescriptor.depthStencilFormat = GraphicsFormat.None;
         mipmapDepthDescriptor.mipCount = 8;

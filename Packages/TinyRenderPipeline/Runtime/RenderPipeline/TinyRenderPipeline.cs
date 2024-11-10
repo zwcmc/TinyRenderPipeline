@@ -120,6 +120,16 @@ public class TinyRenderPipeline : RenderPipeline
             // Initialize rendering data
             InitializeRenderingData(pipelineAsset, ref cullResults, context, cmd, camera, out var renderingData);
 
+            // Apply TAA jitter
+            ref var cameraData = ref renderingData.cameraData;
+            if (camera.cameraType <= CameraType.SceneView && renderingData.antialiasing == AntialiasingMode.TemporalAntialiasing)
+            {
+                var viewMatrix = cameraData.GetViewMatrix();
+                var projectionMatrix = cameraData.GetProjectionMatrix();
+                TemporalAA.TaaJitterProjectionMatrix(in renderingData.cameraData.targetDescriptor, in viewMatrix, ref projectionMatrix);
+                cameraData.SetJitteredProjectionMatrix(projectionMatrix);
+            }
+
             // Rendering
             s_TinyRenderer.RecordAndExecuteRenderGraph(s_RenderGraph, ref renderingData, sampler.name);
         }
@@ -158,16 +168,24 @@ public class TinyRenderPipeline : RenderPipeline
         return camera.TryGetCullingParameters(out cullingParameters);
     }
 
-    private static void InitializeRenderingData(TinyRenderPipelineAsset asset, ref CullingResults cullResults, ScriptableRenderContext context,
-        CommandBuffer cmd, Camera camera, out RenderingData renderingData)
+    private static void InitializeCameraData(Camera camera, ref CameraData cameraData)
+    {
+        cameraData.camera = camera;
+        cameraData.defaultGraphicsFormat = GraphicsFormat.B10G11R11_UFloatPack32;  // HDR
+        cameraData.targetDescriptor = RenderingUtils.CreateRenderTextureDescriptor(camera, cameraData.defaultGraphicsFormat);
+        cameraData.worldSpaceCameraPos = camera.transform.position;
+
+        // Set camera view matrix and camera non-jittered projection matrix
+        cameraData.SetViewProjectionMatrices(camera.worldToCameraMatrix, camera.projectionMatrix);
+    }
+
+    private static void InitializeRenderingData(TinyRenderPipelineAsset asset, ref CullingResults cullResults, ScriptableRenderContext context, CommandBuffer cmd, Camera camera, out RenderingData renderingData)
     {
         renderingData.renderContext = context;
         renderingData.commandBuffer = cmd;
 
-        renderingData.camera = camera;
-
-        renderingData.defaultFormat = GraphicsFormat.B10G11R11_UFloatPack32;  // HDR
-        renderingData.cameraTargetDescriptor = RenderingUtils.CreateRenderTextureDescriptor(renderingData.camera, renderingData.defaultFormat);
+        renderingData.cameraData = new CameraData();
+        InitializeCameraData(camera, ref renderingData.cameraData);
 
         // var cameraRect = camera.rect;
         // renderingData.isDefaultCameraViewport = !(Math.Abs(cameraRect.x) > 0.0f || Math.Abs(cameraRect.y) > 0.0f || Math.Abs(cameraRect.width) < 1.0f || Math.Abs(cameraRect.height) < 1.0f);

@@ -24,14 +24,15 @@ public class DepthPrepass
     {
         using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_DepthPrepassSampler.name, out var passData, s_DepthPrepassSampler))
         {
-            var sortingSettings = new SortingSettings(renderingData.camera) { criteria = SortingCriteria.CommonOpaque };
+            var camera = renderingData.cameraData.camera;
+            var sortingSettings = new SortingSettings(camera) { criteria = SortingCriteria.CommonOpaque };
             var drawSettings = new DrawingSettings(k_ShaderTagId, sortingSettings)
             {
                 perObjectData = PerObjectData.None,
                 mainLightIndex = renderingData.mainLightIndex,
 
                 enableDynamicBatching = false,
-                enableInstancing = renderingData.camera.cameraType == CameraType.Preview ? false : true
+                enableInstancing = camera.cameraType == CameraType.Preview ? false : true
             };
 
             var param = new RendererListParams(renderingData.cullResults, drawSettings, m_FilteringSettings);

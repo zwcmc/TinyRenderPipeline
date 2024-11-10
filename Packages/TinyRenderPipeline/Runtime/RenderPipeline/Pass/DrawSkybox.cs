@@ -15,7 +15,7 @@ public class DrawSkybox
     {
         using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_ProfilingSampler.name, out var passData, s_ProfilingSampler))
         {
-            passData.rendererList = renderingData.renderContext.CreateSkyboxRendererList(renderingData.camera);
+            passData.rendererList = renderingData.renderContext.CreateSkyboxRendererList(renderingData.cameraData.camera);
 
             builder.UseTextureFragment(colorTarget, 0, IBaseRenderGraphBuilder.AccessFlags.Write);
             builder.UseTextureFragmentDepth(depthTarget, IBaseRenderGraphBuilder.AccessFlags.Write);

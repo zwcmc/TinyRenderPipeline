@@ -157,7 +157,7 @@ public class TemporalAA
 
         if (isFirstFrame)
         {
-            var colorDescriptor = renderingData.cameraTargetDescriptor;
+            var colorDescriptor = renderingData.cameraData.targetDescriptor;
             colorDescriptor.depthStencilFormat = GraphicsFormat.None;
             RenderingUtils.ReAllocateIfNeeded(ref m_TaaHistoryRTHandle, colorDescriptor, FilterMode.Bilinear, TextureWrapMode.Clamp, name: k_TaaHistoryTextureName);
         }

@@ -199,7 +199,7 @@ public class MainLightShadow
         ref var cullResults = ref renderingData.cullResults;
         VisibleLight shadowLight = cullResults.visibleLights[shadowLightIndex];
 
-        cmd.SetGlobalVector(ShaderPropertyIDs.WorldSpaceCameraPos, renderingData.camera.transform.position);
+        cmd.SetGlobalVector(ShaderPropertyIDs.WorldSpaceCameraPos, renderingData.cameraData.worldSpaceCameraPos);
 
         Vector3 cascadesSplit = renderingData.shadowData.cascadesSplit;
         int cascadeResolution = ShadowUtils.GetMaxTileResolutionInAtlas(renderingData.shadowData.mainLightShadowMapWidth, renderingData.shadowData.mainLightShadowMapHeight, m_ShadowCasterCascadesCount);

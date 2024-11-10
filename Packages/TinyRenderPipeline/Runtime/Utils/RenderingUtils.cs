@@ -208,7 +208,7 @@ public static class RenderingUtils
     static RenderStateBlock[] s_RenderStateBlocks = new RenderStateBlock[1];
     private static void CreateRendererParamsObjects(ref RenderingData renderingData, FilteringSettings fs, SortingCriteria sortingCriteria, RenderStateBlock renderStateBlock, ref RendererListParams param)
     {
-        var camera = renderingData.camera;
+        var camera = renderingData.cameraData.camera;
         SortingSettings sortingSettings = new SortingSettings(camera) { criteria = sortingCriteria };
         DrawingSettings drawingSettings = new DrawingSettings(m_ShaderPassNames[0], sortingSettings)
         {
@@ -270,7 +270,7 @@ public static class RenderingUtils
         }
 
         RendererListParams param = new RendererListParams();
-        CreateRendererParamsObjectsWithLegacyShaderPassNames(ref renderingData.cullResults, renderingData.camera, fs, sortingCriteria, ref param);
+        CreateRendererParamsObjectsWithLegacyShaderPassNames(ref renderingData.cullResults, renderingData.cameraData.camera, fs, sortingCriteria, ref param);
         rl = renderGraph.CreateRendererList(param);
     }
 
@@ -325,7 +325,7 @@ public static class RenderingUtils
 
     public static void ScaleViewportAndBlit(RasterCommandBuffer cmd, RTHandle source, RTHandle target, ref RenderingData renderingData, Material material, int passIndex = 0)
     {
-        var camera = renderingData.camera;
+        var camera = renderingData.cameraData.camera;
 
         // We y-flip if
         // 1) we are blitting from render texture to back buffer(UV starts at bottom) and

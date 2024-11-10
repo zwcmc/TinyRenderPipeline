@@ -48,7 +48,7 @@ public class CopyDepth
 
     public void RecordRenderGraphCompute(RenderGraph renderGraph, in TextureHandle sourceDepthTexture, out TextureHandle targetDepthTexture, ref RenderingData renderingData)
     {
-        var depthDescriptor = renderingData.cameraTargetDescriptor;
+        var depthDescriptor = renderingData.cameraData.targetDescriptor;
         depthDescriptor.graphicsFormat = GraphicsFormat.R32_SFloat;
         depthDescriptor.depthStencilFormat = GraphicsFormat.None;
         depthDescriptor.enableRandomWrite = true;
@@ -60,7 +60,7 @@ public class CopyDepth
             passData.kernelID = m_Shader.FindKernel("CSCopyDepth");
             passData.sourceDepthTexture = sourceDepthTexture;
             passData.destDepthTexture = targetDepthTexture;
-            passData.size = new Vector2Int(renderingData.cameraTargetDescriptor.width, renderingData.cameraTargetDescriptor.height);
+            passData.size = new Vector2Int(depthDescriptor.width, depthDescriptor.height);
 
             builder.UseTexture(sourceDepthTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
             builder.UseTexture(targetDepthTexture, IBaseRenderGraphBuilder.AccessFlags.WriteAll);
@@ -141,7 +141,7 @@ public class CopyDepth
         }
 
         ref var renderingData = ref data.renderingData;
-        var camera = renderingData.camera;
+        var camera = renderingData.cameraData.camera;
         bool yFlip = RenderingUtils.IsHandleYFlipped(source, camera) != RenderingUtils.IsHandleYFlipped(destination, camera);
         Vector4 scaleBias = yFlip ? new Vector4(1, -1, 0, 1) : new Vector4(1, 1, 0, 0);
 
@@ -149,7 +149,7 @@ public class CopyDepth
         if (isGameViewFinalTarget)
             cmd.SetViewport(camera.pixelRect);
         else
-            cmd.SetViewport(new Rect(0, 0, renderingData.cameraTargetDescriptor.width, renderingData.cameraTargetDescriptor.height));
+            cmd.SetViewport(new Rect(0, 0, renderingData.cameraData.targetDescriptor.width, renderingData.cameraData.targetDescriptor.height));
 
         Blitter.BlitTexture(cmd, source, scaleBias, data.copyDepthMaterial, 0);
     }

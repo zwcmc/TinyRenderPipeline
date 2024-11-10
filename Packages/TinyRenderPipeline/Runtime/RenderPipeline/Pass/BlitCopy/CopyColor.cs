@@ -31,7 +31,7 @@ public class CopyColor
 
     public void RecordRenderGraphCompute(RenderGraph renderGraph, in TextureHandle sourceColorTexture, out TextureHandle cameraColorTexture, ref RenderingData renderingData)
     {
-        var colorDescriptor = renderingData.cameraTargetDescriptor;
+        var colorDescriptor = renderingData.cameraData.targetDescriptor;
         colorDescriptor.depthBufferBits = (int)DepthBits.None;
         colorDescriptor.depthStencilFormat = GraphicsFormat.None;
         colorDescriptor.enableRandomWrite = true;
@@ -43,7 +43,7 @@ public class CopyColor
             passData.kernelID = m_Shader.FindKernel("CSCopyColor");
             passData.sourceColorTexture = sourceColorTexture;
             passData.destColorTexture = cameraColorTexture;
-            passData.size = new Vector2Int(renderingData.cameraTargetDescriptor.width, renderingData.cameraTargetDescriptor.height);
+            passData.size = new Vector2Int(colorDescriptor.width, colorDescriptor.height);
 
             builder.UseTexture(sourceColorTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
             builder.UseTexture(cameraColorTexture, IBaseRenderGraphBuilder.AccessFlags.WriteAll);

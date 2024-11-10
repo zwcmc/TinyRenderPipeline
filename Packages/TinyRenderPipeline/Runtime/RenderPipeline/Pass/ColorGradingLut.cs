@@ -56,7 +56,7 @@ public class ColorGradingLut
         {
             int lutHeight = renderingData.lutSize;
             int lutWidth = lutHeight * lutHeight;
-            var lutFormat = renderingData.defaultFormat;
+            var lutFormat = renderingData.cameraData.defaultGraphicsFormat;
             var descriptor = new RenderTextureDescriptor(lutWidth, lutHeight, lutFormat, 0);
             lutTarget = RenderingUtils.CreateRenderGraphTexture(renderGraph, descriptor, "_InternalGradingLut", false, FilterMode.Bilinear);
 
