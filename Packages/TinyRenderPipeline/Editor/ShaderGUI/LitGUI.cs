@@ -58,6 +58,8 @@ namespace TinyRenderPipeline.CustomShaderGUI
             public static readonly GUIContent emissionMap = EditorGUIUtility.TrTextContent("Emission Map", "");
 
             public static readonly GUIContent iblDFG = EditorGUIUtility.TrTextContent("DFG LUT", "");
+
+            public static readonly GUIContent receivesSSRText = EditorGUIUtility.TrTextContent("Receive SSR", "");
         }
 
         private static class Property
@@ -85,6 +87,8 @@ namespace TinyRenderPipeline.CustomShaderGUI
             public static readonly string EmissionMap = "_EmissionMap";
 
             public static readonly string _IBL_DFG = "_IBL_DFG";
+
+            public static readonly string _ReceivesSSR = "_ReceivesSSR";
         }
 
         private static class ShaderKeywordStrings
@@ -93,6 +97,9 @@ namespace TinyRenderPipeline.CustomShaderGUI
             public const string _NORMALMAP = "_NORMALMAP";
             public const string _EMISSION = "_EMISSION";
         }
+
+        private const string kStencilRefDepth = "_StencilRefDepth";
+        private const string kStencilWriteMaskDepth = "_StencilWriteMaskDepth";
 
         #endregion
 
@@ -118,6 +125,8 @@ namespace TinyRenderPipeline.CustomShaderGUI
         private MaterialProperty emissionMapProp;
 
         private MaterialProperty _IBL_DFG;
+
+        private MaterialProperty _ReceivesSSR;
 
         #endregion
 
@@ -147,6 +156,8 @@ namespace TinyRenderPipeline.CustomShaderGUI
             emissionMapProp = FindProperty(Property.EmissionMap, properties, false);
 
             _IBL_DFG = FindProperty(Property._IBL_DFG, properties, false);
+
+            _ReceivesSSR = FindProperty(Property._ReceivesSSR, properties, false);
         }
 
         public override void OnGUI(MaterialEditor materialEditorIn, MaterialProperty[] properties)
@@ -170,6 +181,21 @@ namespace TinyRenderPipeline.CustomShaderGUI
         public override void ValidateMaterial(Material material)
         {
             SetMaterialKeywords(material);
+
+            SetupStencil(material);
+        }
+
+        private static void SetupStencil(Material material)
+        {
+            int stencilRefDepth = (int)StencilUsage.Clear;
+            int stencilWriteMaskDepth = (int)StencilUsage.Clear;
+            if (material.HasProperty(Property._ReceivesSSR) && material.GetFloat(Property._ReceivesSSR) > 0.5f)
+            {
+                stencilRefDepth = (int)StencilUsage.ScreenSpaceReflection;
+                stencilWriteMaskDepth = (int)StencilUsage.ScreenSpaceReflection;
+            }
+            material.SetInt(kStencilRefDepth, stencilRefDepth);
+            material.SetInt(kStencilWriteMaskDepth, stencilWriteMaskDepth);
         }
 
         private void ShaderPropertiesGUI(Material material)
@@ -181,6 +207,11 @@ namespace TinyRenderPipeline.CustomShaderGUI
             }
             DoPopup(Styles.cullingText, cullingProp, Styles.renderFaceNames);
             DoPopup(Styles.zwriteText, zwriteProp, Styles.zwriteModeNames);
+
+            if (_ReceivesSSR != null)
+                materialEditor.ShaderProperty(_ReceivesSSR, Styles.receivesSSRText);
+
+            GUILayout.Space(16);
 
             if (baseMapProp != null && baseColorProp != null)
                 materialEditor.TexturePropertySingleLine(Styles.baseMap, baseMapProp, baseColorProp);

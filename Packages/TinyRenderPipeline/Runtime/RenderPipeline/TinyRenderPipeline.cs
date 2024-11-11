@@ -58,6 +58,8 @@ public class TinyRenderPipeline : RenderPipeline
         s_RenderGraph.NativeRenderPassesEnabled = true;
 
         s_TinyRenderer = new TinyRenderer(pipelineAsset);
+
+        FrameHistory.Initialize();
     }
 
     protected override void Render(ScriptableRenderContext context, Camera[] cameras) { }
@@ -86,6 +88,8 @@ public class TinyRenderPipeline : RenderPipeline
 
         s_TinyRenderer?.Dispose();
         s_TinyRenderer = null;
+
+        FrameHistory.Reset();
     }
 
     private void RenderSingleCamera(ScriptableRenderContext context, Camera camera)
@@ -120,15 +124,8 @@ public class TinyRenderPipeline : RenderPipeline
             // Initialize rendering data
             InitializeRenderingData(pipelineAsset, ref cullResults, context, cmd, camera, out var renderingData);
 
-            // Apply TAA jitter
-            ref var cameraData = ref renderingData.cameraData;
-            if (camera.cameraType <= CameraType.SceneView && renderingData.antialiasing == AntialiasingMode.TemporalAntialiasing)
-            {
-                var viewMatrix = cameraData.GetViewMatrix();
-                var projectionMatrix = cameraData.GetProjectionMatrix();
-                TemporalAA.TaaJitterProjectionMatrix(in renderingData.cameraData.targetDescriptor, in viewMatrix, ref projectionMatrix);
-                cameraData.SetJitteredProjectionMatrix(projectionMatrix);
-            }
+            // Update frame history info and compute taa jitter if needed
+            FrameHistory.UpdateFrameInfo(Time.frameCount, ref renderingData);
 
             // Rendering
             s_TinyRenderer.RecordAndExecuteRenderGraph(s_RenderGraph, ref renderingData, sampler.name);
@@ -174,9 +171,6 @@ public class TinyRenderPipeline : RenderPipeline
         cameraData.defaultGraphicsFormat = GraphicsFormat.B10G11R11_UFloatPack32;  // HDR
         cameraData.targetDescriptor = RenderingUtils.CreateRenderTextureDescriptor(camera, cameraData.defaultGraphicsFormat);
         cameraData.worldSpaceCameraPos = camera.transform.position;
-
-        // Set camera view matrix and camera non-jittered projection matrix
-        cameraData.SetViewProjectionMatrices(camera.worldToCameraMatrix, camera.projectionMatrix);
     }
 
     private static void InitializeRenderingData(TinyRenderPipelineAsset asset, ref CullingResults cullResults, ScriptableRenderContext context, CommandBuffer cmd, Camera camera, out RenderingData renderingData)

@@ -46,7 +46,10 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
     public AntialiasingMode antialiasingMode = AntialiasingMode.Off;
 
     [SerializeField]
-    public bool ssaoEnabled = false;
+    public bool saoEnabled = false;
+
+    [SerializeField]
+    public bool ssrEnabled = false;
 
     [Serializable, ReloadGroup]
     public class ShaderResources
@@ -65,6 +68,9 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
 
         [Reload("Runtime/RenderPipeline/Pass/BlitCopy/CopyColor.compute")]
         public ComputeShader copyColorCS;
+
+        [Reload("Runtime/Graphics/ScreenSpaceReflection/ScreenSpaceReflection.compute")]
+        public ComputeShader screenSpaceReflectionCS;
     }
 
     public float shadowDistance => m_Shadows.shadowDistance;

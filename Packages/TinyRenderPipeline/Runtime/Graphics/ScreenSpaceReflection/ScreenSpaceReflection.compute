@@ -1,0 +1,353 @@
+#pragma kernel ScreenSpaceReflectionMarching
+#pragma kernel ScreenSpaceReflectionReprojection
+
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/GlobalSamplers.hlsl"
+#include "../../../ShaderLibrary/Core.hlsl"
+
+#define SSR_TRACE_EPS               0.000488281f // 2^-11, should be good up to 4K
+
+CBUFFER_START(ScreenSpaceReflectionShaderVariables)
+    float4x4 _InvView;
+    // float4x4 _InvViewProjection;
+
+    float4x4 _HistoryReprojection;
+    float4 _InvParams;
+    float4 _ScreenSize;
+    int _SsrStencilBit;
+
+    // int _SsrReflectsSky;
+    // int _SsrDepthPyramidMaxMip;
+    // int _SsrIterLimit;
+    // float _SsrThicknessScale;
+    // float _SsrThicknessBias;
+CBUFFER_END
+
+Texture2D<uint2> _StencilTexture;
+Texture2D<float> _DepthPyramidTexture;
+
+RWTexture2D<float2> _SsrHitPointTextureWrite;
+
+Texture2D<float3> _SsrHistoryColorTexture;
+Texture2D<float2> _SsrHitPointTexture;
+RWTexture2D<float4> _SsrTexture;
+
+// float3 ReconstructWorldSpacePosition(float2 uv, float deviceDepth)
+// {
+//     float4 positionCS = float4(uv * 2.0 - 1.0, deviceDepth, 1.0);
+//
+// #if UNITY_UV_STARTS_AT_TOP
+//     positionCS.y = -positionCS.y;
+// #endif
+//
+//     float4 positionWS = mul(_InvViewProjection, positionCS);
+//     return positionWS.xyz * rcp(positionCS.w);
+// }
+
+float LinearEyeDepth(float depth)
+{
+    return 1.0 / (_ZBufferParams.z * depth + _ZBufferParams.w);
+}
+
+float3 ReconstructViewSpacePositionFromDepth(float2 uv, float linearDepth)
+{
+    linearDepth = -linearDepth;
+    float2 ndc = 0.5 - uv;
+
+#if UNITY_UV_STARTS_AT_TOP
+    ndc.y = -ndc.y;
+#endif
+
+    return float3(ndc * _InvParams.xy * linearDepth, linearDepth);
+}
+
+float3 ReconstructWorldSpacePositionFromDepth(float2 uv, float linearDepth)
+{
+    float3 positionVS = ReconstructViewSpacePositionFromDepth(uv, linearDepth);
+    float3 positionWS = mul(_InvView, float4(positionVS, 1.0)).xyz;
+    return positionWS;
+}
+
+// Accurate view-space normal reconstruction
+// Based on Yuwen Wu "Accurate Normal Reconstruction"
+// (https://atyuwen.github.io/posts/normal-reconstruction)
+float3 ComputeViewSpaceNormalAccurate(float2 uv, float depth, float3 positionC, float2 texel)
+{
+    depth = LinearEyeDepth(depth);
+
+    float2 dx = float2(texel.x, 0.0);
+    float2 dy = float2(0.0, texel.y);
+
+    float4 H;
+    H.x = LinearEyeDepth(_DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv - dx, 0).r);
+    H.y = LinearEyeDepth(_DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv + dx, 0).r);
+    H.z = LinearEyeDepth(_DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv - dx * 2.0, 0).r);
+    H.w = LinearEyeDepth(_DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv + dx * 2.0, 0).r);
+
+    float2 he = abs((2.0 * H.xy - H.zw) - depth);
+    float3 pos_l = ReconstructViewSpacePositionFromDepth(uv - dx, H.x);
+    float3 pos_r = ReconstructViewSpacePositionFromDepth(uv + dx, H.y);
+    float3 dpdx = (he.x < he.y) ? (positionC - pos_l) : (pos_r - positionC);
+
+    float4 V;
+    V.x = LinearEyeDepth(_DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv - dy, 0).r);
+    V.y = LinearEyeDepth(_DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv + dy, 0).r);
+    V.z = LinearEyeDepth(_DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv - dy * 2.0, 0).r);
+    V.w = LinearEyeDepth(_DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv + dy * 2.0, 0).r);
+
+    float2 ve = abs((2.0 * V.xy - V.zw) - depth);
+    float3 pos_d = ReconstructViewSpacePositionFromDepth(uv - dy, V.x);
+    float3 pos_u = ReconstructViewSpacePositionFromDepth(uv + dy, V.y);
+    float3 dpdy = (ve.x < ve.y) ? (positionC - pos_d) : (pos_u - positionC);
+
+    return normalize(cross(dpdx, dpdy));
+}
+
+[numthreads(8, 8, 1)]
+void ScreenSpaceReflectionMarching(uint3 dispatchThreadId : SV_DispatchThreadID)
+{
+    uint2 positionSS = dispatchThreadId.xy;
+    float2 uv = (positionSS + 0.5) * _ScreenSize.zw;
+
+    uint stencilValue = GetStencilValue(_StencilTexture.Load(int3(positionSS, 0)));
+    bool doesntReceiveSSR = (stencilValue & _SsrStencilBit) == 0;
+
+    UNITY_BRANCH
+    if (doesntReceiveSSR)
+    {
+        _SsrHitPointTextureWrite[positionSS] = float2(0.0, 0.0);
+        return;
+    }
+
+    float deviceDepth = _DepthPyramidTexture.Load(int3(positionSS, 0)).r;
+    // float deviceDepth = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv, 0).r;
+
+    // float3 positionWS = ReconstructWorldSpacePosition(uv, deviceDepth);
+    float3 positionVS = ReconstructViewSpacePositionFromDepth(uv, LinearEyeDepth(deviceDepth));
+    float3 positionWS = mul(_InvView, float4(positionVS, 1.0)).xyz;
+
+    // float3 pWS = ReconstructWorldSpacePosition(uv, deviceDepth);
+
+    float3 N_VS = ComputeViewSpaceNormalAccurate(uv, deviceDepth, positionVS, _ScreenSize.zw);
+    float3 N = mul((float3x3)_InvView, N_VS).xyz;
+    float3 V = GetWorldSpaceNormalizeViewDir(positionWS);
+    float3 R = reflect(-V, N);
+
+    float3 camPosWS = GetCurrentViewPosition();
+
+    // Apply normal bias with the magnitude dependent on the distance from the camera.
+    // Unfortunately, we only have access to the shading normal, which is less than ideal...
+    positionWS = camPosWS + (positionWS - camPosWS) * (1 - 0.001 * rcp(max(dot(N, V), FLT_EPS)));
+    deviceDepth = ComputeNormalizedDeviceCoordinatesWithZ(positionWS, UNITY_MATRIX_VP).z;
+
+    bool killRay = deviceDepth == UNITY_RAW_FAR_CLIP_VALUE;
+
+    // Ref. #1: Michal Drobot - Quadtree Displacement Mapping with Height Blending.
+    // Ref. #2: Yasin Uludag  - Hi-Z Screen-Space Cone-Traced Reflections.
+    // Ref. #3: Jean-Philippe Grenier - Notes On Screen Space HIZ Tracing.
+    // Warning: virtually all of the code below assumes reverse Z.
+
+    // We start tracing from the center of the current pixel, and do so up to the far plane.
+    float3 rayOrigin = float3(positionSS + 0.5, deviceDepth);
+
+    float3 reflPosWS  = positionWS + R;
+    float3 reflPosNDC = ComputeNormalizedDeviceCoordinatesWithZ(reflPosWS, UNITY_MATRIX_VP);  // Jittered
+    float3 reflPosSS  = float3(reflPosNDC.xy * _ScreenSize.xy, reflPosNDC.z);
+    float3 rayDir     = reflPosSS - rayOrigin;
+    float3 rcpRayDir  = rcp(rayDir);
+    int2   rayStep    = int2(rcpRayDir.x >= 0 ? 1 : 0,
+                             rcpRayDir.y >= 0 ? 1 : 0);
+    float3 raySign  = float3(rcpRayDir.x >= 0 ? 1 : -1,
+                             rcpRayDir.y >= 0 ? 1 : -1,
+                             rcpRayDir.z >= 0 ? 1 : -1);
+    bool   rayTowardsEye  =  rcpRayDir.z >= 0;
+
+    // Note that we don't need to store or read the perceptualRoughness value
+    // if we mark stencil during the G-Buffer pass with pixels which should receive SSR,
+    // and sample the color pyramid during the lighting pass.
+    killRay = killRay || (reflPosSS.z <= 0);
+    killRay = killRay || (dot(N, V) <= 0);
+    killRay = killRay || rayTowardsEye;
+
+    if (killRay)
+    {
+        _SsrHitPointTextureWrite[positionSS] = float2(0.0, 0.0);
+        return;
+    }
+
+    const float _SsrReflectsSky = 0.0;
+    const int _SsrDepthPyramidMaxMip = 7;
+    const int _SsrIterLimit = 64;
+    const float thickness = 0.0016;
+    const float _SsrThicknessScale = 1.0 / (1.0 + thickness);
+    const float n = 0.3;
+    const float f = 100.0;
+    const float _SsrThicknessBias = -n / (f - n) * (thickness * _SsrThicknessScale);
+
+    // Extend and clip the end point to the frustum.
+    float tMax;
+    {
+        // Shrink the frustum by half a texel for efficiency reasons.
+        const float halfTexel = 0.5;
+
+        float3 bounds;
+        bounds.x = (rcpRayDir.x >= 0) ? _ScreenSize.x - halfTexel : halfTexel;
+        bounds.y = (rcpRayDir.y >= 0) ? _ScreenSize.y - halfTexel : halfTexel;
+        // If we do not want to intersect the skybox, it is more efficient to not trace too far.
+        float maxDepth = (_SsrReflectsSky != 0) ? -0.00000024 : 0.00000024; // 2^-22
+        bounds.z = (rcpRayDir.z >= 0) ? 1 : maxDepth;
+
+        float3 dist = bounds * rcpRayDir - (rayOrigin * rcpRayDir);
+        tMax = Min3(dist.x, dist.y, dist.z);
+    }
+
+    // Clamp the MIP level to give the compiler more information to optimize.
+    const int maxMipLevel = _SsrDepthPyramidMaxMip;
+
+    // Start ray marching from the next texel to avoid self-intersections.
+    float t;
+    {
+        // 'rayOrigin' is the exact texel center.
+        float2 dist = abs(0.5 * rcpRayDir.xy);
+        t = min(dist.x, dist.y);
+    }
+
+    float3 rayPos;
+
+    int mipLevel  = 0;
+    int iterCount = 0;
+    bool hit      = false;
+    bool miss     = false;
+    bool belowMip0 = false; // This value is set prior to entering the cell
+
+    while (!(hit || miss) && (t <= tMax) && (iterCount < _SsrIterLimit))
+    {
+        rayPos = rayOrigin + t * rayDir;
+
+        // Ray position often ends up on the edge. To determine (and look up) the right cell,
+        // we need to bias the position by a small epsilon in the direction of the ray.
+        float2 sgnEdgeDist = round(rayPos.xy) - rayPos.xy;
+        float2 satEdgeDist = clamp(raySign.xy * sgnEdgeDist + SSR_TRACE_EPS, 0, SSR_TRACE_EPS);
+        rayPos.xy += raySign.xy * satEdgeDist;
+
+        // Bounds define 4 faces of a cube:
+        // 2 walls in front of the ray, and a floor and a base below it.
+        float4 bounds;
+
+        int2 mipCoord  = (int2)rayPos.xy >> mipLevel;
+        bounds.xy = (mipCoord + rayStep) << mipLevel;
+        bounds.z = _DepthPyramidTexture.Load(int3(mipCoord, mipLevel)).r;
+
+        // We define the depth of the base as the depth value as:
+        // b = DeviceDepth((1 + thickness) * LinearDepth(d))
+        // b = ((f - n) * d + n * (1 - (1 + thickness))) / ((f - n) * (1 + thickness))
+        // b = ((f - n) * d - n * thickness) / ((f - n) * (1 + thickness))
+        // b = d / (1 + thickness) - n / (f - n) * (thickness / (1 + thickness))
+        // b = d * k_s + k_b
+        bounds.w = bounds.z * _SsrThicknessScale + _SsrThicknessBias;
+
+        float4 dist = bounds * rcpRayDir.xyzz - (rayOrigin.xyzz * rcpRayDir.xyzz);
+        float  distWall  = min(dist.x, dist.y);
+        float  distFloor = dist.z;
+        float  distBase  = dist.w;
+
+        bool belowFloor  = rayPos.z < bounds.z;
+        bool aboveBase   = rayPos.z >= bounds.w;
+
+        bool insideFloor = belowFloor && aboveBase;
+        bool hitFloor    = (t <= distFloor) && (distFloor <= distWall);
+
+        // Game rules:
+        // * if the closest intersection is with the wall of the cell, switch to the coarser MIP, and advance the ray.
+        // * if the closest intersection is with the heightmap below,  switch to the finer   MIP, and advance the ray.
+        // * if the closest intersection is with the heightmap above,  switch to the finer   MIP, and do NOT advance the ray.
+        // Victory conditions:
+        // * See below. Do NOT reorder the statements!
+
+        miss      = belowMip0 && insideFloor;
+
+        hit       = (mipLevel == 0) && (hitFloor || insideFloor);
+        belowMip0 = (mipLevel == 0) && belowFloor;
+
+        // 'distFloor' can be smaller than the current distance 't'.
+        // We can also safely ignore 'distBase'.
+        // If we hit the floor, it's always safe to jump there.
+        // If we are at (mipLevel != 0) and we are below the floor, we should not move.
+        t = hitFloor ? distFloor : (((mipLevel != 0) && belowFloor) ? t : distWall);
+        rayPos.z = bounds.z; // Retain the depth of the potential intersection
+
+        // Warning: both rays towards the eye, and tracing behind objects has linear
+        // rather than logarithmic complexity! This is due to the fact that we only store
+        // the maximum value of depth, and not the min-max.
+        mipLevel += (hitFloor || belowFloor || rayTowardsEye) ? -1 : 1;
+        mipLevel  = clamp(mipLevel, 0, maxMipLevel);
+
+        iterCount++;
+    }
+
+    // Treat intersections with the sky as misses.
+    miss = miss || ((_SsrReflectsSky == 0) && (rayPos.z == 0));
+    hit  = hit && !miss;
+
+    if (hit)
+    {
+        // Note that we are using 'rayPos' from the penultimate iteration, rather than
+        // recompute it using the last value of 't', which would result in an overshoot.
+        // It also needs to be precisely at the center of the pixel to avoid artifacts.
+        float2 hitPositionNDC = floor(rayPos.xy) * _ScreenSize.zw + (0.5 * _ScreenSize.zw); // Should we precompute the half-texel bias? We seem to use it a lot.
+        _SsrHitPointTextureWrite[positionSS] = hitPositionNDC.xy;
+    }
+    else
+    {
+        _SsrHitPointTextureWrite[positionSS] = float2(0.0, 0.0);
+    }
+}
+
+// Performs fading at the edge of the screen.
+float EdgeOfScreenFade(float2 coordNDC, float fadeRcpLength)
+{
+    float2 coordCS = coordNDC * 2 - 1;
+    float2 t = Remap10(abs(coordCS), fadeRcpLength, fadeRcpLength);
+    return Smoothstep01(t.x) * Smoothstep01(t.y);
+}
+
+[numthreads(8, 8, 1)]
+void ScreenSpaceReflectionReprojection(uint3 dispatchThreadId : SV_DispatchThreadID)
+{
+    uint2 positionSS = dispatchThreadId.xy;
+
+    float2 hitPositionUV = _SsrHitPointTexture.Load(int3(positionSS, 0)).xy;
+
+    if (max(hitPositionUV.x, hitPositionUV.y) == 0.0)
+    {
+        // Miss.
+        _SsrTexture[dispatchThreadId.xy] = float4(0.0, 0.0, 0.0, 0.0);
+        return;
+    }
+
+    float deviceDepth = _DepthPyramidTexture.Load(int3(positionSS, 0)).r;
+    float4 q = mul(_HistoryReprojection, float4(hitPositionUV, deviceDepth, 1.0));
+    float2 historyUV = (q.xy * (1.0 / q.w)) * 0.5 + 0.5;
+
+    if (any(historyUV < float2(0.0, 0.0)) || any(historyUV > float2(1.0, 1.0)))
+    {
+        // Off-Screen.
+        _SsrTexture[dispatchThreadId.xy] = float4(0.0, 0.0, 0.0, 0.0);
+        return;
+    }
+
+    float3 color = _SsrHistoryColorTexture.SampleLevel(sampler_LinearClamp, historyUV, 0).rgb;
+
+    // Disable SSR for negative, infinite and NaN history values.
+    uint3 intCol   = asuint(color);
+    bool  isPosFin = Max3(intCol.r, intCol.g, intCol.b) < 0x7F800000;
+
+    const float screenFadeDistance = 0.1;
+    const float _SsrEdgeFadeRcpLength = min(1.0 / screenFadeDistance, FLT_MAX);
+    float  opacity  = EdgeOfScreenFade(historyUV, _SsrEdgeFadeRcpLength);
+
+    color   = isPosFin ? color   : 0;
+    opacity = isPosFin ? opacity : 0;
+
+    _SsrTexture[dispatchThreadId.xy] = float4(color, 1.0) * opacity;
+}

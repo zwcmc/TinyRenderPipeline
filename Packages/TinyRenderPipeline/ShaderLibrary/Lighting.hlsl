@@ -6,6 +6,9 @@
 // Screen space ambient occlusion
 TEXTURE2D(_ScreenSpaceOcclusionTexture);      SAMPLER(sampler_ScreenSpaceOcclusionTexture);
 
+// Screen space reflection
+TEXTURE2D(_SsrTexture);                  SAMPLER(sampler_SsrTexture);
+
 half SampleAmbientOcclusion(float2 normalizedScreenSpaceUV)
 {
     half ao = SAMPLE_TEXTURE2D_LOD(_ScreenSpaceOcclusionTexture, sampler_ScreenSpaceOcclusionTexture, normalizedScreenSpaceUV, 0.0).r;
@@ -57,7 +60,17 @@ half3 ShadingIndirect(BRDFData brdfData, InputData inputData, half diffuseAO)
     half3 dfg = PrefilteredDFG_LUT(NoV, roughness);
     half3 E = brdfData.f0 * dfg.x + dfg.y;
 
+
+    // ssr
+    half4 ssrLighting = SAMPLE_TEXTURE2D(_SsrTexture, sampler_LinearClamp, inputData.normalizedScreenSpaceUV);
+    float ssrWeight = ssrLighting.a;
+
+    float envWeight = 1.0 - ssrWeight;
+
     half3 iblFr = E * prefilteredRadiance;
+
+    iblFr = iblFr * envWeight + (E * ssrLighting);
+
     half3 iblFd = brdfData.diffuseColor * diffuseIrradiance * (1.0 - E) * diffuseAO;
 
     return iblFr + iblFd;

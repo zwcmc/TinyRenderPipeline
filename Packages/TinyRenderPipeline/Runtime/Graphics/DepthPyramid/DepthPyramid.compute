@@ -1,5 +1,7 @@
-#pragma kernel CSCopyMipmap0Depth
-#pragma kernel CSMipmapDepth
+#pragma kernel CopyMipmap0Depth
+#pragma kernel MipmapDepth
+#pragma kernel CopyPyramid0Min
+#pragma kernel PyramidMin
 
 Texture2D<float> _PrevMipDepth;
 RWTexture2D<float> _CurrMipDepth;
@@ -12,17 +14,37 @@ float LinearEyeDepth(float depth)
 }
 
 [numthreads(8, 8, 1)]
-void CSCopyMipmap0Depth(uint3 id : SV_DispatchThreadID)
+void CopyMipmap0Depth(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
     // Calculate the linear depth and store in mipmap 0
-    _CurrMipDepth[id.xy] = LinearEyeDepth(_PrevMipDepth.Load(uint3(id.xy, 0)));
+    _CurrMipDepth[dispatchThreadId.xy] = LinearEyeDepth(_PrevMipDepth.Load(uint3(dispatchThreadId.xy, 0)));
 }
 
 [numthreads(8, 8, 1)]
-void CSMipmapDepth(uint3 id : SV_DispatchThreadID)
+void MipmapDepth(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
     // Rotated Grid Subsample
-    uint2 prevId = id.xy << 1;
-    uint2 currId = prevId + uint2(id.y & 1, id.x & 1);
-    _CurrMipDepth[id.xy] = _PrevMipDepth.Load(uint3(currId, 0));
+    uint2 prevId = dispatchThreadId.xy << 1;
+    uint2 currId = prevId + uint2(dispatchThreadId.y & 1, dispatchThreadId.x & 1);
+    _CurrMipDepth[dispatchThreadId.xy] = _PrevMipDepth.Load(uint3(currId, 0));
+}
+
+// Build mip depth pyramid
+[numthreads(8, 8, 1)]
+void CopyPyramid0Min(uint3 dispatchThreadId : SV_DispatchThreadID)
+{
+    _CurrMipDepth[dispatchThreadId.xy] = _PrevMipDepth.Load(uint3(dispatchThreadId.xy, 0));
+}
+
+[numthreads(8, 8, 1)]
+void PyramidMin(uint3 dispatchThreadId : SV_DispatchThreadID)
+{
+    uint2 prevId = dispatchThreadId.xy << 1;
+
+    float maxDepth = _PrevMipDepth.Load(uint3(prevId.xy, 0)).r;
+    maxDepth = max(maxDepth, _PrevMipDepth.Load(uint3(prevId.xy + int2(1, 0), 0)).r);
+    maxDepth = max(maxDepth, _PrevMipDepth.Load(uint3(prevId.xy + int2(0, 1), 0)).r);
+    maxDepth = max(maxDepth, _PrevMipDepth.Load(uint3(prevId.xy + int2(1, 1), 0)).r);
+
+    _CurrMipDepth[dispatchThreadId.xy] = maxDepth;
 }

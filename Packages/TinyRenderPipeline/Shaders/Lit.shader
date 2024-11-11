@@ -12,11 +12,13 @@ Shader "Tiny Render Pipeline/Lit"
         _BumpScale("Scale", Float) = 1.0
         _BumpMap("Normal Map", 2D) = "bump" {}
 
-        [Toggle] _EmissionEnabled("Emission Enabled", Float) = 0.0
+        [ToggleUI] _EmissionEnabled("Emission Enabled", Float) = 0.0
         [HDR] _EmissionColor("Color", Color) = (0,0,0)
         _EmissionMap("Emission", 2D) = "white" {}
 
         _IBL_DFG("DFG LUT", 2D) = "black" {}
+
+        [ToggleUI] _ReceivesSSR("Receive SSR", Float) = 0.0
 
         _Surface("__surface", Float) = 0.0
         _Blend("__mode", Float) = 0.0
@@ -26,6 +28,10 @@ Shader "Tiny Render Pipeline/Lit"
         [HideInInspector] _SrcBlendAlpha("__srcA", Float) = 1.0
         [HideInInspector] _DstBlendAlpha("__dstA", Float) = 0.0
         [HideInInspector] _ZWrite("__zw", Float) = 1.0
+
+        // Depth prepass
+        [HideInInspector] _StencilRefDepth("_StencilRefDepth", Int) = 0 // Nothing
+        [HideInInspector] _StencilWriteMaskDepth("_StencilWriteMaskDepth", Int) = 255 // StencilUsage.TraceReflectionRay
     }
     SubShader
     {
@@ -77,6 +83,14 @@ Shader "Tiny Render Pipeline/Lit"
         {
             Name "TinyRP Depth"
             Tags { "LightMode" = "TinyRPDepth" }
+
+            Stencil
+            {
+                Ref [_StencilRefDepth]
+                WriteMask [_StencilWriteMaskDepth]
+                Comp Always
+                Pass Replace
+            }
 
             ZWrite On
             ColorMask R

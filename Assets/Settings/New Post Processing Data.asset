@@ -17,9 +17,9 @@ MonoBehaviour:
     bloomShader: {fileID: 4800000, guid: 48f11e7c72d6b784b9b6bd3a6b7bc325, type: 3}
     lutBuilderShader: {fileID: 4800000, guid: c4e352c13ccd11b4f8d6b745cfa2bd24, type: 3}
   bloom:
-    threshold: 1
-    intensity: 0.5
-    scatter: 0.7
+    threshold: 1000
+    intensity: 0
+    scatter: 0.147
     clamp: 65472
     maxIterations: 6
     highQualityFiltering: 0

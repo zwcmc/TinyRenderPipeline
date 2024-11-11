@@ -7,14 +7,16 @@ public class TinyRenderPipelineAssetEditor : Editor
     private SerializedProperty m_Shadows;
     private SerializedProperty m_PostProcessingData;
     private SerializedProperty m_AntialiasingMode;
-    private SerializedProperty m_SSAO;
+    private SerializedProperty m_Sao;
+    private SerializedProperty m_Ssr;
 
     private void OnEnable()
     {
         m_Shadows = serializedObject.FindProperty("m_Shadows");
         m_PostProcessingData = serializedObject.FindProperty("postProcessingData");
         m_AntialiasingMode = serializedObject.FindProperty("antialiasingMode");
-        m_SSAO = serializedObject.FindProperty("ssaoEnabled");
+        m_Sao = serializedObject.FindProperty("saoEnabled");
+        m_Ssr = serializedObject.FindProperty("ssrEnabled");
     }
 
     public override void OnInspectorGUI()
@@ -33,7 +35,10 @@ public class TinyRenderPipelineAssetEditor : Editor
 
         EditorGUILayout.Space();
 
-        EditorGUILayout.PropertyField(m_SSAO, new GUIContent("SSAO"));
+        EditorGUILayout.PropertyField(m_Sao, new GUIContent("Scalable Ambient Obscurance"));
+
+        EditorGUILayout.Space();
+        EditorGUILayout.PropertyField(m_Ssr, new GUIContent("Screen Space Reflection"));
 
         serializedObject.ApplyModifiedProperties();
     }

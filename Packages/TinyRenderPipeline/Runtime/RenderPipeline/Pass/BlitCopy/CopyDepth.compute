@@ -5,7 +5,7 @@ Texture2D<float> _CameraDepthAttachment;
 RWTexture2D<float> _CameraDepthTexture;
 
 [numthreads(8, 8, 1)]
-void CSCopyDepth(uint3 id : SV_DispatchThreadID)
+void CSCopyDepth(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
-    _CameraDepthTexture[id.xy] = _CameraDepthAttachment.Load(uint3(id.xy, 0));
+    _CameraDepthTexture[dispatchThreadId.xy] = _CameraDepthAttachment.Load(uint3(dispatchThreadId.xy, 0));
 }

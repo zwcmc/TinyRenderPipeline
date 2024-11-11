@@ -10,17 +10,6 @@ public class TemporalAA
 
     private const string k_TaaHistoryTextureName = "_TaaHistoryTexture";
 
-    private static readonly int s_HaltonSampleCount = 16;
-    private static Vector2[] s_Halton23Samples = new Vector2[s_HaltonSampleCount];
-
-    private static int s_LastFrameIndex;
-    // Last frame non-jittered vp matrix
-    private static Matrix4x4 s_LastFrameViewProjection;
-    // Current frame non-jittered vp matrix
-    private static Matrix4x4 s_CurrentFrameViewProjection;
-    // Current frame jitter
-    private static Vector2 s_Jitter;
-
     private RTHandle m_TaaHistoryRTHandle;
 
     private Vector4 m_BlitScaleBias;
@@ -61,18 +50,6 @@ public class TemporalAA
         if (shader)
             m_TaaMaterial = CoreUtils.CreateEngineMaterial(shader);
 
-        for (int i = 0; i < s_HaltonSampleCount; ++i)
-        {
-            s_Halton23Samples[i].x = Halton(i, 2);
-            s_Halton23Samples[i].y = Halton(i, 3);
-        }
-
-        // Reset variables
-        s_LastFrameIndex = -1;
-        s_LastFrameViewProjection = Matrix4x4.identity;
-        s_CurrentFrameViewProjection = Matrix4x4.identity;
-        s_Jitter = Vector2.zero;
-
         m_BlitScaleBias = new Vector4(1.0f, 1.0f, 0.0f, 0.0f);
     }
 
@@ -80,32 +57,6 @@ public class TemporalAA
     {
         m_TaaHistoryRTHandle?.Release();
         CoreUtils.Destroy(m_TaaMaterial);
-    }
-
-    public static void TaaJitterProjectionMatrix(in RenderTextureDescriptor cameraDescriptor, in Matrix4x4 viewMatrix, ref Matrix4x4 projectionMatrix)
-    {
-        int frameIndex = Time.frameCount;
-
-        s_Jitter = s_Halton23Samples[frameIndex % s_HaltonSampleCount];
-
-        var gpuProjectionMatrix = viewMatrix * GL.GetGPUProjectionMatrix(projectionMatrix, true);
-
-        if (s_LastFrameIndex == -1)
-        {
-            s_LastFrameViewProjection = gpuProjectionMatrix;
-            s_CurrentFrameViewProjection = gpuProjectionMatrix;
-        }
-
-        s_LastFrameViewProjection = s_CurrentFrameViewProjection;
-        s_CurrentFrameViewProjection = gpuProjectionMatrix;
-
-        // 添加屏幕像素抖动偏移
-        float cameraTargetWidth = (float)cameraDescriptor.width;
-        float cameraTargetHeight = (float)cameraDescriptor.height;
-        projectionMatrix.m02 -= s_Jitter.x * (2.0f / cameraTargetWidth);
-        projectionMatrix.m12 -= s_Jitter.y * (2.0f / cameraTargetHeight);
-
-        s_LastFrameIndex = frameIndex;
     }
 
     public void RecordRenderGraph(RenderGraph renderGraph, in TextureHandle currentColorTexture, ref TextureHandle target, ref RenderingData renderingData)
@@ -118,28 +69,27 @@ public class TemporalAA
 
         bool isFirstFrame = m_TaaHistoryRTHandle == null || m_TaaHistoryRTHandle.rt == null;
         TextureHandle history = isFirstFrame ? currentColorTexture : renderGraph.ImportTexture(m_TaaHistoryRTHandle);
+
         using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_TaaSampler.name, out var passData, s_TaaSampler))
         {
-            passData.input = currentColorTexture;
-            builder.UseTexture(currentColorTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
-
+            passData.input = builder.UseTexture(currentColorTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
             passData.history = builder.UseTexture(history, IBaseRenderGraphBuilder.AccessFlags.Read);
 
             passData.taaMaterial = m_TaaMaterial;
 
-            Matrix4x4 historyViewProjection = isFirstFrame ? s_CurrentFrameViewProjection : s_LastFrameViewProjection;
+            Matrix4x4 currentFrameGpuVP = GL.GetGPUProjectionMatrix(FrameHistory.GetCurrentFrameProjection(), true) * FrameHistory.GetCurrentFrameView();
+            Matrix4x4 historyViewProjection = GL.GetGPUProjectionMatrix(FrameHistory.GetLastFrameProjection(), true) * FrameHistory.GetLastFrameView();
             Matrix4x4 normalizedToClip = Matrix4x4.identity;
             normalizedToClip.m00 = 2.0f;
             normalizedToClip.m03 = -1.0f;
             normalizedToClip.m11 = 2.0f;
             normalizedToClip.m13 = -1.0f;
-            Matrix4x4 historyReprojection = historyViewProjection * Matrix4x4.Inverse(s_CurrentFrameViewProjection) * normalizedToClip;
+            Matrix4x4 historyReprojection = historyViewProjection * Matrix4x4.Inverse(currentFrameGpuVP) * normalizedToClip;
             m_TaaMaterial.SetMatrix(TaaMaterialParamShaderIDs.HistoryReprojection, historyReprojection);
 
             float[] weights = new float[9];
             ComputeWeights(ref weights);
             m_TaaMaterial.SetFloatArray(TaaMaterialParamShaderIDs.TaaFilterWeights, weights);
-
 
             Vector4 taaFrameInfo = new Vector4(TaaSettings.alpha, TaaSettings.varianceGamma, isFirstFrame ? 1.0f : 0.0f, 0.0f);
             m_TaaMaterial.SetVector(TaaMaterialParamShaderIDs.TaaFrameInfo, taaFrameInfo);
@@ -186,8 +136,7 @@ public class TemporalAA
     // see: "High Quality Temporal Supersampling" by Brian Karis
     private static void ComputeWeights(ref float[] weights)
     {
-        int frameIndex = Time.frameCount;
-        Vector2 jitter = s_Halton23Samples[frameIndex % s_HaltonSampleCount];
+        Vector2 jitter = FrameHistory.TaaJitter;
         float totalWeight = 0.0f;
         for (int i = 0; i < 9; ++i)
         {
@@ -203,21 +152,5 @@ public class TemporalAA
         {
             weights[i] /= totalWeight;
         }
-    }
-
-    private static float Halton(int i, int b)
-    {
-        // 跳过序列前面的元素使得生成出的序列元素的平均值更接近 0.5
-        i += 409;
-
-        float f = 1.0f;
-        float r = 0.0f;
-        while (i > 0)
-        {
-            f /= (float)b;
-            r += f * (float)(i % b);
-            i /= b;
-        }
-        return r;
     }
 }

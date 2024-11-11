@@ -66,7 +66,10 @@ public class TinyRenderer
     private DrawObjectsForward m_ForwardOpaque;
     private CopyDepth m_CopyDepth;
     private DrawSkybox m_DrawSkybox;
-    // private CopyColor m_CopyColor;
+
+    private ScreenSpaceReflection m_ScreenSpaceReflection;
+
+    private CopyColor m_CopyColor;
     private DrawObjectsForward m_ForwardTransparent;
 
     private PostProcess m_PostProcess;
@@ -104,7 +107,10 @@ public class TinyRenderer
         m_ForwardOpaque = new DrawObjectsForward(true);
         m_CopyDepth = new CopyDepth(m_CopyDepthMaterial, asset.shaderResources.copyDepthCS);
         m_DrawSkybox = new DrawSkybox();
-        // m_CopyColor = new CopyColor(asset.shaderResources.copyColorCS);
+
+        m_ScreenSpaceReflection = new ScreenSpaceReflection(asset.shaderResources.screenSpaceReflectionCS, asset.shaderResources.depthPyramidCS);
+
+        m_CopyColor = new CopyColor(asset.shaderResources.copyColorCS);
         m_ForwardTransparent = new DrawObjectsForward();
 
         m_PostProcess = new PostProcess();
@@ -162,7 +168,7 @@ public class TinyRenderer
 
     private void RecordRenderGraph(RenderGraph renderGraph, ref RenderingData renderingData)
     {
-        var camera = renderingData.camera;
+        var camera = renderingData.cameraData.camera;
         var cameraType = camera.cameraType;
         bool supportIntermediateRendering = cameraType <= CameraType.SceneView;
 
@@ -206,8 +212,18 @@ public class TinyRenderer
             RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_CameraDepthTexture", SystemInfo.usesReversedZBuffer ? renderGraph.defaultResources.blackTexture : renderGraph.defaultResources.whiteTexture, "SetDefaultGlobalCameraDepthTexture");
         }
 
+        // SSR
+        if (supportIntermediateRendering && m_PipelineAsset.ssrEnabled)
+        {
+            m_ScreenSpaceReflection.RecordRenderGraph(renderGraph, in m_ActiveCameraDepthTexture, ref renderingData);
+        }
+        else
+        {
+            RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_SsrTexture", renderGraph.defaultResources.blackTexture, "Set Global SSR Texture");
+        }
+
         // Scalable Ambient Obscurance
-        if (supportIntermediateRendering && m_PipelineAsset.ssaoEnabled)
+        if (supportIntermediateRendering && m_PipelineAsset.saoEnabled)
         {
             m_ScalableAO.RecordRenderGraph(renderGraph, in m_DepthTexture, out m_ScalableAOTexture, ref renderingData);
         }
@@ -221,6 +237,12 @@ public class TinyRenderer
 
         // Draw skybox
         m_DrawSkybox.RecordRenderGraph(renderGraph, m_ActiveCameraColorTexture, m_ActiveCameraDepthTexture, ref renderingData);
+
+        // Copy ssr history color
+        if (supportIntermediateRendering && m_PipelineAsset.ssrEnabled)
+        {
+            m_CopyColor.CopySsrHistory(renderGraph, in m_ActiveCameraColorTexture, ref FrameHistory.s_SsrHistoryColorRT, ref renderingData);
+        }
 
         // // Copy color pass
         // if (supportIntermediateRendering)
@@ -288,7 +310,7 @@ public class TinyRenderer
 
     private void CreateAndSetCameraRenderTargets(RenderGraph renderGraph, ref RenderingData renderingData, bool supportIntermediateRendering)
     {
-        var camera = renderingData.camera;
+        var camera = renderingData.cameraData.camera;
 
         bool isBuiltInTexture = (camera.targetTexture == null);
         RenderTargetIdentifier targetColorId = isBuiltInTexture ? BuiltinRenderTextureType.CameraTarget : new RenderTargetIdentifier(camera.targetTexture);
@@ -312,7 +334,7 @@ public class TinyRenderer
             importInfo.height = Screen.height;
             importInfo.volumeDepth = 1;
             importInfo.msaaSamples = 1;
-            importInfo.format = renderingData.defaultFormat;
+            importInfo.format = renderingData.cameraData.defaultGraphicsFormat;
             importInfoDepth = importInfo;
             importInfoDepth.format = SystemInfo.GetGraphicsFormat(DefaultFormat.DepthStencil);
         }
@@ -346,7 +368,7 @@ public class TinyRenderer
         m_BackbufferColorTexture = renderGraph.ImportTexture(m_TargetColorHandle, importInfo, importBackbufferColorParams);
         m_BackbufferDepthTexture = renderGraph.ImportTexture(m_TargetDepthHandle, importInfoDepth, importBackbufferDepthParams);
 
-        var cameraTargetDescriptor = renderingData.cameraTargetDescriptor;
+        var cameraTargetDescriptor = renderingData.cameraData.targetDescriptor;
         cameraTargetDescriptor.depthBufferBits = (int)DepthBits.None;
 
         RenderingUtils.ReAllocateIfNeeded(ref m_CameraColorHandles[0], cameraTargetDescriptor, FilterMode.Bilinear, TextureWrapMode.Clamp, name: "_CameraTargetAttachmentA");
@@ -363,7 +385,7 @@ public class TinyRenderer
         m_RenderGraphCameraColorTextures[0] = renderGraph.ImportTexture(m_CameraColorHandles[0], importColorParams);
         m_RenderGraphCameraColorTextures[1] = renderGraph.ImportTexture(m_CameraColorHandles[1], importColorParams);
 
-        var depthDescriptor = renderingData.cameraTargetDescriptor;
+        var depthDescriptor = renderingData.cameraData.targetDescriptor;
         depthDescriptor.graphicsFormat = GraphicsFormat.None;
         depthDescriptor.depthStencilFormat = GraphicsFormat.D32_SFloat_S8_UInt;
         depthDescriptor.depthBufferBits = 32;
@@ -412,7 +434,7 @@ public class TinyRenderer
             {
                 var cmd = rasterGraphContext.cmd;
 
-                cmd.SetupCameraProperties(data.renderingData.camera);
+                cmd.SetupCameraProperties(data.renderingData.cameraData.camera);
 
                 // This is still required because of the following reasons:
                 // - Camera billboard properties.
@@ -427,7 +449,8 @@ public class TinyRenderer
     {
         // data.renderingData.camera, RenderingUtils.IsHandleYFlipped(data.colorTarget, data.renderingData.camera)
         ref var renderingData = ref passData.renderingData;
-        var camera = renderingData.camera;
+        ref var cameraData = ref renderingData.cameraData;
+        var camera = cameraData.camera;
         bool isTargetFlipped = RenderingUtils.IsHandleYFlipped(passData.colorTarget, camera);
 
         float near = camera.nearClipPlane;
@@ -457,7 +480,7 @@ public class TinyRenderer
             zBufferParams.z = -zBufferParams.z;
         }
 
-        cmd.SetGlobalVector(ShaderPropertyIDs.WorldSpaceCameraPos, camera.transform.position);
+        cmd.SetGlobalVector(ShaderPropertyIDs.WorldSpaceCameraPos, cameraData.worldSpaceCameraPos);
         cmd.SetGlobalVector(ShaderPropertyIDs.ZBufferParams, zBufferParams);
         float aspectRatio = (float)camera.pixelWidth / (float)camera.pixelHeight;
         float orthographicSize = camera.orthographicSize;
@@ -467,14 +490,8 @@ public class TinyRenderer
         cmd.SetGlobalVector(ShaderPropertyIDs.ProjectionParams, new Vector4(projectionFlipSign, near, far, invFar));
         cmd.SetGlobalVector(ShaderPropertyIDs.ScreenParams, new Vector4(cameraWidth, cameraHeight, 1.0f + 1.0f / cameraWidth, 1.0f + 1.0f / cameraHeight));
 
-        Matrix4x4 viewMatrix = camera.worldToCameraMatrix;
-        Matrix4x4 projectionMatrix = camera.projectionMatrix;
-        if (camera.cameraType <= CameraType.SceneView && renderingData.antialiasing == AntialiasingMode.TemporalAntialiasing)
-        {
-            // Apply the TAA jitter
-            TemporalAA.TaaJitterProjectionMatrix(in renderingData.cameraTargetDescriptor, in viewMatrix, ref projectionMatrix);
-        }
-        cmd.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
+        // Set view matrix and projection matrix (jittered and non-gpu)
+        cmd.SetViewProjectionMatrices(FrameHistory.GetCurrentFrameView(), FrameHistory.GetCurrentFrameJitteredProjection());
     }
 
 #if UNITY_EDITOR
@@ -493,7 +510,7 @@ public class TinyRenderer
 
         using (var builder = renderGraph.AddRasterRenderPass<DrawGizmosPassData>(s_GizmosPass.name, out var passData, s_GizmosPass))
         {
-            passData.rendererList = renderGraph.CreateGizmoRendererList(renderingData.camera, gizmoSubset);
+            passData.rendererList = renderGraph.CreateGizmoRendererList(renderingData.cameraData.camera, gizmoSubset);
 
             builder.UseTextureFragment(color, 0, IBaseRenderGraphBuilder.AccessFlags.Write);
             builder.UseTextureFragmentDepth(depth, IBaseRenderGraphBuilder.AccessFlags.Read);

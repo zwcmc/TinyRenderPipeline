@@ -50,16 +50,20 @@ public struct ShadowData
     public int additionalLightsShadowMapHeight;
 }
 
+public struct CameraData
+{
+    public Camera camera;
+    public GraphicsFormat defaultGraphicsFormat;
+    public RenderTextureDescriptor targetDescriptor;
+    public Vector3 worldSpaceCameraPos;
+}
+
 public struct RenderingData
 {
     public ScriptableRenderContext renderContext;
     public CommandBuffer commandBuffer;
 
-    public Camera camera;
-
-    public GraphicsFormat defaultFormat;
-
-    public RenderTextureDescriptor cameraTargetDescriptor;
+    public CameraData cameraData;
 
     // public bool isDefaultCameraViewport;
 
@@ -127,4 +131,10 @@ public static class ShaderPropertyIDs
     public static readonly int OrthoParams = Shader.PropertyToID("unity_OrthoParams");
     public static readonly int ProjectionParams = Shader.PropertyToID("_ProjectionParams");
     public static readonly int ScreenParams = Shader.PropertyToID("_ScreenParams");
+}
+
+public enum StencilUsage
+{
+    Clear = 0,
+    ScreenSpaceReflection = (1 << 3),
 }

@@ -25,7 +25,8 @@ MonoBehaviour:
     softShadows: 2
   postProcessingData: {fileID: 11400000, guid: 90ac35e882f8867438b6345c4c8a746c, type: 2}
   antialiasingMode: 2
-  ssaoEnabled: 1
+  saoEnabled: 1
+  ssrEnabled: 1
   colorGradingLutSize: 64
   shaderResources:
     fxaaShader: {fileID: 4800000, guid: c3a51ddabd49faa43a0e890f453e8ba6, type: 3}
@@ -33,3 +34,4 @@ MonoBehaviour:
     depthPyramidCS: {fileID: 7200000, guid: 62222339b6cf647be8060b2291f647eb, type: 3}
     copyDepthCS: {fileID: 7200000, guid: 8f5515fda1b4a453dbd1cf31e5623884, type: 3}
     copyColorCS: {fileID: 7200000, guid: a0d72c449186e4073bd3a7ae7c42c8db, type: 3}
+    screenSpaceReflectionCS: {fileID: 7200000, guid: 2a3f0ebe1c890493386c9465f4839711, type: 3}

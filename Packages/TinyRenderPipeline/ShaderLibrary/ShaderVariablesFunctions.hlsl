@@ -38,18 +38,18 @@ float3 GetViewForwardDir()
     return -viewMat[2].xyz;
 }
 
-half3 GetWorldSpaceNormalizeViewDir(float3 positionWS)
+float3 GetWorldSpaceNormalizeViewDir(float3 positionWS)
 {
     if (IsPerspectiveProjection())
     {
         // Perspective
         float3 V = GetCurrentViewPosition() - positionWS;
-        return half3(normalize(V));
+        return normalize(V);
     }
     else
     {
         // Orthographic
-        return half3(-GetViewForwardDir());
+        return -GetViewForwardDir();
     }
 }
 
@@ -92,35 +92,5 @@ float LinearDepthToEyeDepth(float rawDepth)
     return _ProjectionParams.y + (_ProjectionParams.z - _ProjectionParams.y) * rawDepth;
 #endif
 }
-
-// Select uint4 component by index.
-// Helper to improve codegen for 2d indexing (data[x][y])
-// Replace:
-// data[i / 4][i % 4];
-// with:
-// select4(data[i / 4], i % 4);
-uint Select4(uint4 v, uint i)
-{
-    // x = 0 = 00
-    // y = 1 = 01
-    // z = 2 = 10
-    // w = 3 = 11
-    uint mask0 = uint(int(i << 31) >> 31);
-    uint mask1 = uint(int(i << 30) >> 31);
-    return
-        (((v.w & mask0) | (v.z & ~mask0)) & mask1) |
-        (((v.y & mask0) | (v.x & ~mask0)) & ~mask1);
-}
-
-#if SHADER_TARGET < 45
-uint URP_FirstBitLow(uint m)
-{
-    // http://graphics.stanford.edu/~seander/bithacks.html#ZerosOnRightFloatCast
-    return (asuint((float)(m & asuint(-asint(m)))) >> 23) - 0x7F;
-}
-#define FIRST_BIT_LOW URP_FirstBitLow
-#else
-#define FIRST_BIT_LOW firstbitlow
-#endif
 
 #endif
