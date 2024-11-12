@@ -210,10 +210,10 @@ half4 TemporalAAFragment(Varyings input) : SV_Target0
 
     // 消除闪烁
     // [Lottes] prevents flickering by modulating the blend weight by the difference in luma
-    // half lumaColor = LumaYCoCg(filtered.rgb);
-    // half lumaHistory = LumaYCoCg(history.rgb);
-    // half diff = 1.0 - abs(lumaColor - lumaHistory) / (0.001 + max(lumaColor, lumaHistory));
-    // alpha *= diff * diff;
+    half lumaColor = LumaYCoCg(filtered.rgb);
+    half lumaHistory = LumaYCoCg(history.rgb);
+    half diff = 1.0 - abs(lumaColor - lumaHistory) / (0.001 + max(lumaColor, lumaHistory));
+    alpha *= diff * diff;
 
     // 转换到 RGB 颜色空间
     filtered.rgb = YCoCgToRGB(filtered.rgb);

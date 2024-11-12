@@ -74,7 +74,7 @@ public class ScalableAO
             const float sampleCount = 9.0f;
 
             ref var cameraData = ref renderingData.cameraData;
-            Matrix4x4 projectionMatrix = GL.GetGPUProjectionMatrix(FrameHistory.GetCurrentFrameJitteredProjection(), true);
+            Matrix4x4 projectionMatrix = GL.GetGPUProjectionMatrix(FrameHistory.GetCurrentFrameProjection(), true);
             var invProjection = Matrix4x4.Inverse(projectionMatrix);
 
             // 屏幕的宽高(以像素为单位)

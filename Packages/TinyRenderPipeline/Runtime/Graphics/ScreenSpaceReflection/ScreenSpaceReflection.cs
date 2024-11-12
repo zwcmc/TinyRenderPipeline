@@ -90,13 +90,13 @@ public class ScreenSpaceReflection
             passData.width = descriptor.width;
             passData.height = descriptor.height;
 
-            Matrix4x4 gpuProjectionMatirx = GL.GetGPUProjectionMatrix(FrameHistory.GetCurrentFrameJitteredProjection(), true);
+            Matrix4x4 gpuProjectionMatirx = GL.GetGPUProjectionMatrix(FrameHistory.GetCurrentFrameProjection(), true);
             Matrix4x4 gpuViewMatrix = FrameHistory.GetCurrentFrameView();
             Matrix4x4 currentFrameGpuVP = gpuProjectionMatirx * gpuViewMatrix;
 
             passData.invViewProjection = Matrix4x4.Inverse(currentFrameGpuVP);
 
-            Matrix4x4 historyViewProjection = GL.GetGPUProjectionMatrix(FrameHistory.GetLastFrameJitteredProjection(), true) * FrameHistory.GetLastFrameView();
+            Matrix4x4 historyViewProjection = GL.GetGPUProjectionMatrix(FrameHistory.GetLastFrameProjection(), true) * FrameHistory.GetLastFrameView();
             Matrix4x4 normalizedToClip = Matrix4x4.identity;
             normalizedToClip.m00 = 2.0f;
             normalizedToClip.m03 = -1.0f;

@@ -101,7 +101,7 @@ half4 SurfaceShading(InputData inputData, SurfaceData surfaceData)
         Light light = GetAdditionalLight(lightIndex, inputData.positionWS);
         if (IsMatchingLightLayer(light.layerMask, meshRenderingLayers))
         {
-        color += ShadingLit(light, brdfData, inputData);
+            color += ShadingLit(light, brdfData, inputData);
         }
     }
 

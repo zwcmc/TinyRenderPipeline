@@ -212,16 +212,6 @@ public class TinyRenderer
             RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_CameraDepthTexture", SystemInfo.usesReversedZBuffer ? renderGraph.defaultResources.blackTexture : renderGraph.defaultResources.whiteTexture, "SetDefaultGlobalCameraDepthTexture");
         }
 
-        // SSR
-        if (supportIntermediateRendering && m_PipelineAsset.ssrEnabled)
-        {
-            m_ScreenSpaceReflection.RecordRenderGraph(renderGraph, in m_ActiveCameraDepthTexture, ref renderingData);
-        }
-        else
-        {
-            RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_SsrTexture", renderGraph.defaultResources.blackTexture, "Set Global SSR Texture");
-        }
-
         // Scalable Ambient Obscurance
         if (supportIntermediateRendering && m_PipelineAsset.saoEnabled)
         {
@@ -230,6 +220,17 @@ public class TinyRenderer
         else
         {
             RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_ScreenSpaceOcclusionTexture", renderGraph.defaultResources.whiteTexture);
+        }
+
+        // SSR
+        // TODO: investigate why ssr is jittering when taa enabled
+        if (supportIntermediateRendering && m_PipelineAsset.ssrEnabled)
+        {
+            m_ScreenSpaceReflection.RecordRenderGraph(renderGraph, in m_ActiveCameraDepthTexture, ref renderingData);
+        }
+        else
+        {
+            RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_SsrTexture", renderGraph.defaultResources.blackTexture, "Set Global SSR Texture");
         }
 
         // Draw opaque objects

@@ -80,7 +80,6 @@ void ScreenSpaceReflectionMarching(uint3 dispatchThreadId : SV_DispatchThreadID)
     uint2 positionSS = dispatchThreadId.xy;
 
     float2 uv = positionSS * _ScreenSize.zw + (0.5 * _ScreenSize.zw);
-    // uint2 positionSS = uint2(uv * _ScreenSize.xy);
 
     uint stencilValue = GetStencilValue(_StencilTexture.Load(int3(positionSS, 0)));
     bool doesntReceiveSSR = (stencilValue & _SsrStencilBit) == 0;
