@@ -215,6 +215,7 @@ half4 TemporalAAFragment(Varyings input) : SV_Target0
     boxmax = max(boxmax, filtered);
 
     // 验证历史像素数据
+    // TODO: investigate ssr is jittering when ClipAABB
     history = ClipAABB(boxmin, boxmax, history, filtered);
 
     // 混合权重 alpha

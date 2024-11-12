@@ -231,7 +231,6 @@ public class TinyRenderer
         }
 
         // SSR
-        // TODO: investigate why ssr is jittering when taa enabled
         if (supportIntermediateRendering && m_PipelineAsset.ssrEnabled)
         {
             m_ScreenSpaceReflection.RecordRenderGraph(renderGraph, in m_ActiveCameraDepthTexture, ref renderingData);

@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 
-public class FrameHistory
+public static class FrameHistory
 {
     private static readonly int s_HaltonSampleCount = 16;
     private static Vector2[] s_Halton23Samples = new Vector2[s_HaltonSampleCount];

@@ -69,7 +69,6 @@ public class TemporalAA
 
         bool isFirstFrame = m_TaaHistoryRTHandle == null || m_TaaHistoryRTHandle.rt == null;
         TextureHandle history = isFirstFrame ? currentColorTexture : renderGraph.ImportTexture(m_TaaHistoryRTHandle);
-
         using (var builder = renderGraph.AddRasterRenderPass<PassData>(s_TaaSampler.name, out var passData, s_TaaSampler))
         {
             passData.input = builder.UseTexture(currentColorTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
