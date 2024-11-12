@@ -65,7 +65,7 @@ public static class FrameHistory
         CurrentFrameProjection = projectionMatrix;
         CurrentFrameJitteredProjection = projectionMatrix;
 
-        if (taaEnabled)
+        if (taaEnabled && cameraData.camera.cameraType == CameraType.Game)
         {
             TaaJitter = s_Halton23Samples[frameIndex % s_HaltonSampleCount];
             // 添加屏幕像素抖动偏移

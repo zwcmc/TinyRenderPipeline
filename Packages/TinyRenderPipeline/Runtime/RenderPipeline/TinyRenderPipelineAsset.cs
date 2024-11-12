@@ -63,6 +63,9 @@ public class TinyRenderPipelineAsset : RenderPipelineAsset<TinyRenderPipeline>
         [Reload("Runtime/Graphics/DepthPyramid/DepthPyramid.compute")]
         public ComputeShader depthPyramidCS;
 
+        [Reload("Runtime/Graphics/ColorPyramid/ColorPyramid.compute")]
+        public ComputeShader colorPyramidCS;
+
         [Reload("Runtime/RenderPipeline/Pass/BlitCopy/CopyDepth.compute")]
         public ComputeShader copyDepthCS;
 

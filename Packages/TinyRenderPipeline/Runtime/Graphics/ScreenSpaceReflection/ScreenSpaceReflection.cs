@@ -53,8 +53,9 @@ public class ScreenSpaceReflection
     private int m_SsrReprojectionKernel;
 
     private DepthPyramidGenerator m_DepthPyramidGenerator;
+    private ColorPyramidGenerator m_ColorPyramidGenerator;
 
-    public ScreenSpaceReflection(ComputeShader ssrShader, ComputeShader depthPyramidShader)
+    public ScreenSpaceReflection(ComputeShader ssrShader, ComputeShader depthPyramidShader, ComputeShader colorPyramidShader)
     {
         m_SsrShader = ssrShader;
 
@@ -62,6 +63,7 @@ public class ScreenSpaceReflection
         m_SsrReprojectionKernel = m_SsrShader.FindKernel("ScreenSpaceReflectionReprojection");
 
         m_DepthPyramidGenerator = new DepthPyramidGenerator(depthPyramidShader);
+        m_ColorPyramidGenerator = new ColorPyramidGenerator(colorPyramidShader);
     }
 
     public void RecordRenderGraph(RenderGraph renderGraph, in TextureHandle depthStencilTexture, ref RenderingData renderingData)
@@ -79,7 +81,9 @@ public class ScreenSpaceReflection
 
         TextureHandle _SsrTexture;
         descriptor.graphicsFormat = GraphicsFormat.R16G16B16A16_SFloat;
-        _SsrTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, descriptor, k_SsrTexture, false, FilterMode.Bilinear);
+        descriptor.mipCount = 9;
+        descriptor.useMipMap = true;
+        _SsrTexture = RenderingUtils.CreateRenderGraphTexture(renderGraph, descriptor, k_SsrTexture, false, FilterMode.Trilinear);
 
         using (var builder = renderGraph.AddComputePass<PassData>(s_ScreenSpaceReflectionSampler.name, out var passData, s_ScreenSpaceReflectionSampler))
         {
@@ -136,6 +140,8 @@ public class ScreenSpaceReflection
                 cmd.DispatchCompute(data.cs, data.ssrReprojectionKernel, CommonUtils.DivRoundUp(data.width, 8), CommonUtils.DivRoundUp(data.height, 8), 1);
             });
         }
+
+        m_ColorPyramidGenerator.RenderColorPyramid(renderGraph, ref _SsrTexture, in descriptor, ref renderingData);
 
         RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, k_SsrTexture, _SsrTexture, "Set Global SSR Texture");
     }

@@ -35,7 +35,7 @@ public class TemporalAA
     {
         public static float filterWidth = 1.0f;    // Reconstruction filter width typically between 0.2 (sharper, aliased) and 1.5 (smoother)
         public static float alpha = 0.1f;         // History feedback, between 0 (maximum temporal AA) and 1 (no temporal AA).
-        public static float stDevScale = 2.16f;
+        public static float stDevScale = 4.16f;
     }
 
     private static readonly Vector2[] s_SamplesOffset =

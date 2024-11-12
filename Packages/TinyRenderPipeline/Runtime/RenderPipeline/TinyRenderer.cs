@@ -4,8 +4,6 @@ using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
-using Debug = UnityEngine.Debug;
-
 public class TinyRenderer
 {
     private static readonly ProfilingSampler s_GizmosPass = new ProfilingSampler("Gizmos Pass");
@@ -109,7 +107,7 @@ public class TinyRenderer
         m_CopyDepth = new CopyDepth(m_CopyDepthMaterial, asset.shaderResources.copyDepthCS);
         m_DrawSkybox = new DrawSkybox();
 
-        m_ScreenSpaceReflection = new ScreenSpaceReflection(asset.shaderResources.screenSpaceReflectionCS, asset.shaderResources.depthPyramidCS);
+        m_ScreenSpaceReflection = new ScreenSpaceReflection(asset.shaderResources.screenSpaceReflectionCS, asset.shaderResources.depthPyramidCS, asset.shaderResources.colorPyramidCS);
 
         m_CopyColor = new CopyColor(asset.shaderResources.copyColorCS);
         m_ForwardTransparent = new DrawObjectsForward();
@@ -250,6 +248,10 @@ public class TinyRenderer
         if (supportIntermediateRendering && m_PipelineAsset.ssrEnabled)
         {
             m_CopyColor.CopySsrHistory(renderGraph, in m_ActiveCameraColorTexture, ref FrameHistory.s_SsrHistoryColorRT, ref renderingData);
+        }
+        else
+        {
+            RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_SsrHistoryColorTexture", renderGraph.defaultResources.blackTexture, "Set Global SSR History Color Texture");
         }
 
         // // Copy color pass

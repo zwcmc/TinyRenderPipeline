@@ -2,7 +2,7 @@
 #define TINY_RP_BRDF_INCLUDED
 
 #define kDielectricSpec float4(0.04, 0.04, 0.04, 1.0 - 0.04) // standard dielectric reflectivity coef at incident angle (= 4%)
-#define kMinPerceptualRoughness 0.089
+// #define kMinPerceptualRoughness 0.089
 
 struct BRDFData
 {
@@ -18,7 +18,7 @@ void InitializeBRDFData(SurfaceData surfaceData, out BRDFData outBRDFData)
 
     outBRDFData.diffuseColor = surfaceData.baseColor * (1.0 - surfaceData.metallic);
     outBRDFData.f0 = lerp(kDielectricSpec.rgb, surfaceData.baseColor, surfaceData.metallic);
-    outBRDFData.perceptualRoughness = clamp(PerceptualSmoothnessToPerceptualRoughness(surfaceData.smoothness), kMinPerceptualRoughness, 1.0);
+    outBRDFData.perceptualRoughness = PerceptualSmoothnessToPerceptualRoughness(surfaceData.smoothness);
     outBRDFData.roughness = PerceptualRoughnessToRoughness(outBRDFData.perceptualRoughness);
 }
 
