@@ -84,7 +84,7 @@ public class ScalableAO
             // 计算经过投影矩阵缩放后的屏幕空间内范围大小(以像素为单位)
             float projectionScaledRadius = projectionScale * radius;
 
-            passData.saoMaterial.SetVector(SAOMaterialParamShaderIDs.PositionParams, new Vector4(invProjection.m00 * 2.0f, invProjection.m11 * 2.0f, projectionScaledRadius, 8.0f));
+            passData.saoMaterial.SetVector(SAOMaterialParamShaderIDs.PositionParams, new Vector4(invProjection.m00 * 2.0f, invProjection.m11 * 2.0f, projectionScaledRadius, 9.0f));
 
             const float spiralTurns = 6.0f;
             const float stepTapRadius = 1.0f / (sampleCount - 0.5f);

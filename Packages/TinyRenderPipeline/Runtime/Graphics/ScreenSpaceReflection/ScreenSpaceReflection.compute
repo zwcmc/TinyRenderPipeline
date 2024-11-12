@@ -141,7 +141,7 @@ void ScreenSpaceReflectionMarching(uint3 dispatchThreadId : SV_DispatchThreadID)
     }
 
     const float _SsrReflectsSky = 0.0;
-    const int _SsrDepthPyramidMaxMip = 7;
+    const int _SsrDepthPyramidMaxMip = 8;
     const int _SsrIterLimit = 64;
     const float thickness = 0.0016;
     const float _SsrThicknessScale = 1.0 / (1.0 + thickness);

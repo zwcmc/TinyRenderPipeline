@@ -34,7 +34,7 @@ public class DepthPyramidGenerator
     private Vector2Int[] m_MipmapDepthSizes;
     private TextureHandle[] m_MipmapDepthHandles;
 
-    private const int k_MipCount = 8;
+    private const int k_MipCount = 9;
 
     private int m_CopyMip0KernelID;
     private int m_MipmapDepthKernelID;
