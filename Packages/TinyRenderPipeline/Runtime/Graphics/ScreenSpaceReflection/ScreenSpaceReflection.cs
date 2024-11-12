@@ -22,8 +22,8 @@ public class ScreenSpaceReflection
         public static int DepthPyramidTexture = Shader.PropertyToID("_DepthPyramidTexture");
         public static int ScreenSize = Shader.PropertyToID("_ScreenSize");
 
-        public static int InvParams = Shader.PropertyToID("_InvParams");
-        public static int InvView = Shader.PropertyToID("_InvView");
+        public static int TaaJitter = Shader.PropertyToID("_TaaJitter");
+        public static int InvViewProjection = Shader.PropertyToID("_InvViewProjection");
 
         public static int HistoryReprojection = Shader.PropertyToID("_HistoryReprojection");
         public static int SsrHistoryColorTexture = Shader.PropertyToID(FrameHistory.s_SsrHistoryColorTextureName);
@@ -41,8 +41,7 @@ public class ScreenSpaceReflection
         public int width;
         public int height;
 
-        public Vector4 invParams;
-        public Matrix4x4 invView;
+        public Matrix4x4 invViewProjection;
 
         public Matrix4x4 historyReprojection;
         public int ssrReprojectionKernel;
@@ -92,13 +91,11 @@ public class ScreenSpaceReflection
             passData.height = descriptor.height;
 
             Matrix4x4 gpuProjectionMatirx = GL.GetGPUProjectionMatrix(FrameHistory.GetCurrentFrameJitteredProjection(), true);
-            Matrix4x4 invProjectionMatrix = Matrix4x4.Inverse(gpuProjectionMatirx);
-            Matrix4x4 invViewMatrix = Matrix4x4.Inverse(FrameHistory.GetCurrentFrameView());
-            Vector4 invParams = new Vector4(invProjectionMatrix.m00 * 2.0f, invProjectionMatrix.m11 * 2.0f, 0.0f, 0.0f);
-            passData.invParams = invParams;
-            passData.invView = invViewMatrix;
+            Matrix4x4 gpuViewMatrix = FrameHistory.GetCurrentFrameView();
+            Matrix4x4 currentFrameGpuVP = gpuProjectionMatirx * gpuViewMatrix;
 
-            Matrix4x4 currentFrameGpuVP = GL.GetGPUProjectionMatrix(FrameHistory.GetCurrentFrameJitteredProjection(), true) * FrameHistory.GetCurrentFrameView();
+            passData.invViewProjection = Matrix4x4.Inverse(currentFrameGpuVP);
+
             Matrix4x4 historyViewProjection = GL.GetGPUProjectionMatrix(FrameHistory.GetLastFrameJitteredProjection(), true) * FrameHistory.GetLastFrameView();
             Matrix4x4 normalizedToClip = Matrix4x4.identity;
             normalizedToClip.m00 = 2.0f;
@@ -121,12 +118,16 @@ public class ScreenSpaceReflection
 
                 // SSR Marching
                 cmd.SetComputeIntParam(data.cs, ScreenSpaceReflectionShaderIDs.SsrStencilBit, (int)StencilUsage.ScreenSpaceReflection);
+
                 cmd.SetComputeTextureParam(data.cs, data.ssrMarchingKernel, ScreenSpaceReflectionShaderIDs.StencilTexture, data.stencilTexture, 0, RenderTextureSubElement.Stencil);
                 cmd.SetComputeTextureParam(data.cs, data.ssrMarchingKernel, ScreenSpaceReflectionShaderIDs.DepthPyramidTexture, data.depthPyramidTexture);
                 cmd.SetComputeTextureParam(data.cs, data.ssrMarchingKernel, ScreenSpaceReflectionShaderIDs.SsrHitPointTextureWrite, data.hitPointTexture);
+
                 cmd.SetComputeVectorParam(data.cs, ScreenSpaceReflectionShaderIDs.ScreenSize, new Vector4((float)data.width, (float)data.height, 1.0f / data.width, 1.0f / data.height));
-                cmd.SetComputeMatrixParam(data.cs, ScreenSpaceReflectionShaderIDs.InvView, data.invView);
-                cmd.SetComputeVectorParam(data.cs, ScreenSpaceReflectionShaderIDs.InvParams, data.invParams);
+                cmd.SetComputeMatrixParam(data.cs, ScreenSpaceReflectionShaderIDs.InvViewProjection, data.invViewProjection);
+
+                cmd.SetComputeVectorParam(data.cs, ScreenSpaceReflectionShaderIDs.TaaJitter, new Vector4(FrameHistory.TaaJitter.x * 2.0f, FrameHistory.TaaJitter.y * 2.0f, 0.0f, 0.0f));
+
                 cmd.DispatchCompute(data.cs, data.ssrMarchingKernel, CommonUtils.DivRoundUp(data.width, 8), CommonUtils.DivRoundUp(data.height, 8), 1);
 
                 // SSR
@@ -138,6 +139,8 @@ public class ScreenSpaceReflection
                 cmd.DispatchCompute(data.cs, data.ssrReprojectionKernel, CommonUtils.DivRoundUp(data.width, 8), CommonUtils.DivRoundUp(data.height, 8), 1);
             });
         }
+
+        // RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, k_SsrHitPointTextureNameWrite, _SsrHitPointTexture, "Set Global Hit Point Texture");
 
         RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, k_SsrTexture, _SsrTexture, "Set Global SSR Texture");
     }

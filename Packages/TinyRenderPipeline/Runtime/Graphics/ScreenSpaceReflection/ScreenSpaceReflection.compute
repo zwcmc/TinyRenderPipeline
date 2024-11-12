@@ -7,21 +7,31 @@
 
 #define SSR_TRACE_EPS               0.000488281f // 2^-11, should be good up to 4K
 
-CBUFFER_START(ScreenSpaceReflectionShaderVariables)
-    float4x4 _InvView;
-    // float4x4 _InvViewProjection;
+// CBUFFER_START(ScreenSpaceReflectionShaderVariables)
+//     float4x4 _InvViewProjection;
+//     float4x4 _HistoryReprojection;
 
-    float4x4 _HistoryReprojection;
-    float4 _InvParams;
-    float4 _ScreenSize;
-    int _SsrStencilBit;
+//     float4 _ScreenSize;
+//     int _SsrStencilBit;
+//
+//     // int _SsrReflectsSky;
+//     // int _SsrDepthPyramidMaxMip;
+//     // int _SsrIterLimit;
+//     // float _SsrThicknessScale;
+//     // float _SsrThicknessBias;
+// CBUFFER_END
 
-    // int _SsrReflectsSky;
-    // int _SsrDepthPyramidMaxMip;
-    // int _SsrIterLimit;
-    // float _SsrThicknessScale;
-    // float _SsrThicknessBias;
-CBUFFER_END
+float4x4 _InvViewProjection;
+float4x4 _HistoryReprojection;
+float4 _TaaJitter;
+float4 _ScreenSize;
+int _SsrStencilBit;
+
+// int _SsrReflectsSky;
+// int _SsrDepthPyramidMaxMip;
+// int _SsrIterLimit;
+// float _SsrThicknessScale;
+// float _SsrThicknessBias;
 
 Texture2D<uint2> _StencilTexture;
 Texture2D<float> _DepthPyramidTexture;
@@ -32,86 +42,48 @@ Texture2D<float3> _SsrHistoryColorTexture;
 Texture2D<float2> _SsrHitPointTexture;
 RWTexture2D<float4> _SsrTexture;
 
-// float3 ReconstructWorldSpacePosition(float2 uv, float deviceDepth)
-// {
-//     float4 positionCS = float4(uv * 2.0 - 1.0, deviceDepth, 1.0);
-//
-// #if UNITY_UV_STARTS_AT_TOP
-//     positionCS.y = -positionCS.y;
-// #endif
-//
-//     float4 positionWS = mul(_InvViewProjection, positionCS);
-//     return positionWS.xyz * rcp(positionCS.w);
-// }
-
-float LinearEyeDepth(float depth)
-{
-    return 1.0 / (_ZBufferParams.z * depth + _ZBufferParams.w);
-}
-
-float3 ReconstructViewSpacePositionFromDepth(float2 uv, float linearDepth)
-{
-    linearDepth = -linearDepth;
-    float2 ndc = 0.5 - uv;
-
-#if UNITY_UV_STARTS_AT_TOP
-    ndc.y = -ndc.y;
-#endif
-
-    return float3(ndc * _InvParams.xy * linearDepth, linearDepth);
-}
-
-float3 ReconstructWorldSpacePositionFromDepth(float2 uv, float linearDepth)
-{
-    float3 positionVS = ReconstructViewSpacePositionFromDepth(uv, linearDepth);
-    float3 positionWS = mul(_InvView, float4(positionVS, 1.0)).xyz;
-    return positionWS;
-}
-
 // Accurate view-space normal reconstruction
 // Based on Yuwen Wu "Accurate Normal Reconstruction"
 // (https://atyuwen.github.io/posts/normal-reconstruction)
-float3 ComputeViewSpaceNormalAccurate(float2 uv, float depth, float3 positionC, float2 texel)
+float3 ComputeWorldSpaceNormal(float2 uv, float depth, float3 origin, float2 texelSize)
 {
-    depth = LinearEyeDepth(depth);
-
-    float2 dx = float2(texel.x, 0.0);
-    float2 dy = float2(0.0, texel.y);
+    float2 dx = float2(texelSize.x, 0.0);
+    float2 dy = float2(0.0, texelSize.y);
 
     float4 H;
-    H.x = LinearEyeDepth(_DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv - dx, 0).r);
-    H.y = LinearEyeDepth(_DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv + dx, 0).r);
-    H.z = LinearEyeDepth(_DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv - dx * 2.0, 0).r);
-    H.w = LinearEyeDepth(_DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv + dx * 2.0, 0).r);
+    H.x = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv - dx, 0).r;
+    H.y = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv + dx, 0).r;
+    H.z = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv - dx * 2.0, 0).r;
+    H.w = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv + dx * 2.0, 0).r;
 
     float2 he = abs((2.0 * H.xy - H.zw) - depth);
-    float3 pos_l = ReconstructViewSpacePositionFromDepth(uv - dx, H.x);
-    float3 pos_r = ReconstructViewSpacePositionFromDepth(uv + dx, H.y);
-    float3 dpdx = (he.x < he.y) ? (positionC - pos_l) : (pos_r - positionC);
+    float3 pos_l = ComputeWorldSpacePosition(uv - dx, H.x, _InvViewProjection);
+    float3 pos_r = ComputeWorldSpacePosition(uv + dx, H.y, _InvViewProjection);
+    float3 dpdx = (he.x < he.y) ? (origin - pos_l) : (pos_r - origin);
 
     float4 V;
-    V.x = LinearEyeDepth(_DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv - dy, 0).r);
-    V.y = LinearEyeDepth(_DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv + dy, 0).r);
-    V.z = LinearEyeDepth(_DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv - dy * 2.0, 0).r);
-    V.w = LinearEyeDepth(_DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv + dy * 2.0, 0).r);
-
+    V.x = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv - dy, 0).r;
+    V.y = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv + dy, 0).r;
+    V.z = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv - dy * 2.0, 0).r;
+    V.w = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv + dy * 2.0, 0).r;
     float2 ve = abs((2.0 * V.xy - V.zw) - depth);
-    float3 pos_d = ReconstructViewSpacePositionFromDepth(uv - dy, V.x);
-    float3 pos_u = ReconstructViewSpacePositionFromDepth(uv + dy, V.y);
-    float3 dpdy = (ve.x < ve.y) ? (positionC - pos_d) : (pos_u - positionC);
+    float3 pos_d = ComputeWorldSpacePosition(uv - dy, V.x, _InvViewProjection);
+    float3 pos_u = ComputeWorldSpacePosition(uv + dy, V.y, _InvViewProjection);
+    float3 dpdy = (ve.x < ve.y) ? (origin - pos_d) : (pos_u - origin);
 
-    return normalize(cross(dpdx, dpdy));
+    return normalize(cross(dpdy, dpdx));
 }
 
 [numthreads(8, 8, 1)]
 void ScreenSpaceReflectionMarching(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
     uint2 positionSS = dispatchThreadId.xy;
-    float2 uv = (positionSS + 0.5) * _ScreenSize.zw;
+
+    float2 uv = positionSS * _ScreenSize.zw + (0.5 * _ScreenSize.zw);
+    // uint2 positionSS = uint2(uv * _ScreenSize.xy);
 
     uint stencilValue = GetStencilValue(_StencilTexture.Load(int3(positionSS, 0)));
     bool doesntReceiveSSR = (stencilValue & _SsrStencilBit) == 0;
-
     UNITY_BRANCH
     if (doesntReceiveSSR)
     {
@@ -119,17 +91,12 @@ void ScreenSpaceReflectionMarching(uint3 dispatchThreadId : SV_DispatchThreadID)
         return;
     }
 
-    float deviceDepth = _DepthPyramidTexture.Load(int3(positionSS, 0)).r;
-    // float deviceDepth = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv, 0).r;
+    float deviceDepth = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv, 0).r;
 
-    // float3 positionWS = ReconstructWorldSpacePosition(uv, deviceDepth);
-    float3 positionVS = ReconstructViewSpacePositionFromDepth(uv, LinearEyeDepth(deviceDepth));
-    float3 positionWS = mul(_InvView, float4(positionVS, 1.0)).xyz;
+    float3 positionWS = ComputeWorldSpacePosition(uv, deviceDepth, _InvViewProjection);
 
-    // float3 pWS = ReconstructWorldSpacePosition(uv, deviceDepth);
+    float3 N = ComputeWorldSpaceNormal(uv, deviceDepth, positionWS, _ScreenSize.zw);
 
-    float3 N_VS = ComputeViewSpaceNormalAccurate(uv, deviceDepth, positionVS, _ScreenSize.zw);
-    float3 N = mul((float3x3)_InvView, N_VS).xyz;
     float3 V = GetWorldSpaceNormalizeViewDir(positionWS);
     float3 R = reflect(-V, N);
 
@@ -151,7 +118,7 @@ void ScreenSpaceReflectionMarching(uint3 dispatchThreadId : SV_DispatchThreadID)
     float3 rayOrigin = float3(positionSS + 0.5, deviceDepth);
 
     float3 reflPosWS  = positionWS + R;
-    float3 reflPosNDC = ComputeNormalizedDeviceCoordinatesWithZ(reflPosWS, UNITY_MATRIX_VP);  // Jittered
+    float3 reflPosNDC = ComputeNormalizedDeviceCoordinatesWithZ(reflPosWS, UNITY_MATRIX_VP);
     float3 reflPosSS  = float3(reflPosNDC.xy * _ScreenSize.xy, reflPosNDC.z);
     float3 rayDir     = reflPosSS - rayOrigin;
     float3 rcpRayDir  = rcp(rayDir);
@@ -321,7 +288,7 @@ void ScreenSpaceReflectionReprojection(uint3 dispatchThreadId : SV_DispatchThrea
     if (max(hitPositionUV.x, hitPositionUV.y) == 0.0)
     {
         // Miss.
-        _SsrTexture[dispatchThreadId.xy] = float4(0.0, 0.0, 0.0, 0.0);
+        _SsrTexture[positionSS] = float4(0.0, 0.0, 0.0, 0.0);
         return;
     }
 
@@ -332,7 +299,7 @@ void ScreenSpaceReflectionReprojection(uint3 dispatchThreadId : SV_DispatchThrea
     if (any(historyUV < float2(0.0, 0.0)) || any(historyUV > float2(1.0, 1.0)))
     {
         // Off-Screen.
-        _SsrTexture[dispatchThreadId.xy] = float4(0.0, 0.0, 0.0, 0.0);
+        _SsrTexture[positionSS] = float4(0.0, 0.0, 0.0, 0.0);
         return;
     }
 
@@ -349,5 +316,5 @@ void ScreenSpaceReflectionReprojection(uint3 dispatchThreadId : SV_DispatchThrea
     color   = isPosFin ? color   : 0;
     opacity = isPosFin ? opacity : 0;
 
-    _SsrTexture[dispatchThreadId.xy] = float4(color, 1.0) * opacity;
+    _SsrTexture[positionSS] = float4(color, 1.0) * opacity;
 }
