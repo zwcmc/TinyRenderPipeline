@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
+using Debug = UnityEngine.Debug;
 
 public class TinyRenderer
 {
@@ -124,6 +125,8 @@ public class TinyRenderer
 #endif
 
         m_IsActiveTargetBackbuffer = true;
+
+        FrameHistory.Initialize();
     }
 
     public void Dispose()
@@ -148,6 +151,8 @@ public class TinyRenderer
 
         CoreUtils.Destroy(m_BlitMaterial);
         CoreUtils.Destroy(m_CopyDepthMaterial);
+
+        FrameHistory.Dispose();
     }
 
     public void RecordAndExecuteRenderGraph(RenderGraph renderGraph, ref RenderingData renderingData, string name)
@@ -171,6 +176,9 @@ public class TinyRenderer
         var camera = renderingData.cameraData.camera;
         var cameraType = camera.cameraType;
         bool supportIntermediateRendering = cameraType <= CameraType.SceneView;
+
+        // Update frame history info and compute taa jitter if needed
+        FrameHistory.UpdateFrameInfo(Time.frameCount, ref renderingData);
 
         // Setup lights data
         m_ForwardLights.SetupRenderGraphLights(renderGraph, ref renderingData);

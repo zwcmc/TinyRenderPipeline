@@ -23,7 +23,6 @@
 
 float4x4 _InvViewProjection;
 float4x4 _HistoryReprojection;
-float4 _TaaJitter;
 float4 _ScreenSize;
 int _SsrStencilBit;
 

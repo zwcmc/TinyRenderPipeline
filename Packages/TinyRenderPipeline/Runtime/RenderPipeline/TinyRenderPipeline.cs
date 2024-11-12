@@ -58,8 +58,6 @@ public class TinyRenderPipeline : RenderPipeline
         s_RenderGraph.NativeRenderPassesEnabled = true;
 
         s_TinyRenderer = new TinyRenderer(pipelineAsset);
-
-        FrameHistory.Initialize();
     }
 
     protected override void Render(ScriptableRenderContext context, Camera[] cameras) { }
@@ -88,8 +86,6 @@ public class TinyRenderPipeline : RenderPipeline
 
         s_TinyRenderer?.Dispose();
         s_TinyRenderer = null;
-
-        FrameHistory.Reset();
     }
 
     private void RenderSingleCamera(ScriptableRenderContext context, Camera camera)
@@ -123,9 +119,6 @@ public class TinyRenderPipeline : RenderPipeline
 
             // Initialize rendering data
             InitializeRenderingData(pipelineAsset, ref cullResults, context, cmd, camera, out var renderingData);
-
-            // Update frame history info and compute taa jitter if needed
-            FrameHistory.UpdateFrameInfo(Time.frameCount, ref renderingData);
 
             // Rendering
             s_TinyRenderer.RecordAndExecuteRenderGraph(s_RenderGraph, ref renderingData, sampler.name);

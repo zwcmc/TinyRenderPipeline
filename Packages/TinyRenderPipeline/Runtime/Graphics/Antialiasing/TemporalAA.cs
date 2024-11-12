@@ -34,11 +34,11 @@ public class TemporalAA
     private static class TaaSettings
     {
         public static float filterWidth = 1.0f;    // Reconstruction filter width typically between 0.2 (sharper, aliased) and 1.5 (smoother)
-        public static float alpha = 0.12f;         // History feedback, between 0 (maximum temporal AA) and 1 (no temporal AA).
-        public static float varianceGamma = 1.0f;  // High values increases ghosting artifact, lower values increases jittering, range [0.75, 1.25]
+        public static float alpha = 0.1f;         // History feedback, between 0 (maximum temporal AA) and 1 (no temporal AA).
+        public static float stDevScale = 2.16f;
     }
 
-    private static readonly Vector2[] s_SamplesOffset = new Vector2[]
+    private static readonly Vector2[] s_SamplesOffset =
     {
         new Vector2(-1.0f, -1.0f), new Vector2(0.0f, -1.0f), new Vector2(1.0f, -1.0f),
         new Vector2(-1.0f, 0.0f),  new Vector2(0.0f, 0.0f),  new Vector2(1.0f, 0.0f),
@@ -91,7 +91,7 @@ public class TemporalAA
             ComputeWeights(ref weights);
             m_TaaMaterial.SetFloatArray(TaaMaterialParamShaderIDs.TaaFilterWeights, weights);
 
-            Vector4 taaFrameInfo = new Vector4(TaaSettings.alpha, TaaSettings.varianceGamma, isFirstFrame ? 1.0f : 0.0f, 0.0f);
+            Vector4 taaFrameInfo = new Vector4(TaaSettings.alpha, TaaSettings.stDevScale, isFirstFrame ? 1.0f : 0.0f, 0.0f);
             m_TaaMaterial.SetVector(TaaMaterialParamShaderIDs.TaaFrameInfo, taaFrameInfo);
 
             builder.UseTextureFragment(target, 0, IBaseRenderGraphBuilder.AccessFlags.WriteAll);

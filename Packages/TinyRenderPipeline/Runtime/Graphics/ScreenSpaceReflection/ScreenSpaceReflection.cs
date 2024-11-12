@@ -22,7 +22,6 @@ public class ScreenSpaceReflection
         public static int DepthPyramidTexture = Shader.PropertyToID("_DepthPyramidTexture");
         public static int ScreenSize = Shader.PropertyToID("_ScreenSize");
 
-        public static int TaaJitter = Shader.PropertyToID("_TaaJitter");
         public static int InvViewProjection = Shader.PropertyToID("_InvViewProjection");
 
         public static int HistoryReprojection = Shader.PropertyToID("_HistoryReprojection");
@@ -126,11 +125,9 @@ public class ScreenSpaceReflection
                 cmd.SetComputeVectorParam(data.cs, ScreenSpaceReflectionShaderIDs.ScreenSize, new Vector4((float)data.width, (float)data.height, 1.0f / data.width, 1.0f / data.height));
                 cmd.SetComputeMatrixParam(data.cs, ScreenSpaceReflectionShaderIDs.InvViewProjection, data.invViewProjection);
 
-                cmd.SetComputeVectorParam(data.cs, ScreenSpaceReflectionShaderIDs.TaaJitter, new Vector4(FrameHistory.TaaJitter.x * 2.0f, FrameHistory.TaaJitter.y * 2.0f, 0.0f, 0.0f));
-
                 cmd.DispatchCompute(data.cs, data.ssrMarchingKernel, CommonUtils.DivRoundUp(data.width, 8), CommonUtils.DivRoundUp(data.height, 8), 1);
 
-                // SSR
+                // SSR Color Texture
                 cmd.SetComputeMatrixParam(data.cs, ScreenSpaceReflectionShaderIDs.HistoryReprojection, data.historyReprojection);
                 cmd.SetComputeTextureParam(data.cs, data.ssrReprojectionKernel, ScreenSpaceReflectionShaderIDs.DepthPyramidTexture, data.depthPyramidTexture);
                 cmd.SetComputeTextureParam(data.cs, data.ssrReprojectionKernel, ScreenSpaceReflectionShaderIDs.SsrHistoryColorTexture, data.ssrHistoryColorTexture);
@@ -139,8 +136,6 @@ public class ScreenSpaceReflection
                 cmd.DispatchCompute(data.cs, data.ssrReprojectionKernel, CommonUtils.DivRoundUp(data.width, 8), CommonUtils.DivRoundUp(data.height, 8), 1);
             });
         }
-
-        // RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, k_SsrHitPointTextureNameWrite, _SsrHitPointTexture, "Set Global Hit Point Texture");
 
         RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, k_SsrTexture, _SsrTexture, "Set Global SSR Texture");
     }

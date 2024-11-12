@@ -113,7 +113,7 @@ public class FrameHistory
         return s_SsrHistoryColorRT;
     }
 
-    public static void Reset()
+    public static void Dispose()
     {
         LastFrameIndex = -1;
 

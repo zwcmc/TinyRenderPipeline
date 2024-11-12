@@ -24,7 +24,7 @@ MonoBehaviour:
     additionalLightShadowResolution: 1024
     softShadows: 2
   postProcessingData: {fileID: 11400000, guid: 90ac35e882f8867438b6345c4c8a746c, type: 2}
-  antialiasingMode: 1
+  antialiasingMode: 2
   saoEnabled: 1
   ssrEnabled: 1
   colorGradingLutSize: 64

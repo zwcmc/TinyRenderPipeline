@@ -15,12 +15,17 @@ float4x4 _HistoryReprojection;
 float _TaaFilterWeights[9];
 
 // x = blend alpha
-// y = variance gamma
+// y = stDev scale
 // z = is first frame
 // w = unused
 float4 _TaaFrameInfo;
 
-#define EPSILON 0.0001
+static const float2 filterOffsets[9] =
+{
+    float2(-1.0, -1.0), float2(0.0, -1.0), float2(1.0, -1.0),
+    float2(-1.0, 0.0),  float2(0.0, 0.0),  float2(1.0, 0.0),
+    float2(-1.0, 1.0),  float2(0.0, 1.0),  float2(1.0, 1.0)
+};
 
 // Samples a texture with Catmull-Rom filtering, using 9 texture fetches instead of 16.
 //      https://therealmjp.github.io/
@@ -28,7 +33,7 @@ float4 _TaaFrameInfo;
 //      http://vec3.ca/bicubic-filtering-in-fewer-taps/ for more details
 // Optimized to 5 taps by removing the corner samples
 // And modified for mediump support
-half4 SampleTextureBicubic5Tap(TEXTURE2D(tex), float2 uv, float4 texelSize)
+half3 SampleTextureBicubic5Tap(TEXTURE2D(tex), float2 uv, float4 texelSize)
 {
     // We're going to sample a a 4x4 grid of texels surrounding the target UV coordinate.
     // We'll do this by rounding down the sample location to get the exact center of our "starting"
@@ -72,14 +77,14 @@ half4 SampleTextureBicubic5Tap(TEXTURE2D(tex), float2 uv, float4 texelSize)
     float k3 = w3.x  * w12.y;
     float k4 = w12.x * w3.y;
 
-    half4 s[5];
-    s[0] = SAMPLE_TEXTURE2D_LOD(tex, sampler_LinearClamp, float2(texPos12.x, texPos0.y),  0.0);
-    s[1] = SAMPLE_TEXTURE2D_LOD(tex, sampler_LinearClamp, float2(texPos0.x,  texPos12.y), 0.0);
-    s[2] = SAMPLE_TEXTURE2D_LOD(tex, sampler_LinearClamp, float2(texPos12.x, texPos12.y), 0.0);
-    s[3] = SAMPLE_TEXTURE2D_LOD(tex, sampler_LinearClamp, float2(texPos3.x,  texPos12.y), 0.0);
-    s[4] = SAMPLE_TEXTURE2D_LOD(tex, sampler_LinearClamp, float2(texPos12.x, texPos3.y),  0.0);
+    half3 s[5];
+    s[0] = SAMPLE_TEXTURE2D_LOD(tex, sampler_LinearClamp, float2(texPos12.x, texPos0.y),  0.0).rgb;
+    s[1] = SAMPLE_TEXTURE2D_LOD(tex, sampler_LinearClamp, float2(texPos0.x,  texPos12.y), 0.0).rgb;
+    s[2] = SAMPLE_TEXTURE2D_LOD(tex, sampler_LinearClamp, float2(texPos12.x, texPos12.y), 0.0).rgb;
+    s[3] = SAMPLE_TEXTURE2D_LOD(tex, sampler_LinearClamp, float2(texPos3.x,  texPos12.y), 0.0).rgb;
+    s[4] = SAMPLE_TEXTURE2D_LOD(tex, sampler_LinearClamp, float2(texPos12.x, texPos3.y),  0.0).rgb;
 
-    half4 result =  k0 * s[0]
+    half3 result =  k0 * s[0]
                   + k1 * s[1]
                   + k2 * s[2]
                   + k3 * s[3]
@@ -88,7 +93,7 @@ half4 SampleTextureBicubic5Tap(TEXTURE2D(tex), float2 uv, float4 texelSize)
     result *= rcp(k0 + k1 + k2 + k3 + k4);
 
     // we could end-up with negative values
-    result = max(half4(0.0, 0.0, 0.0, 0.0), result);
+    result = max(half3(0.0, 0.0, 0.0), result);
 
     return result;
 }
@@ -108,20 +113,47 @@ half3 UnToneMapReinhard(half3 c)
     return c * rcp(max(1.0 / HALF_MAX, 1.0 - max3(c)));
 }
 
-half4 FetchOffset(TEXTURE2D(tex), float2 coords, float2 offset, float4 texelSize)
+half3 FetchOffset(TEXTURE2D(tex), float2 coords, float2 offset, float4 texelSize)
 {
     float2 uv = coords + offset * texelSize.xy;
-    return SAMPLE_TEXTURE2D_LOD(tex, sampler_LinearClamp, uv, 0.0);
+    return SAMPLE_TEXTURE2D_LOD(tex, sampler_PointClamp, uv, 0.0).rgb;
 }
 
-half4 ClipToBox(half3 boxmin, half3 boxmax, half4 c, half4 h)
+// Here the ray referenced goes from history to (filtered) center color
+float DistToAABB(half3 color, half3 history, half3 minimum, half3 maximum)
 {
-    half4 r = c - h;
-    half3 ir = 1.0 / (EPSILON + r.rgb);
-    half3 rmax = (boxmax - h.rgb) * ir;
-    half3 rmin = (boxmin - h.rgb) * ir;
-    half3 imin = min(rmax, rmin);
-    return h + r * saturate(max3(imin));
+    half3 center = 0.5 * (maximum + minimum);
+    half3 extents = 0.5 * (maximum - minimum);
+
+    half3 rayDir = color - history;
+    half3 rayPos = history - center;
+
+    half3 invDir = rcp(rayDir);
+    half3 t0 = (extents - rayPos)  * invDir;
+    half3 t1 = -(extents + rayPos) * invDir;
+
+    float AABBIntersection = max(max(min(t0.x, t1.x), min(t0.y, t1.y)), min(t0.z, t1.z));
+    return saturate(AABBIntersection);
+}
+
+half3 ClipAABB(half3 aabbMin, half3 aabbMax, half3 history, half3 c)
+{
+#if 0
+    // Note: only clips towards aabb center (but fast!)
+    float3 center = 0.5 * (aabbMax + aabbMin);
+    float3 extents = 0.5 * (aabbMax - aabbMin);
+
+    // This is actually `distance`, however the keyword is reserved
+    float3 offset = history - center;
+
+    float3 ts = abs(offset / extents);
+    float t = Max3(ts.x, ts.y, ts.z);
+
+    return t > 1 ? center + offset / t : history;
+#else
+    float historyBlend = DistToAABB(c, history, aabbMin, aabbMax);
+    return lerp(history, c, historyBlend);
+#endif
 }
 
 half4 TemporalAAFragment(Varyings input) : SV_Target0
@@ -131,105 +163,78 @@ half4 TemporalAAFragment(Varyings input) : SV_Target0
     // 如果是第一帧, 则直接输出采样结果
     if (_TaaFrameInfo.z > 0.5)
     {
-        half4 filtered = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_LinearClamp, uv.xy, 0.0);
-        return filtered;
+        half3 filtered = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_LinearClamp, uv.xy, 0.0).rgb;
+        return half4(filtered, 1.0);
     }
 
     // 当前像素的中心位置
     float2 ph = (floor(uv.zw * _BlitTexture_TexelSize.zw) + 0.5) * _BlitTexture_TexelSize.xy;
 
     // 采样深度, 并重投影到上一帧的位置
-    float depth = SAMPLE_TEXTURE2D_LOD(_CameraDepthTexture, sampler_PointClamp, ph, 0.0).r;
-    float4 q = mul(_HistoryReprojection, float4(ph, depth, 1.0));
+    float deviceDepth = SAMPLE_TEXTURE2D_LOD(_CameraDepthTexture, sampler_PointClamp, ph, 0.0).r;
+    float4 q = mul(_HistoryReprojection, float4(ph, deviceDepth, 1.0));
     uv.zw = (q.xy * (1.0 / q.w)) * 0.5 + 0.5;
 
     // 采样历史像素数据
-    half4 history = SampleTextureBicubic5Tap(_TaaHistoryTexture, uv.zw, _TaaHistoryTexture_TexelSize);
+    half3 history = SampleTextureBicubic5Tap(_TaaHistoryTexture, uv.zw, _TaaHistoryTexture_TexelSize).rgb;
     history.rgb = RGBToYCoCg(history.rgb);
 
-    // 采样当前帧像素数据
-    float2 p = uv.xy;
-    half4 filtered = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_LinearClamp, p, 0.0);
-
     // 考虑当前像素相邻的 3x3 的像素, 采样当前帧的像素数据, 从 RGB 颜色空间转换到 YCoCg 颜色空间
-    half3 s[9];
-    s[0] = RGBToYCoCg(FetchOffset(_BlitTexture, p, float2(-1.0, -1.0), _BlitTexture_TexelSize).rgb);
-    s[1] = RGBToYCoCg(FetchOffset(_BlitTexture, p, float2(0.0, -1.0), _BlitTexture_TexelSize).rgb);
-    s[2] = RGBToYCoCg(FetchOffset(_BlitTexture, p, float2(1.0, -1.0), _BlitTexture_TexelSize).rgb);
-    s[3] = RGBToYCoCg(FetchOffset(_BlitTexture, p, float2(-1.0, 0.0), _BlitTexture_TexelSize).rgb);
-    s[4] = RGBToYCoCg(filtered.rgb);
-    s[5] = RGBToYCoCg(FetchOffset(_BlitTexture, p, float2(1.0, 0.0), _BlitTexture_TexelSize).rgb);
-    s[6] = RGBToYCoCg(FetchOffset(_BlitTexture, p, float2(-1.0, 1.0), _BlitTexture_TexelSize).rgb);
-    s[7] = RGBToYCoCg(FetchOffset(_BlitTexture, p, float2(0.0, 1.0), _BlitTexture_TexelSize).rgb);
-    s[8] = RGBToYCoCg(FetchOffset(_BlitTexture, p, float2(1.0, 1.0), _BlitTexture_TexelSize).rgb);
+    float2 p = uv.xy;
+    half3 filtered = 0.0;
+    half3 filterSamples[9];
 
-    // 使用 3.3 宽 Blackman-Harris 窗口的高斯拟合来对当前帧 3x3 的像素区域的像素数据进行滤波
-    filtered = half4(0, 0, 0, filtered.a);
     UNITY_UNROLL
-    for(int i = 0; i < 9; ++i)
+    for (uint i = 0; i < 9; ++i)
     {
-        float w = _TaaFilterWeights[i];
-        filtered.rgb += s[i] * w;
+        filterSamples[i] = RGBToYCoCg(FetchOffset(_BlitTexture, p, filterOffsets[i], _BlitTexture_TexelSize));
+        filtered += filterSamples[i] * _TaaFilterWeights[i];
     }
 
     // 构建当前帧 3x3 像素数据的 AABB , 用以对历史像素数据进行修正
-    // 这里是通过 最小值和最大值 以及 均值和标准差 混合的方式来构建 AABB , 算法来自 filament
-    half3 boxmin = min(s[4], min(min(s[1], s[3]), min(s[5], s[7])));
-    half3 boxmax = max(s[4], max(max(s[1], s[3]), max(s[5], s[7])));
-    half3 box9min = min(boxmin, min(min(s[0], s[2]), min(s[6], s[8])));
-    half3 box9max = max(boxmax, max(max(s[0], s[2]), max(s[6], s[8])));
-    // round the corners of the 3x3 box
-    boxmin = (boxmin + box9min) * 0.5;
-    boxmax = (boxmax + box9max) * 0.5;
-
     // 计算均值和标准差
-    // "An Excursion in Temporal Supersampling" by Marco Salvi
-    float3 m0 = s[4]; // conversion to highp
-    float3 m1 = m0 * m0;
-    // we use only 5 samples instead of all 9
-    UNITY_UNROLL
-    for (int j = 1; j < 9; j+=2)
-    {
-        float3 c = s[j]; // conversion to highp
-        m0 += c;
-        m1 += c * c;
-    }
-    float3 a0 = m0 * (1.0 / 5.0);
-    float3 a1 = m1 * (1.0 / 5.0);
-    float3 sigma = sqrt(abs(a1 - a0 * a0));
+    float3 m1 = 0.0; // conversion to highp
+    float3 m2 = 0.0;
 
-    // intersect both bounding boxes
-    boxmin = max(boxmin, a0 - _TaaFrameInfo.y * sigma);
-    boxmax = min(boxmax, a0 + _TaaFrameInfo.y * sigma);
+    UNITY_UNROLL
+    for (uint j = 0; j < 9; ++j)
+    {
+        float3 c = filterSamples[j]; // conversion to highp
+        m1 += c;
+        m2 += c * c;
+    }
+    float invSamples = rcp(9.0);
+    float3 mean = m1 * invSamples;
+    float3 stdDev = sqrt(abs(m2 * invSamples - mean * mean));
+
+    float stDevMultiplier = _TaaFrameInfo.y;
+    half3 boxmin = mean - stDevMultiplier * stdDev;
+    half3 boxmax = mean + stDevMultiplier * stdDev;
+
+    boxmin = min(boxmin, filtered);
+    boxmax = max(boxmax, filtered);
 
     // 验证历史像素数据
-    history = ClipToBox(boxmin, boxmax, filtered, history);
+    history = ClipAABB(boxmin, boxmax, history, filtered);
 
     // 混合权重 alpha
-    half alpha = _TaaFrameInfo.x;
-
-    // 消除闪烁
-    // [Lottes] prevents flickering by modulating the blend weight by the difference in luma
-    half lumaColor = LumaYCoCg(filtered.rgb);
-    half lumaHistory = LumaYCoCg(history.rgb);
-    half diff = 1.0 - abs(lumaColor - lumaHistory) / (0.001 + max(lumaColor, lumaHistory));
-    alpha *= diff * diff;
+    half blendAlpha = _TaaFrameInfo.x;
 
     // 转换到 RGB 颜色空间
-    filtered.rgb = YCoCgToRGB(filtered.rgb);
-    history.rgb = YCoCgToRGB(history.rgb);
+    filtered = YCoCgToRGB(filtered);
+    history = YCoCgToRGB(history);
 
     // 色调映射
-    filtered.rgb = ToneMapReinhard(filtered.rgb);
-    history.rgb = ToneMapReinhard(history.rgb);
+    filtered = ToneMapReinhard(filtered);
+    history = ToneMapReinhard(history);
 
     // 混合历史像素数据与当前帧的像素数据
-    half4 result = lerp(history, filtered, alpha);
+    half3 result = lerp(history, filtered, blendAlpha);
 
     // 逆向色调映射
-    result.rgb = UnToneMapReinhard(result.rgb);
+    result = UnToneMapReinhard(result);
 
-    return result;
+    return half4(clamp(result, 0.0, HALF_MAX), 1.0);
 }
 
 half4 CopyHistoryFragment(Varyings input) : SV_Target0
