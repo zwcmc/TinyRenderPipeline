@@ -17,13 +17,16 @@ A customized render pipeline for Unity SRP
 - [x] Render Graph
 - [x] Bloom
 - [x] Scalable Ambient Obscurance
-  - [x] Hierachical z with Rotated Grid Subsample
+  - [x] Hierachical z buffer with Rotated Grid Subsample
 - [x] FXAA
 - [x] TAA
+- [x] SSR
+  - [x] Hierachical z buffer
 
 ## Planned
 
-- [ ] SSR
+- [ ] Separable Subsurface Scattering
+- [ ] Z-Binning Tile Based Lighting
 
 ## Reference
 
