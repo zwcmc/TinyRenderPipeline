@@ -25,7 +25,7 @@ A customized render pipeline for Unity SRP
 
 ## Planned
 
-- [ ] Separable Subsurface Scattering
+- [ ] Disney Subsurface Scattering
 - [ ] Z-Binning Tile Based Lighting
 
 ## Reference
