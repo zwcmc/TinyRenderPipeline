@@ -93,6 +93,9 @@ public class TinyRenderPipeline : RenderPipeline
         if (s_TinyRenderer == null)
             return;
 
+        if (camera.cameraType > CameraType.SceneView)
+            return;
+
         if (!TryGetCullingParameters(camera, out var cullingParameters))
             return;
 
