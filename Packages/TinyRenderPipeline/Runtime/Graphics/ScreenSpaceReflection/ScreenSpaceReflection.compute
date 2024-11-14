@@ -1,5 +1,4 @@
 #pragma kernel ScreenSpaceReflectionMarching
-#pragma kernel ScreenSpaceReflectionReprojection
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/GlobalSamplers.hlsl"
@@ -7,39 +6,19 @@
 
 #define SSR_TRACE_EPS               0.000488281f // 2^-11, should be good up to 4K
 
-// CBUFFER_START(ScreenSpaceReflectionShaderVariables)
-//     float4x4 _InvViewProjection;
-//     float4x4 _HistoryReprojection;
-
-//     float4 _ScreenSize;
-//     int _SsrStencilBit;
-//
-//     // int _SsrReflectsSky;
-//     // int _SsrDepthPyramidMaxMip;
-//     // int _SsrIterLimit;
-//     // float _SsrThicknessScale;
-//     // float _SsrThicknessBias;
-// CBUFFER_END
-
-float4x4 _InvViewProjection;
-float4x4 _HistoryReprojection;
-float4 _ScreenSize;
-int _SsrStencilBit;
-
-// int _SsrReflectsSky;
-// int _SsrDepthPyramidMaxMip;
-// int _SsrIterLimit;
-// float _SsrThicknessScale;
-// float _SsrThicknessBias;
+CBUFFER_START(ScreenSpaceReflectionShaderVariables)
+    float4x4 _InvViewProjection;
+    float4x4 _HistoryReprojection;
+    float4 _ScreenSize;
+    int _SsrStencilBit;
+CBUFFER_END
 
 Texture2D<uint2> _StencilTexture;
 Texture2D<float> _DepthPyramidTexture;
-
-RWTexture2D<float2> _SsrHitPointTextureWrite;
-
 Texture2D<float3> _SsrHistoryColorTexture;
 Texture2D<float2> _SsrHitPointTexture;
-RWTexture2D<float4> _SsrTexture;
+
+RWTexture2D<float4> _SsrLightingTexture;
 
 // Accurate view-space normal reconstruction
 // Based on Yuwen Wu "Accurate Normal Reconstruction"
@@ -73,6 +52,14 @@ float3 ComputeWorldSpaceNormal(float2 uv, float depth, float3 origin, float2 tex
     return normalize(cross(dpdy, dpdx));
 }
 
+// Performs fading at the edge of the screen.
+float EdgeOfScreenFade(float2 coordNDC, float fadeRcpLength)
+{
+    float2 coordCS = coordNDC * 2 - 1;
+    float2 t = Remap10(abs(coordCS), fadeRcpLength, fadeRcpLength);
+    return Smoothstep01(t.x) * Smoothstep01(t.y);
+}
+
 [numthreads(8, 8, 1)]
 void ScreenSpaceReflectionMarching(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
@@ -85,7 +72,7 @@ void ScreenSpaceReflectionMarching(uint3 dispatchThreadId : SV_DispatchThreadID)
     UNITY_BRANCH
     if (doesntReceiveSSR)
     {
-        _SsrHitPointTextureWrite[positionSS] = float2(0.0, 0.0);
+        _SsrLightingTexture[positionSS] = 0.0;
         return;
     }
 
@@ -103,9 +90,9 @@ void ScreenSpaceReflectionMarching(uint3 dispatchThreadId : SV_DispatchThreadID)
     // Apply normal bias with the magnitude dependent on the distance from the camera.
     // Unfortunately, we only have access to the shading normal, which is less than ideal...
     positionWS = camPosWS + (positionWS - camPosWS) * (1 - 0.001 * rcp(max(dot(N, V), FLT_EPS)));
-    deviceDepth = ComputeNormalizedDeviceCoordinatesWithZ(positionWS, UNITY_MATRIX_VP).z;
+    float biasedDeviceDepth = ComputeNormalizedDeviceCoordinatesWithZ(positionWS, UNITY_MATRIX_VP).z;
 
-    bool killRay = deviceDepth == UNITY_RAW_FAR_CLIP_VALUE;
+    bool killRay = biasedDeviceDepth == UNITY_RAW_FAR_CLIP_VALUE;
 
     // Ref. #1: Michal Drobot - Quadtree Displacement Mapping with Height Blending.
     // Ref. #2: Yasin Uludag  - Hi-Z Screen-Space Cone-Traced Reflections.
@@ -113,7 +100,7 @@ void ScreenSpaceReflectionMarching(uint3 dispatchThreadId : SV_DispatchThreadID)
     // Warning: virtually all of the code below assumes reverse Z.
 
     // We start tracing from the center of the current pixel, and do so up to the far plane.
-    float3 rayOrigin = float3(positionSS + 0.5, deviceDepth);
+    float3 rayOrigin = float3(positionSS + 0.5, biasedDeviceDepth);
 
     float3 reflPosWS  = positionWS + R;
     float3 reflPosNDC = ComputeNormalizedDeviceCoordinatesWithZ(reflPosWS, UNITY_MATRIX_VP);
@@ -136,7 +123,7 @@ void ScreenSpaceReflectionMarching(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     if (killRay)
     {
-        _SsrHitPointTextureWrite[positionSS] = float2(0.0, 0.0);
+        _SsrLightingTexture[positionSS] = 0.0;
         return;
     }
 
@@ -260,59 +247,44 @@ void ScreenSpaceReflectionMarching(uint3 dispatchThreadId : SV_DispatchThreadID)
         // recompute it using the last value of 't', which would result in an overshoot.
         // It also needs to be precisely at the center of the pixel to avoid artifacts.
         float2 hitPositionNDC = floor(rayPos.xy) * _ScreenSize.zw + (0.5 * _ScreenSize.zw); // Should we precompute the half-texel bias? We seem to use it a lot.
-        _SsrHitPointTextureWrite[positionSS] = hitPositionNDC.xy;
+        // _SsrHitPointTextureWrite[positionSS] = hitPositionNDC.xy;
+
+
+        if (max(hitPositionNDC.x, hitPositionNDC.y) == 0.0)
+        {
+            // Miss.
+            _SsrLightingTexture[positionSS] = float4(0.0, 0.0, 0.0, 0.0);
+            return;
+        }
+
+        // float deviceDepth = _DepthPyramidTexture.Load(int3(positionSS, 0)).r;
+        float4 q = mul(_HistoryReprojection, float4(hitPositionNDC, deviceDepth, 1.0));
+        float2 historyUV = (q.xy * (1.0 / q.w)) * 0.5 + 0.5;
+
+        if (any(historyUV < float2(0.0, 0.0)) || any(historyUV > float2(1.0, 1.0)))
+        {
+            // Off-Screen.
+            _SsrLightingTexture[positionSS] = float4(0.0, 0.0, 0.0, 0.0);
+            return;
+        }
+
+        float3 color = _SsrHistoryColorTexture.SampleLevel(sampler_LinearClamp, historyUV, 0).rgb;
+
+        // Disable SSR for negative, infinite and NaN history values.
+        uint3 intCol   = asuint(color);
+        bool  isPosFin = Max3(intCol.r, intCol.g, intCol.b) < 0x7F800000;
+
+        const float screenFadeDistance = 0.1;
+        const float _SsrEdgeFadeRcpLength = min(1.0 / screenFadeDistance, FLT_MAX);
+        float  opacity  = EdgeOfScreenFade(historyUV, _SsrEdgeFadeRcpLength);
+
+        color   = isPosFin ? color   : 0;
+        opacity = isPosFin ? opacity : 0;
+
+        _SsrLightingTexture[positionSS] = float4(color, 1.0) * opacity;
     }
     else
     {
-        _SsrHitPointTextureWrite[positionSS] = float2(0.0, 0.0);
+        _SsrLightingTexture[positionSS] = 0.0;
     }
-}
-
-// Performs fading at the edge of the screen.
-float EdgeOfScreenFade(float2 coordNDC, float fadeRcpLength)
-{
-    float2 coordCS = coordNDC * 2 - 1;
-    float2 t = Remap10(abs(coordCS), fadeRcpLength, fadeRcpLength);
-    return Smoothstep01(t.x) * Smoothstep01(t.y);
-}
-
-[numthreads(8, 8, 1)]
-void ScreenSpaceReflectionReprojection(uint3 dispatchThreadId : SV_DispatchThreadID)
-{
-    uint2 positionSS = dispatchThreadId.xy;
-
-    float2 hitPositionUV = _SsrHitPointTexture.Load(int3(positionSS, 0)).xy;
-
-    if (max(hitPositionUV.x, hitPositionUV.y) == 0.0)
-    {
-        // Miss.
-        _SsrTexture[positionSS] = float4(0.0, 0.0, 0.0, 0.0);
-        return;
-    }
-
-    float deviceDepth = _DepthPyramidTexture.Load(int3(positionSS, 0)).r;
-    float4 q = mul(_HistoryReprojection, float4(hitPositionUV, deviceDepth, 1.0));
-    float2 historyUV = (q.xy * (1.0 / q.w)) * 0.5 + 0.5;
-
-    if (any(historyUV < float2(0.0, 0.0)) || any(historyUV > float2(1.0, 1.0)))
-    {
-        // Off-Screen.
-        _SsrTexture[positionSS] = float4(0.0, 0.0, 0.0, 0.0);
-        return;
-    }
-
-    float3 color = _SsrHistoryColorTexture.SampleLevel(sampler_LinearClamp, historyUV, 0).rgb;
-
-    // Disable SSR for negative, infinite and NaN history values.
-    uint3 intCol   = asuint(color);
-    bool  isPosFin = Max3(intCol.r, intCol.g, intCol.b) < 0x7F800000;
-
-    const float screenFadeDistance = 0.1;
-    const float _SsrEdgeFadeRcpLength = min(1.0 / screenFadeDistance, FLT_MAX);
-    float  opacity  = EdgeOfScreenFade(historyUV, _SsrEdgeFadeRcpLength);
-
-    color   = isPosFin ? color   : 0;
-    opacity = isPosFin ? opacity : 0;
-
-    _SsrTexture[positionSS] = float4(color, 1.0) * opacity;
 }

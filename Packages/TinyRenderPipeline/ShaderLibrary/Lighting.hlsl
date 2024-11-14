@@ -7,7 +7,7 @@
 TEXTURE2D(_ScreenSpaceOcclusionTexture);      SAMPLER(sampler_ScreenSpaceOcclusionTexture);
 
 // Screen space reflection
-TEXTURE2D(_SsrTexture);                  SAMPLER(sampler_SsrTexture);
+TEXTURE2D(_SsrLightingTexture);                  SAMPLER(sampler_SsrLightingTexture);
 
 half SampleAmbientOcclusion(float2 normalizedScreenSpaceUV)
 {
@@ -62,7 +62,7 @@ half3 ShadingIndirect(BRDFData brdfData, InputData inputData, half diffuseAO)
 
     // ssr
     float mipLevel = lerp(0, 8, brdfData.perceptualRoughness);  // simple lerp
-    half4 ssrLighting = SAMPLE_TEXTURE2D_LOD(_SsrTexture, sampler_LinearClamp, inputData.normalizedScreenSpaceUV, mipLevel);
+    half4 ssrLighting = SAMPLE_TEXTURE2D_LOD(_SsrLightingTexture, sampler_SsrLightingTexture, inputData.normalizedScreenSpaceUV, mipLevel);
     float ssrWeight = ssrLighting.a;
 
     float envWeight = 1.0 - ssrWeight;
