@@ -87,13 +87,13 @@ Material:
     - _OcclusionStrength: 1
     - _Parallax: 0.02
     - _ReceivesSSR: 1
-    - _Smoothness: 1
+    - _Smoothness: 0.733
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
-    - _StencilRefDepth: 8
-    - _StencilWriteMaskDepth: 8
+    - _StencilRefDepth: 1
+    - _StencilWriteMaskDepth: 1
     - _Surface: 0
     - _UVSec: 0
     - _ZWrite: 1

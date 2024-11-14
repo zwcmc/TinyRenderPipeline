@@ -136,5 +136,5 @@ public static class ShaderPropertyIDs
 public enum StencilUsage
 {
     Clear = 0,
-    ScreenSpaceReflection = (1 << 3),
+    ScreenSpaceReflection = (1 << 0),
 }
