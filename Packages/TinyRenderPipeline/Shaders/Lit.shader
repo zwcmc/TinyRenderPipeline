@@ -93,7 +93,7 @@ Shader "Tiny Render Pipeline/Lit"
             }
 
             ZWrite On
-            ColorMask R
+            ColorMask 0
             Cull [_Cull]
 
             HLSLPROGRAM
