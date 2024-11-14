@@ -235,7 +235,7 @@ public class TinyRenderer
         }
         else
         {
-            RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_SsrTexture", renderGraph.defaultResources.blackTexture, "Set Global SSR Texture");
+            RenderingUtils.SetGlobalRenderGraphTextureName(renderGraph, "_SsrLightingTexture", renderGraph.defaultResources.blackTexture, "Set Global SSR Lighting Texture");
         }
 
         // Draw opaque objects
