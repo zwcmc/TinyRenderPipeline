@@ -11,7 +11,7 @@ public class ScreenSpaceReflection
     private static class ScreenSpaceReflectionShaderIDs
     {
         public static int SsrStencilBit = Shader.PropertyToID("_SsrStencilBit");
-        public static int StencilTexture = Shader.PropertyToID("_StencilTexture");
+        public static int StencilBuffer = Shader.PropertyToID("_StencilBuffer");
         public static int DepthPyramidTexture = Shader.PropertyToID("_DepthPyramidTexture");
         public static int ScreenSize = Shader.PropertyToID("_ScreenSize");
         public static int InvViewProjection = Shader.PropertyToID("_InvViewProjection");
@@ -22,7 +22,7 @@ public class ScreenSpaceReflection
 
     private class PassData
     {
-        public TextureHandle stencilTexture;
+        public TextureHandle depthStencilTexture;
         public TextureHandle depthPyramidTexture;
         public Material material;
         public ComputeShader cs;
@@ -87,7 +87,7 @@ public class ScreenSpaceReflection
             normalizedToClip.m13 = -1.0f;
             passData.historyReprojection = historyViewProjection * Matrix4x4.Inverse(currentFrameGpuVP) * normalizedToClip;
 
-            passData.stencilTexture = builder.UseTexture(depthStencilTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
+            passData.depthStencilTexture = builder.UseTexture(depthStencilTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
             passData.depthPyramidTexture = builder.UseTexture(depthPyramidTexture, IBaseRenderGraphBuilder.AccessFlags.Read);
 
             passData.ssrHistoryColorTexture = builder.UseTexture((FrameHistory.s_SsrHistoryColorRT == null || FrameHistory.s_SsrHistoryColorRT.rt == null) ? renderGraph.defaultResources.blackTexture : renderGraph.ImportTexture(FrameHistory.s_SsrHistoryColorRT), IBaseRenderGraphBuilder.AccessFlags.Read);
@@ -103,7 +103,7 @@ public class ScreenSpaceReflection
                 cmd.SetComputeVectorParam(data.cs, ScreenSpaceReflectionShaderIDs.ScreenSize, new Vector4((float)data.width, (float)data.height, 1.0f / data.width, 1.0f / data.height));
                 cmd.SetComputeIntParam(data.cs, ScreenSpaceReflectionShaderIDs.SsrStencilBit, (int)StencilUsage.ScreenSpaceReflection);
 
-                cmd.SetComputeTextureParam(data.cs, data.ssrMarchingKernel, ScreenSpaceReflectionShaderIDs.StencilTexture, data.stencilTexture, 0, RenderTextureSubElement.Stencil);
+                cmd.SetComputeTextureParam(data.cs, data.ssrMarchingKernel, ScreenSpaceReflectionShaderIDs.StencilBuffer, data.depthStencilTexture, 0, RenderTextureSubElement.Stencil);
                 cmd.SetComputeTextureParam(data.cs, data.ssrMarchingKernel, ScreenSpaceReflectionShaderIDs.DepthPyramidTexture, data.depthPyramidTexture);
                 cmd.SetComputeTextureParam(data.cs, data.ssrMarchingKernel, ScreenSpaceReflectionShaderIDs.SsrHistoryColorTexture, data.ssrHistoryColorTexture);
                 cmd.SetComputeTextureParam(data.cs, data.ssrMarchingKernel, ScreenSpaceReflectionShaderIDs.SsrLightingTexture, data.ssrLightingTexture);

@@ -10,9 +10,9 @@ public class ColorPyramidGenerator
 
     private static class ColorPyramidShaderIDs
     {
-        public static int PrevPyramidColor = Shader.PropertyToID("_PrevPyramidColor");
-        public static int CurrPyramidColor = Shader.PropertyToID("_CurrPyramidColor");
-        public static int CurrPyramidSize = Shader.PropertyToID("_CurrPyramidSize");
+        public static int SourcePyramid = Shader.PropertyToID("_SourcePyramid");
+        public static int DestinationPyramid = Shader.PropertyToID("_DestinationPyramid");
+        public static int DestinationSize = Shader.PropertyToID("_DestinationSize");
     }
 
     private ComputeShader m_Shader;
@@ -90,9 +90,9 @@ public class ColorPyramidGenerator
 
                     if (dispatchSizeX < 1 || dispatchSizeY < 1) break;
 
-                    cmd.SetComputeTextureParam(data.cs, data.kernel, ColorPyramidShaderIDs.PrevPyramidColor, lastPyramidTexture);
-                    cmd.SetComputeTextureParam(data.cs, data.kernel, ColorPyramidShaderIDs.CurrPyramidColor, data.colorPyramidTextures[i]);
-                    cmd.SetComputeVectorParam(m_Shader, ColorPyramidShaderIDs.CurrPyramidSize, new Vector4(targetPyramidSize.x, targetPyramidSize.y, 1.0f / targetPyramidSize.x, 1.0f / targetPyramidSize.y));
+                    cmd.SetComputeTextureParam(data.cs, data.kernel, ColorPyramidShaderIDs.SourcePyramid, lastPyramidTexture);
+                    cmd.SetComputeTextureParam(data.cs, data.kernel, ColorPyramidShaderIDs.DestinationPyramid, data.colorPyramidTextures[i]);
+                    cmd.SetComputeVectorParam(data.cs, ColorPyramidShaderIDs.DestinationSize, new Vector4(1.0f / targetPyramidSize.x, 1.0f / targetPyramidSize.y, 0f, 0f));
                     cmd.DispatchCompute(data.cs, data.kernel, dispatchSizeX, dispatchSizeY, 1);
 
                     // Copy texture to target mipmap level

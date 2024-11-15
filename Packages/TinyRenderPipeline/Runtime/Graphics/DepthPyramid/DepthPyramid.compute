@@ -42,8 +42,11 @@ void PyramidMin(uint3 dispatchThreadId : SV_DispatchThreadID)
     uint2 prevId = dispatchThreadId.xy << 1;
 
     float maxDepth = _PrevMipDepth.Load(uint3(prevId.xy, 0)).r;
+    // 右
     maxDepth = max(maxDepth, _PrevMipDepth.Load(uint3(prevId.xy + int2(1, 0), 0)).r);
+    // 上
     maxDepth = max(maxDepth, _PrevMipDepth.Load(uint3(prevId.xy + int2(0, 1), 0)).r);
+    // 右上
     maxDepth = max(maxDepth, _PrevMipDepth.Load(uint3(prevId.xy + int2(1, 1), 0)).r);
 
     _CurrMipDepth[dispatchThreadId.xy] = maxDepth;

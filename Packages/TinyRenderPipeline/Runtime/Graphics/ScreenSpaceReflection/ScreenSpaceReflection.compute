@@ -1,8 +1,7 @@
 #pragma kernel ScreenSpaceReflectionMarching
 
-#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
-#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/GlobalSamplers.hlsl"
 #include "../../../ShaderLibrary/Core.hlsl"
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/GlobalSamplers.hlsl"
 
 #define SSR_TRACE_EPS               0.000488281f // 2^-11, should be good up to 4K
 
@@ -13,41 +12,46 @@ CBUFFER_START(ScreenSpaceReflectionShaderVariables)
     int _SsrStencilBit;
 CBUFFER_END
 
-Texture2D<uint2> _StencilTexture;
+Texture2D<uint2> _StencilBuffer;
 Texture2D<float> _DepthPyramidTexture;
 Texture2D<float3> _SsrHistoryColorTexture;
 Texture2D<float2> _SsrHitPointTexture;
 
 RWTexture2D<float4> _SsrLightingTexture;
 
-// Accurate view-space normal reconstruction
-// Based on Yuwen Wu "Accurate Normal Reconstruction"
-// (https://atyuwen.github.io/posts/normal-reconstruction)
-float3 ComputeWorldSpaceNormal(float2 uv, float depth, float3 origin, float2 texelSize)
+// World space position reconstruction
+float3 ReconstructWorldSpacePosition(float2 uv, float deviceDepth, float4x4 invViewProjMatrix)
+{
+    // 构建裁剪空间坐标
+    float4 positionCS = float4(uv * 2.0 - 1.0, deviceDepth, 1.0);
+
+    // 如果是 Y-down 的平台, 反转裁剪空间 y 坐标
+#if UNITY_UV_STARTS_AT_TOP
+    positionCS.y = -positionCS.y;
+#endif
+
+    // 通过 VP 的逆矩阵将裁剪空间坐标变换到世界空间坐标
+    float4 hpositionWS = mul(invViewProjMatrix, positionCS);
+
+    // 透视除法
+    return hpositionWS.xyz / hpositionWS.w;
+}
+
+// World space normal reconstruction
+float3 ReconstructWorldSpaceNormal(float2 uv, float3 origin, float2 texelSize)
 {
     float2 dx = float2(texelSize.x, 0.0);
     float2 dy = float2(0.0, texelSize.y);
 
-    float4 H;
-    H.x = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv - dx, 0).r;
-    H.y = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv + dx, 0).r;
-    H.z = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv - dx * 2.0, 0).r;
-    H.w = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv + dx * 2.0, 0).r;
+    float2 uvdx = uv + dx;
+    float2 uvdy = uv + dy;
+    float depth0 = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uvdx, 0).r;
+    float depth1 = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uvdy, 0).r;
+    float3 px = ComputeWorldSpacePosition(uvdx, depth0, _InvViewProjection);
+    float3 py = ComputeWorldSpacePosition(uvdy, depth1, _InvViewProjection);
 
-    float2 he = abs((2.0 * H.xy - H.zw) - depth);
-    float3 pos_l = ComputeWorldSpacePosition(uv - dx, H.x, _InvViewProjection);
-    float3 pos_r = ComputeWorldSpacePosition(uv + dx, H.y, _InvViewProjection);
-    float3 dpdx = (he.x < he.y) ? (origin - pos_l) : (pos_r - origin);
-
-    float4 V;
-    V.x = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv - dy, 0).r;
-    V.y = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv + dy, 0).r;
-    V.z = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv - dy * 2.0, 0).r;
-    V.w = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv + dy * 2.0, 0).r;
-    float2 ve = abs((2.0 * V.xy - V.zw) - depth);
-    float3 pos_d = ComputeWorldSpacePosition(uv - dy, V.x, _InvViewProjection);
-    float3 pos_u = ComputeWorldSpacePosition(uv + dy, V.y, _InvViewProjection);
-    float3 dpdy = (ve.x < ve.y) ? (origin - pos_d) : (pos_u - origin);
+    float3 dpdx = px - origin;
+    float3 dpdy = py - origin;
 
     return normalize(cross(dpdy, dpdx));
 }
@@ -63,192 +67,182 @@ float EdgeOfScreenFade(float2 coordNDC, float fadeRcpLength)
 [numthreads(8, 8, 1)]
 void ScreenSpaceReflectionMarching(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
+    // 当前纹素的屏幕坐标
     uint2 positionSS = dispatchThreadId.xy;
-
-    float2 uv = positionSS * _ScreenSize.zw + (0.5 * _ScreenSize.zw);
-
-    uint stencilValue = GetStencilValue(_StencilTexture.Load(int3(positionSS, 0)));
+    // 读取 stencil buffer
+    uint stencilValue = GetStencilValue(_StencilBuffer.Load(int3(positionSS, 0)));
+    // 对于不需要计算 SSR 的纹素, 直接返回 0.0
     bool doesntReceiveSSR = (stencilValue & _SsrStencilBit) == 0;
     UNITY_BRANCH
     if (doesntReceiveSSR)
     {
-        _SsrLightingTexture[positionSS] = 0.0;
+        _SsrLightingTexture[positionSS] = float4(0.0, 0.0, 0.0, 0.0);
         return;
     }
 
+    // 当前纹素中心的 uv 坐标
+    float2 uv = positionSS * _ScreenSize.zw + (0.5 * _ScreenSize.zw);
+    // 采样深度值
     float deviceDepth = _DepthPyramidTexture.SampleLevel(sampler_PointClamp, uv, 0).r;
-
-    float3 positionWS = ComputeWorldSpacePosition(uv, deviceDepth, _InvViewProjection);
-
-    float3 N = ComputeWorldSpaceNormal(uv, deviceDepth, positionWS, _ScreenSize.zw);
-
+    // 重建世界空间坐标
+    float3 positionWS = ReconstructWorldSpacePosition(uv, deviceDepth, _InvViewProjection);
+    // 重建世界空间法线向量
+    float3 N = ReconstructWorldSpaceNormal(uv, positionWS, _ScreenSize.zw);
+    // 计算世界空间下的反射光线
     float3 V = GetWorldSpaceNormalizeViewDir(positionWS);
     float3 R = reflect(-V, N);
 
-    float3 camPosWS = GetCurrentViewPosition();
+    // 屏幕坐标中, 反射光线步进的起始坐标, 也就是当前纹素的中心位置
+    float3 rayOrigin = float3(positionSS + 0.5, deviceDepth);
 
-    // Apply normal bias with the magnitude dependent on the distance from the camera.
-    // Unfortunately, we only have access to the shading normal, which is less than ideal...
-    positionWS = camPosWS + (positionWS - camPosWS) * (1 - 0.001 * rcp(max(dot(N, V), FLT_EPS)));
-    float biasedDeviceDepth = ComputeNormalizedDeviceCoordinatesWithZ(positionWS, UNITY_MATRIX_VP).z;
-
-    bool killRay = biasedDeviceDepth == UNITY_RAW_FAR_CLIP_VALUE;
-
-    // Ref. #1: Michal Drobot - Quadtree Displacement Mapping with Height Blending.
-    // Ref. #2: Yasin Uludag  - Hi-Z Screen-Space Cone-Traced Reflections.
-    // Ref. #3: Jean-Philippe Grenier - Notes On Screen Space HIZ Tracing.
-    // Warning: virtually all of the code below assumes reverse Z.
-
-    // We start tracing from the center of the current pixel, and do so up to the far plane.
-    float3 rayOrigin = float3(positionSS + 0.5, biasedDeviceDepth);
-
-    float3 reflPosWS  = positionWS + R;
+    float3 reflPosWS = positionWS + R;
     float3 reflPosNDC = ComputeNormalizedDeviceCoordinatesWithZ(reflPosWS, UNITY_MATRIX_VP);
-    float3 reflPosSS  = float3(reflPosNDC.xy * _ScreenSize.xy, reflPosNDC.z);
-    float3 rayDir     = reflPosSS - rayOrigin;
-    float3 rcpRayDir  = rcp(rayDir);
-    int2   rayStep    = int2(rcpRayDir.x >= 0 ? 1 : 0,
-                             rcpRayDir.y >= 0 ? 1 : 0);
-    float3 raySign  = float3(rcpRayDir.x >= 0 ? 1 : -1,
+    float3 reflPosSS = float3(reflPosNDC.xy * _ScreenSize.xy, reflPosNDC.z);
+    // 屏幕坐标中, 反射光线的方向向量
+    float3 rayDir = reflPosSS - rayOrigin;
+
+    float3 rcpRayDir = rcp(rayDir);
+
+    int2 rayStep = int2(rcpRayDir.x >= 0 ? 1 : 0,
+                        rcpRayDir.y >= 0 ? 1 : 0);
+
+    // 每一次步进的 xyz 方向
+    float3 raySign = float3(rcpRayDir.x >= 0 ? 1 : -1,
                              rcpRayDir.y >= 0 ? 1 : -1,
                              rcpRayDir.z >= 0 ? 1 : -1);
-    bool   rayTowardsEye  =  rcpRayDir.z >= 0;
 
-    // Note that we don't need to store or read the perceptualRoughness value
-    // if we mark stencil during the G-Buffer pass with pixels which should receive SSR,
-    // and sample the color pyramid during the lighting pass.
+    // 反射光线是不是朝向相机 (因为反向 Z, 所以越靠近相机的位置深度值越大)
+    bool rayTowardsEye = rcpRayDir.z >= 0;
+
+    // 跳过处于 far plane 的纹素 (例如背景天空盒)
+    bool killRay = deviceDepth == UNITY_RAW_FAR_CLIP_VALUE;
+    // 跳过反射光线超出视锥的纹素
     killRay = killRay || (reflPosSS.z <= 0);
+    // 跳过相机看不到的纹素
     killRay = killRay || (dot(N, V) <= 0);
+    // 跳过反射光线是远离相机的纹素
     killRay = killRay || rayTowardsEye;
-
     if (killRay)
     {
-        _SsrLightingTexture[positionSS] = 0.0;
+        _SsrLightingTexture[positionSS] = float4(0.0, 0.0, 0.0, 0.0);
         return;
     }
 
-    const float _SsrReflectsSky = 0.0;
-    const int _SsrDepthPyramidMaxMip = 8;
-    const int _SsrIterLimit = 64;
-    const float thickness = 0.0016;
-    const float _SsrThicknessScale = 1.0 / (1.0 + thickness);
-    const float n = 0.3;
-    const float f = 100.0;
-    const float _SsrThicknessBias = -n / (f - n) * (thickness * _SsrThicknessScale);
-
-    // Extend and clip the end point to the frustum.
+    // 计算步进的最远距离, 最远距离也就是到屏幕边缘
     float tMax;
     {
         // Shrink the frustum by half a texel for efficiency reasons.
         const float halfTexel = 0.5;
 
+        // 计算 xyz 的最远距离
         float3 bounds;
+        // 步进方向的 xy 分量如果为正, 则 xy 的最远距离就是 ScreenSize.xy - 0.5 , 反之则是 0.5
         bounds.x = (rcpRayDir.x >= 0) ? _ScreenSize.x - halfTexel : halfTexel;
         bounds.y = (rcpRayDir.y >= 0) ? _ScreenSize.y - halfTexel : halfTexel;
-        // If we do not want to intersect the skybox, it is more efficient to not trace too far.
-        float maxDepth = (_SsrReflectsSky != 0) ? -0.00000024 : 0.00000024; // 2^-22
-        bounds.z = (rcpRayDir.z >= 0) ? 1 : maxDepth;
+        // 步进方向的 z 分量如果为正, 则 z 的最远距离就是近平面 1 , 反之则是 6.103515625e-5 , 这个值可以不用太小, 节省性能
+        bounds.z = (rcpRayDir.z >= 0) ? 1 : 0.0001;
 
+        // 3 个分量距离中取最小作为最大步进距离
         float3 dist = bounds * rcpRayDir - (rayOrigin * rcpRayDir);
         tMax = Min3(dist.x, dist.y, dist.z);
     }
 
-    // Clamp the MIP level to give the compiler more information to optimize.
-    const int maxMipLevel = _SsrDepthPyramidMaxMip;
-
-    // Start ray marching from the next texel to avoid self-intersections.
+    // 每次步进与起点的距离, 初始值从下一个纹素开始, 避免初始值为 0 造成自相交
     float t;
     {
-        // 'rayOrigin' is the exact texel center.
         float2 dist = abs(0.5 * rcpRayDir.xy);
         t = min(dist.x, dist.y);
     }
 
+    // 最大步进次数
+    const int _SsrIterLimit = 64;
+    // 场景中几何体的厚度, 是定义在线性深度值中的偏移. 用于在光线步进时是判断否与几何体相交
+    // thickness, thickness_scale, thickness_bias 是怎么定义的具体可以看下面 HDRP 中的注释推导:
+    // We define the depth of the base as the depth value as:
+    // b = DeviceDepth((1 + thickness) * LinearDepth(d))
+    // b = ((f - n) * d + n * (1 - (1 + thickness))) / ((f - n) * (1 + thickness))
+    // b = ((f - n) * d - n * thickness) / ((f - n) * (1 + thickness))
+    // b = d / (1 + thickness) - n / (f - n) * (thickness / (1 + thickness))
+    // b = d * k_s + k_b
+    const float thickness = 0.0016;
+    const float near = 0.3;
+    const float far = 100.0;
+    const float thickness_scale = 1.0 / (1.0 + thickness);
+    const float thickness_bias = -near / (far - near) * (thickness * thickness_scale);
+    // Hi-Z 的最大 mip level
+    const int maxMipLevel = 8;
+
     float3 rayPos;
 
-    int mipLevel  = 0;
+    // 采样 Hi-Z 的层级
+    int mipLevel = 0;
+    // 步进次数
     int iterCount = 0;
-    bool hit      = false;
-    bool miss     = false;
-    bool belowMip0 = false; // This value is set prior to entering the cell
+    bool hit = false;
+    bool miss = false;
+    bool belowMip0 = false;
 
     while (!(hit || miss) && (t <= tMax) && (iterCount < _SsrIterLimit))
     {
+        // 每次都是从起点步进 t 距离, 计算出此次步进后的终点在原始屏幕空间中的坐标位置
         rayPos = rayOrigin + t * rayDir;
 
-        // Ray position often ends up on the edge. To determine (and look up) the right cell,
-        // we need to bias the position by a small epsilon in the direction of the ray.
+        // 为了避免 rayPos 处于屏幕纹素的边缘, 对其应用一个微小的偏移量
         float2 sgnEdgeDist = round(rayPos.xy) - rayPos.xy;
         float2 satEdgeDist = clamp(raySign.xy * sgnEdgeDist + SSR_TRACE_EPS, 0, SSR_TRACE_EPS);
         rayPos.xy += raySign.xy * satEdgeDist;
 
-        // Bounds define 4 faces of a cube:
-        // 2 walls in front of the ray, and a floor and a base below it.
+        // 根据当前 Hi-Z 层级, 计算出在此次步进终点采样 Hi-Z 能覆盖的原始屏幕空间中最远的屏幕坐标位置
         float4 bounds;
-
         int2 mipCoord  = (int2)rayPos.xy >> mipLevel;
         bounds.xy = (mipCoord + rayStep) << mipLevel;
+        // 采样当前 Hi-Z Mip 层级中的深度值, 可以理解为几何体表面深度值
         bounds.z = _DepthPyramidTexture.Load(int3(mipCoord, mipLevel)).r;
+        // 应用几何体厚度后的深度值, 可以理解为几何体背面深度值
+        bounds.w = bounds.z * thickness_scale + thickness_bias;
 
-        // We define the depth of the base as the depth value as:
-        // b = DeviceDepth((1 + thickness) * LinearDepth(d))
-        // b = ((f - n) * d + n * (1 - (1 + thickness))) / ((f - n) * (1 + thickness))
-        // b = ((f - n) * d - n * thickness) / ((f - n) * (1 + thickness))
-        // b = d / (1 + thickness) - n / (f - n) * (thickness / (1 + thickness))
-        // b = d * k_s + k_b
-        bounds.w = bounds.z * _SsrThicknessScale + _SsrThicknessBias;
-
-        float4 dist = bounds * rcpRayDir.xyzz - (rayOrigin.xyzz * rcpRayDir.xyzz);
-        float  distWall  = min(dist.x, dist.y);
-        float  distFloor = dist.z;
-        float  distBase  = dist.w;
-
-        bool belowFloor  = rayPos.z < bounds.z;
-        bool aboveBase   = rayPos.z >= bounds.w;
-
+        // 是否在几何体表面以下
+        bool belowFloor = rayPos.z < bounds.z;
+        // 是否在几何体背面以上
+        bool aboveBase = rayPos.z >= bounds.w;
+        // 在几何体内部
         bool insideFloor = belowFloor && aboveBase;
-        bool hitFloor    = (t <= distFloor) && (distFloor <= distWall);
 
-        // Game rules:
-        // * if the closest intersection is with the wall of the cell, switch to the coarser MIP, and advance the ray.
-        // * if the closest intersection is with the heightmap below,  switch to the finer   MIP, and advance the ray.
-        // * if the closest intersection is with the heightmap above,  switch to the finer   MIP, and do NOT advance the ray.
-        // Victory conditions:
-        // * See below. Do NOT reorder the statements!
+        // 在原始屏幕空间上, 此次步进终点能覆盖的最远坐标位置相对于起点的距离变化
+        float4 dist = bounds * rcpRayDir.xyzz - (rayOrigin.xyzz * rcpRayDir.xyzz);
+        float distWall  = min(dist.x, dist.y);
+        float distFloor = dist.z;
+        // 当此次步进的步长 t 与 t <= distFloor <= distWall , 则认为交点正好在几何体表面
+        bool hitFloor = (t <= distFloor) && (distFloor <= distWall);
 
-        miss      = belowMip0 && insideFloor;
+        // 如果 belowMip0 为 true , 表示上次步进时, Mip 已经为 0 且没有找到交点, 则认为没有找到交点, 跳出步进
+        miss = belowMip0;
+        // 当前在 Mip 0 且交点在几何体表面或几何体内部则认为找到交点, 跳出步进
+        hit = (mipLevel == 0) && (hitFloor || insideFloor);
 
-        hit       = (mipLevel == 0) && (hitFloor || insideFloor);
+        // 当反射光线深度在几何体表面以下, 且此时采样的 Hi-Z Mip 为 0 , 则 belowMip0 为 true , belowMip0 默认为 false
         belowMip0 = (mipLevel == 0) && belowFloor;
 
-        // 'distFloor' can be smaller than the current distance 't'.
-        // We can also safely ignore 'distBase'.
-        // If we hit the floor, it's always safe to jump there.
-        // If we are at (mipLevel != 0) and we are below the floor, we should not move.
+        // 如果交点在几何体表面, 则减小步长, 使用 distFloor 作为下一次步进的步长, 并在后续对 Hi-Z Mip -1
+        // 如果 Hi-Z Mip 不为 0 且反射光线深度值小于物体表面深度, 则保持当前步长并在后续对 Hi-Z Mip -1
+        // 否则, 增大步长, 使用 distWall 作为下一次步长, 并在后续对 Hi-Z Mip +1
         t = hitFloor ? distFloor : (((mipLevel != 0) && belowFloor) ? t : distWall);
-        rayPos.z = bounds.z; // Retain the depth of the potential intersection
 
-        // Warning: both rays towards the eye, and tracing behind objects has linear
-        // rather than logarithmic complexity! This is due to the fact that we only store
-        // the maximum value of depth, and not the min-max.
-        mipLevel += (hitFloor || belowFloor || rayTowardsEye) ? -1 : 1;
+        // 交点在几何体表面, 或者在几何体表面以下, 则下次步进采样低 1 级的 Hi-Z , 否则下次步进采样高 1 级的 Hi-Z
+        mipLevel += (hitFloor || belowFloor) ? -1 : 1;
         mipLevel  = clamp(mipLevel, 0, maxMipLevel);
 
         iterCount++;
     }
 
-    // Treat intersections with the sky as misses.
-    miss = miss || ((_SsrReflectsSky == 0) && (rayPos.z == 0));
+    // 确定最终是否找到交点
+    miss = miss || rayPos.z == 0;
     hit  = hit && !miss;
 
     if (hit)
     {
-        // Note that we are using 'rayPos' from the penultimate iteration, rather than
-        // recompute it using the last value of 't', which would result in an overshoot.
-        // It also needs to be precisely at the center of the pixel to avoid artifacts.
-        float2 hitPositionNDC = floor(rayPos.xy) * _ScreenSize.zw + (0.5 * _ScreenSize.zw); // Should we precompute the half-texel bias? We seem to use it a lot.
-        // _SsrHitPointTextureWrite[positionSS] = hitPositionNDC.xy;
-
+        // 根据最终反射光线屏幕空间坐标计算 uv 坐标
+        float2 hitPositionNDC = floor(rayPos.xy) * _ScreenSize.zw + (0.5 * _ScreenSize.zw);
 
         if (max(hitPositionNDC.x, hitPositionNDC.y) == 0.0)
         {
@@ -257,7 +251,7 @@ void ScreenSpaceReflectionMarching(uint3 dispatchThreadId : SV_DispatchThreadID)
             return;
         }
 
-        // float deviceDepth = _DepthPyramidTexture.Load(int3(positionSS, 0)).r;
+        // 重投影到上一帧的屏幕 uv 坐标
         float4 q = mul(_HistoryReprojection, float4(hitPositionNDC, deviceDepth, 1.0));
         float2 historyUV = (q.xy * (1.0 / q.w)) * 0.5 + 0.5;
 
@@ -268,23 +262,25 @@ void ScreenSpaceReflectionMarching(uint3 dispatchThreadId : SV_DispatchThreadID)
             return;
         }
 
+        // 采样上一帧的颜色缓冲
         float3 color = _SsrHistoryColorTexture.SampleLevel(sampler_LinearClamp, historyUV, 0).rgb;
 
-        // Disable SSR for negative, infinite and NaN history values.
-        uint3 intCol   = asuint(color);
-        bool  isPosFin = Max3(intCol.r, intCol.g, intCol.b) < 0x7F800000;
+        // 检查上一帧中的颜色缓冲中无效的值
+        uint3 intCol = asuint(color);
+        bool isPosFin = Max3(intCol.r, intCol.g, intCol.b) < 0x7F800000;
 
+        // 对处于屏幕边缘的反射做过度, 避免反射结果贴图直接被截断
         const float screenFadeDistance = 0.1;
         const float _SsrEdgeFadeRcpLength = min(1.0 / screenFadeDistance, FLT_MAX);
-        float  opacity  = EdgeOfScreenFade(historyUV, _SsrEdgeFadeRcpLength);
+        float opacity = EdgeOfScreenFade(historyUV, _SsrEdgeFadeRcpLength);
 
-        color   = isPosFin ? color   : 0;
-        opacity = isPosFin ? opacity : 0;
+        color = isPosFin ? color : 0.0;
+        opacity = isPosFin ? opacity : 0.0;
 
         _SsrLightingTexture[positionSS] = float4(color, 1.0) * opacity;
     }
     else
     {
-        _SsrLightingTexture[positionSS] = 0.0;
+        _SsrLightingTexture[positionSS] = float4(0.0, 0.0, 0.0, 0.0);
     }
 }

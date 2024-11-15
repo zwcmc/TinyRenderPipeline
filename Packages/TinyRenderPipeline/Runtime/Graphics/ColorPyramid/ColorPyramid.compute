@@ -1,8 +1,13 @@
 #pragma kernel CSMain
 
-float4 _CurrPyramidSize;
-Texture2D<float4> _PrevPyramidColor;
-RWTexture2D<float4> _CurrPyramidColor;
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+
+CBUFFER_START(cb)
+    float4 _DestinationSize;  // x: 1.0 / dest width, y: 1.0 / dest height, zw: 0.0
+CBUFFER_END
+
+Texture2D<float4> _SourcePyramid;
+RWTexture2D<float4> _DestinationPyramid;
 
 SamplerState sampler_LinearClamp;
 
@@ -85,7 +90,7 @@ void BlurVertically(uint2 pixelCoord, uint topMostIndex)
     float4 blurred = BlurPixels(s0, s1, s2, s3, s4, s5, s6, s7, s8);
 
     // Write to the final target
-    _CurrPyramidColor[pixelCoord] = blurred;
+    _DestinationPyramid[pixelCoord] = blurred;
 }
 
 
@@ -94,13 +99,14 @@ void CSMain(uint2 groupId : SV_GroupID, uint2 groupThreadId : SV_GroupThreadID, 
 {
     // Upper-left pixel coordinate of quad that this thread will read
     int2 threadUL = (groupThreadId << 1) + (groupId << 3) - 4;
+    uint2 uthreadUL = uint2(max(0, threadUL));
 
     // Downsample the block
-    float2 offset = float2(threadUL);
-    float4 p00 = _PrevPyramidColor.SampleLevel(sampler_LinearClamp, (offset                    + 0.5) * _CurrPyramidSize.zw, 0.0);
-    float4 p10 = _PrevPyramidColor.SampleLevel(sampler_LinearClamp, (offset + float2(1.0, 0.0) + 0.5) * _CurrPyramidSize.zw, 0.0);
-    float4 p01 = _PrevPyramidColor.SampleLevel(sampler_LinearClamp, (offset + float2(0.0, 1.0) + 0.5) * _CurrPyramidSize.zw, 0.0);
-    float4 p11 = _PrevPyramidColor.SampleLevel(sampler_LinearClamp, (offset + float2(1.0, 1.0) + 0.5) * _CurrPyramidSize.zw, 0.0);
+    float2 offset = float2(uthreadUL);
+    float4 p00 = _SourcePyramid.SampleLevel(sampler_LinearClamp, (offset                    + 0.5) * _DestinationSize.xy, 0.0);
+    float4 p10 = _SourcePyramid.SampleLevel(sampler_LinearClamp, (offset + float2(1.0, 0.0) + 0.5) * _DestinationSize.xy, 0.0);
+    float4 p01 = _SourcePyramid.SampleLevel(sampler_LinearClamp, (offset + float2(0.0, 1.0) + 0.5) * _DestinationSize.xy, 0.0);
+    float4 p11 = _SourcePyramid.SampleLevel(sampler_LinearClamp, (offset + float2(1.0, 1.0) + 0.5) * _DestinationSize.xy, 0.0);
 
     // Store the 4 downsampled pixels in LDS
     uint destIdx = groupThreadId.x + (groupThreadId.y << 4u);
