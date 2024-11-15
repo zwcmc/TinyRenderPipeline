@@ -2,7 +2,7 @@
 
 ## Description
 
-A customized render pipeline for Unity SRP
+A customized render pipeline based on Unity SRP
 
 ![TinyRenderPipeline](TinyRenderPipeline.jpeg)
 
