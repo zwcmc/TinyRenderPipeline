@@ -59,16 +59,12 @@ half3 ShadingIndirect(BRDFData brdfData, InputData inputData, half diffuseAO)
 
     half3 dfg = PrefilteredDFG_LUT(NoV, roughness);
     half3 E = brdfData.f0 * dfg.x + dfg.y;
-
-    // ssr
-    float mipLevel = lerp(0, 8, brdfData.perceptualRoughness);  // simple lerp
-    half4 ssrLighting = SAMPLE_TEXTURE2D_LOD(_SsrLightingTexture, sampler_SsrLightingTexture, inputData.normalizedScreenSpaceUV, mipLevel);
-    float ssrWeight = ssrLighting.a;
-
-    float envWeight = 1.0 - ssrWeight;
-
     half3 iblFr = E * prefilteredRadiance;
 
+    // Ssr lighting
+    float mipLevel = lerp(0, 8, brdfData.perceptualRoughness);  // simple lerp
+    half4 ssrLighting = SAMPLE_TEXTURE2D_LOD(_SsrLightingTexture, sampler_SsrLightingTexture, inputData.normalizedScreenSpaceUV, mipLevel);
+    float envWeight = 1.0 - ssrLighting.a;
     iblFr = iblFr * envWeight + (E * ssrLighting);
 
     half3 iblFd = brdfData.diffuseColor * diffuseIrradiance * (1.0 - E) * diffuseAO;

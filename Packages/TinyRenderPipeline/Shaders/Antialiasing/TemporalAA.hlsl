@@ -138,7 +138,7 @@ float DistToAABB(half3 color, half3 history, half3 minimum, half3 maximum)
 
 half3 ClipAABB(half3 aabbMin, half3 aabbMax, half3 history, half3 c)
 {
-#if 0
+#if 1
     // Note: only clips towards aabb center (but fast!)
     float3 center = 0.5 * (aabbMax + aabbMin);
     float3 extents = 0.5 * (aabbMax - aabbMin);

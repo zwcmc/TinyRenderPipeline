@@ -3,7 +3,7 @@
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
 
 CBUFFER_START(cb)
-    float4 _DestinationSize;  // x: 1.0 / dest width, y: 1.0 / dest height, zw: 0.0
+    float4 _DestinationSize;  // x: 1.0 / dest width, y: 1.0 / dest height, zw: unused
 CBUFFER_END
 
 Texture2D<float4> _SourcePyramid;
@@ -93,34 +93,48 @@ void BlurVertically(uint2 pixelCoord, uint topMostIndex)
     _DestinationPyramid[pixelCoord] = blurred;
 }
 
-
 [numthreads(8, 8, 1)]
 void CSMain(uint2 groupId : SV_GroupID, uint2 groupThreadId : SV_GroupThreadID, uint2 dispatchThreadId : SV_DispatchThreadID)
 {
-    // Upper-left pixel coordinate of quad that this thread will read
-    int2 threadUL = (groupThreadId << 1) + (groupId << 3) - 4;
-    uint2 uthreadUL = uint2(max(0, threadUL));
+    // 因为每个线程组 group 包含 8x8 个线程, 每个线程代表 RT 上的一个像素
+    // groupId.x 表示的是 RT 在 u 方向上的 线程组 index, groupId.y 表示的是 RT 在 v 方向上的 线程组 index
+    // groupThreadId.xy 表示的是每个线程组内每个像素在 u 和 v 方向上的 index, 范围是 [0,7]
 
-    // Downsample the block
-    float2 offset = float2(uthreadUL);
-    float4 p00 = _SourcePyramid.SampleLevel(sampler_LinearClamp, (offset                    + 0.5) * _DestinationSize.xy, 0.0);
-    float4 p10 = _SourcePyramid.SampleLevel(sampler_LinearClamp, (offset + float2(1.0, 0.0) + 0.5) * _DestinationSize.xy, 0.0);
-    float4 p01 = _SourcePyramid.SampleLevel(sampler_LinearClamp, (offset + float2(0.0, 1.0) + 0.5) * _DestinationSize.xy, 0.0);
-    float4 p11 = _SourcePyramid.SampleLevel(sampler_LinearClamp, (offset + float2(1.0, 1.0) + 0.5) * _DestinationSize.xy, 0.0);
+    // 下面这行代码的意思是将 RT 中的像素分成一个个 2x2 的像素块, 返回的是这个 2x2 像素块的左下角的像素的在屏幕范围上的 index
+    int2 threadUL = (groupThreadId << 1) + (groupId << 3) - 4;
+    float2 offset = float2(threadUL);
+
+    // 2x2 像素块的 4 个像素的坐标
+    float2 c00 = (offset + 0.5) * _DestinationSize.xy;
+    float2 c10 = (offset + float2(1.0, 0.0) + 0.5) * _DestinationSize.xy;
+    float2 c01 = (offset + float2(0.0, 1.0) + 0.5) * _DestinationSize.xy;
+    float2 c11 = (offset + float2(1.0, 1.0) + 0.5) * _DestinationSize.xy;
+
+    // 通过双线性过滤采样上 1 级的 Mip
+    float4 p00 = _SourcePyramid.SampleLevel(sampler_LinearClamp, c00, 0.0);
+    float4 p10 = _SourcePyramid.SampleLevel(sampler_LinearClamp, c10, 0.0);
+    float4 p01 = _SourcePyramid.SampleLevel(sampler_LinearClamp, c01, 0.0);
+    float4 p11 = _SourcePyramid.SampleLevel(sampler_LinearClamp, c11, 0.0);
 
     // Store the 4 downsampled pixels in LDS
+    // LDS 是指 本地数据共享(Local Data Share), LDS 是一种用于在同一线程组内的着色器线程之间共享数据的高速存储器, 它通常用于需要在多个线程之间快速交换数据的场合
+    // 将采样的每 2 个像素的颜色存储到 组共享内存(Group Shared Memory) 中, 这 2 个像素的每个通道从 32 位转换为 16 位, 并分别存储在一个 32 位的 uint 的低 16 位 和 高 16 位中
+    // 每个线程组有 64 个线程, 每个线程采样了 4 个像素, 会将 2 个像素的同一个通道存储在一个 uint 中, 所以一共需要 (64 * 4 / 2 = 128) 个 uint
     uint destIdx = groupThreadId.x + (groupThreadId.y << 4u);
-    Store2Pixels(destIdx     , p00, p10);
+    Store2Pixels(destIdx , p00, p10);
     Store2Pixels(destIdx + 8u, p01, p11);
 
+    // 两个作用:
+    // 1. 确保所有内存操作（读或写）都已经完成，并且结果对同一线程组中的所有线程可见
+    // 2. 阻塞当前线程，直到同一线程组中的所有线程都到达此同步点
     GroupMemoryBarrierWithGroupSync();
 
-    // Horizontally blur the pixels in LDS
+    // 横向模糊
     uint row = groupThreadId.y << 4u;
     BlurHorizontally(row + (groupThreadId.x << 1u), row + groupThreadId.x + (groupThreadId.x & 4u));
 
     GroupMemoryBarrierWithGroupSync();
 
-    // Vertically blur the pixels in LDS and write the result to memory
+    // 纵向模糊, 并将最终的结果输出
     BlurVertically(dispatchThreadId, (groupThreadId.y << 3u) + groupThreadId.x);
 }
