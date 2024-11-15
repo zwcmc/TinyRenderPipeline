@@ -4,7 +4,7 @@
 
 A customized render pipeline for Unity SRP
 
-![TinyRenderPipeline](TinyRenderPipeline.png)
+![TinyRenderPipeline](TinyRenderPipeline.jpeg)
 
 ## Feature
 
@@ -18,9 +18,9 @@ A customized render pipeline for Unity SRP
 - [x] Bloom
 - [x] Scalable Ambient Obscurance
   - [x] Hierarchical-Z buffer for acceleration
-- [x] FXAA
-- [x] TAA
-- [x] SSR
+- [x] Fast Approximate AA
+- [x] Temporal AA
+- [x] Screen Space Reflection
   - [x] Hierarchical-Z buffer for acceleration
 
 ## Planned
@@ -28,10 +28,3 @@ A customized render pipeline for Unity SRP
 - [ ] Separable Subsurface Scattering
 - [ ] Disney Burley Subsurface Scattering
 - [ ] Z-Binning Tile Based Lighting
-
-## Reference
-
-- [1] [filament](https://github.com/google/filament)
-- [2] [SRP Core Documentation](https://docs.unity3d.com/Packages/com.unity.render-pipelines.core@latest)
-- [3] [Scalable Ambient Obscurance](https://research.nvidia.com/publication/2012-06_scalable-ambient-obscurance)
-- [4] [Unity Graphics](https://github.com/Unity-Technologies/Graphics)
