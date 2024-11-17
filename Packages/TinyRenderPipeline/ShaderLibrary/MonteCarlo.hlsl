@@ -1,7 +1,7 @@
 #ifndef TINY_RP_MONTE_CARLO_INCLUDED
 #define TINY_RP_MONTE_CARLO_INCLUDED
 
-#include "Packages/com.unity.render-pipelines.core@16.0.5/ShaderLibrary/Macros.hlsl"
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Macros.hlsl"
 #include "CommonMath.hlsl"
 
 float2 Hammersley(uint i, uint numSamples)

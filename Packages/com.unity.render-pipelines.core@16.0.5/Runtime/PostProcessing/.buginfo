@@ -1,5 +1,0 @@
-when:
-  path:
-    - ^.*HDROutput?.*$
-add:
-  area: HD RP
