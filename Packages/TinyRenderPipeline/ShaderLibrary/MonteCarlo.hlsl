@@ -126,7 +126,9 @@ float2 DFV(float NoV, float roughness)
     float2 r = 0.0;
     const uint numSamples = 1024;
 
+    // 由于各向同性，随意取一个 V 即可
     float3 V = float3(sqrt(1.0 - NoV * NoV), 0.0, NoV);
+
     for (uint i = 0; i < numSamples; ++i)
     {
         const float2 u = Hammersley(i, numSamples);
