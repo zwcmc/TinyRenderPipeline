@@ -31,17 +31,20 @@ half3 ShadingLit(Light light, BRDFData brdfData, InputData inputData)
 
     half3 radiance = light.color * light.distanceAttenuation * light.shadowAttenuation * NoL;
 
+    // kd
     half3 diffuseColor = brdfData.diffuseColor;
-    half3 f0 = brdfData.f0;
 
+    // fd
     half3 Fd = diffuseColor * Fd_Burley(roughness, NoV, NoL, LoH);
 
+    // fs
+    half3 f0 = brdfData.f0;
     float D = D_GGX(roughness, NoH);
     half G = V_SmithGGXCorrelated(roughness, NoV, NoL);
     half3 F = F_Schlick(f0, LoH);
-    half3 Fr = (D * G) * F;
+    half3 Fs = (D * G) * F;
 
-    return (Fd + Fr) * radiance;
+    return (Fd + Fs) * radiance;
 }
 
 half3 ShadingIndirect(BRDFData brdfData, InputData inputData, half diffuseAO)
