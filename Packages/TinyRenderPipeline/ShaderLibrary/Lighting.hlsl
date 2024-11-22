@@ -70,7 +70,7 @@ half3 ShadingIndirect(BRDFData brdfData, InputData inputData, half diffuseAO)
     float envWeight = 1.0 - ssrLighting.a;
     iblFr = iblFr * envWeight + (E * ssrLighting);
 
-    half3 iblFd = brdfData.diffuseColor * diffuseIrradiance * (1.0 - E) * diffuseAO;
+    half3 iblFd = brdfData.diffuseColor * diffuseIrradiance * diffuseAO;
 
     return iblFr + iblFd;
 }
