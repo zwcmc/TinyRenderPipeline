@@ -116,7 +116,7 @@ half3 UnToneMapReinhard(half3 c)
 half3 FetchOffset(TEXTURE2D(tex), float2 coords, float2 offset, float4 texelSize)
 {
     float2 uv = coords + offset * texelSize.xy;
-    return SAMPLE_TEXTURE2D_LOD(tex, sampler_PointClamp, uv, 0.0).rgb;
+    return SAMPLE_TEXTURE2D_LOD(tex, sampler_LinearClamp, uv, 0.0).rgb;
 }
 
 // Here the ray referenced goes from history to (filtered) center color
